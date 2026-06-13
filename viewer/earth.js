@@ -64,6 +64,7 @@
   const DEFAULT_GEOJSON_URL = "../outputs/nmc-wind/202606101800.geojson";
   const DEFAULT_MANIFEST_URL = "../outputs/nmc-wind/manifest.json";
   const DEFAULT_VIEW = { zoom: 1.25, lat: 28, lon: 105, bearing: 0, pitch: 0 };
+  const DEFAULT_NARROW_VIEW = { ...DEFAULT_VIEW, zoom: 0.68 };
   const TIME_FILTER_ALL = "__all__";
   const FEATURE_ID_PROPERTY = "_earthFeatureId";
   const INTERNAL_PROPERTY_KEYS = new Set([FEATURE_ID_PROPERTY, "_weatherColor", "_weatherVolumeHeight", "marker-size-px"]);
@@ -420,7 +421,9 @@
     applyQualityProfileToViewer();
     applyEarthVisualTreatment();
     configureCameraController();
-    setCameraLookAt(DEFAULT_VIEW);
+    const initialCamera = defaultCameraView();
+    lastCamera = initialCamera;
+    setCameraLookAt(initialCamera);
     applyCesiumLighting();
     syncSunlightClock({ force: true });
     bindCesiumEvents();
@@ -1165,7 +1168,7 @@
     on(elements.earthMenuTopDown, "click", () => { setEarthMenuOpen(false); setCameraTopDown({ duration: 0.35 }); });
     on(elements.earthMenuOblique, "click", () => { setEarthMenuOpen(false); toggleCameraOblique({ duration: 0.35 }); });
     on(elements.immersiveExitPanel, "click", () => applyImmersiveMode(false));
-    on(elements.earthOverview, "click", () => flyToCamera(DEFAULT_VIEW));
+    on(elements.earthOverview, "click", () => flyToCamera(defaultCameraView()));
     document.addEventListener("pointerdown", handleEarthMenuPointerDown, true);
     window.addEventListener("keydown", handleKeyboard);
     window.addEventListener("keyup", handleKeyboardKeyUp);
@@ -1964,12 +1967,26 @@
 
   function flyToPlace(placeId, options = {}) {
     const place = EARTH_PLACE_PRESETS.find((entry) => entry.id === placeId) || EARTH_PLACE_PRESETS[0];
-    lastLocationSearch = { id: place.id, label: place.label, camera: place.camera, source: "preset" };
-    if (options.focus !== false) setFocusTargetState({ lon: place.camera.lon, lat: place.camera.lat, label: place.label, id: place.id }, { notify: false });
-    flyToCamera(place.camera, options);
+    const camera = placeCamera(place);
+    lastLocationSearch = { id: place.id, label: place.label, camera, source: "preset" };
+    if (options.focus !== false) setFocusTargetState({ lon: camera.lon, lat: camera.lat, label: place.label, id: place.id }, { notify: false });
+    flyToCamera(camera, options);
     updateAllUi();
     emitWeatherEarthEvent("searchchange", { locationSearch: publicLocationSearchResult(lastLocationSearch) });
     return cloneJson(lastLocationSearch);
+  }
+
+  function placeCamera(place) {
+    return { ...(place?.id === "china" ? defaultCameraView() : place?.camera || DEFAULT_VIEW) };
+  }
+
+  function defaultCameraView() {
+    const width = Number(window.innerWidth) || 1440;
+    const height = Number(window.innerHeight) || 900;
+    const shortSide = Math.min(width, height);
+    const narrowFactor = clamp((720 - shortSide) / 360, 0, 1);
+    const zoom = DEFAULT_VIEW.zoom + (DEFAULT_NARROW_VIEW.zoom - DEFAULT_VIEW.zoom) * narrowFactor;
+    return { ...DEFAULT_VIEW, zoom };
   }
 
   function flyToSearch(query, options = {}) {
@@ -2230,7 +2247,7 @@
   }
 
   function resetCameraView(options = {}) {
-    return flyToCamera(DEFAULT_VIEW, options);
+    return flyToCamera(defaultCameraView(), options);
   }
 
   function setCameraTopDown(options = {}) {
