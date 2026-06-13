@@ -748,9 +748,9 @@ button:disabled {
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(circle at 50% 48%, rgba(30, 82, 116, 0.18), transparent 31%),
-    radial-gradient(circle at 28% 24%, rgba(48, 112, 160, 0.07), transparent 18%),
-    linear-gradient(145deg, #000006, #01030a 52%, #000000);
+    radial-gradient(circle at 50% 48%, rgba(28, 62, 96, 0.12), transparent 35%),
+    radial-gradient(circle at 26% 24%, rgba(47, 83, 128, 0.05), transparent 21%),
+    linear-gradient(145deg, #000105, #01030a 52%, #000000);
 }
 
 .earth-stage::before {
@@ -760,15 +760,15 @@ button:disabled {
   pointer-events: none;
   content: "";
   background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.82) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 24% 74%, rgba(142, 246, 255, 0.58) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 68% 18%, rgba(255, 255, 255, 0.74) 0 1px, transparent 1.4px),
-    radial-gradient(circle at 82% 64%, rgba(255, 255, 255, 0.58) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 47% 9%, rgba(142, 246, 255, 0.5) 0 0.8px, transparent 1.4px),
-    radial-gradient(circle at 92% 31%, rgba(255, 255, 255, 0.7) 0 0.9px, transparent 1.5px),
-    linear-gradient(180deg, rgba(3, 8, 16, 0), rgba(0, 1, 5, 0.52));
-  background-size: 720px 460px, 540px 390px, 680px 520px, 610px 410px, 760px 470px, 520px 360px, 100% 100%;
-  opacity: 0.82;
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.64) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 24% 74%, rgba(210, 235, 255, 0.46) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 68% 18%, rgba(255, 255, 255, 0.58) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 82% 64%, rgba(255, 255, 255, 0.42) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 47% 9%, rgba(190, 225, 255, 0.38) 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 92% 31%, rgba(255, 255, 255, 0.48) 0 0.7px, transparent 1.4px),
+    linear-gradient(180deg, rgba(3, 8, 16, 0), rgba(0, 1, 5, 0.48));
+  background-size: 910px 610px, 780px 560px, 860px 640px, 760px 590px, 1040px 680px, 690px 520px, 100% 100%;
+  opacity: 0.56;
 }
 
 #earthMap {

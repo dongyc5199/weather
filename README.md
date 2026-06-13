@@ -226,7 +226,7 @@ POST /api/process-nmc-wind
 http://127.0.0.1:8765/viewer/earth.html?map=6.69/35.13104/107.15353
 ```
 
-页面使用 CesiumJS Globe 作为完整 3D 地球引擎，默认底座为非 Google 的 `cesium-world-terrain` 路线；天气数据仍然是 WGS84 GeoJSON。可以通过 `data` 参数直接加载一个 GeoJSON URL：
+页面使用 CesiumJS Globe 作为完整 3D 地球引擎，默认底座为非 Google 且无需 token 的 `esri-world-imagery` 真实影像路线；天气数据仍然是 WGS84 GeoJSON。可以通过 `data` 参数直接加载一个 GeoJSON URL：
 
 ```text
 http://127.0.0.1:8765/viewer/earth.html?map=5/35/107&data=../examples/weather-elements.geojson
@@ -249,16 +249,16 @@ http://127.0.0.1:8765/viewer/earth.html?project=../examples/weather-earth-projec
 - `weather_type: "station"`: 观测站点，支持 `station_id`、`value`、`unit`、`time`。
 - `weather_type: "pressure-center"`: 气压中心点，支持 `pressure_type`、`pressure_hpa`、`time`。
 
-地球模式默认开启慢速自动旋转，适合天气态势展示；拖拽、缩放、旋转或俯仰地图时会短暂停顿，避免和手动操作冲突。关闭 `地球自动旋转` 后，分享链接会追加 `rotate=0` 来恢复同一状态。
+地球模式支持慢速自动旋转，适合天气态势展示；拖拽、缩放、旋转或俯仰地图时会短暂停顿，避免和手动操作冲突。关闭 `地球自动旋转` 后，分享链接会追加 `rotate=0` 来恢复同一状态。
 
 如果只需要检查地球本体效果，可在分享链接里追加 `weather=0`，页面会进入纯地球视图，不加载默认风区、城市影响点或其他业务天气图层。
 
-`cesium-world-terrain` 和可选的 `google-photorealistic-3d-tiles` 需要 Cesium ion token。复制 `viewer/earth.config.example.js` 为 `viewer/earth.config.local.js` 并填写 `cesiumIonToken`；本地配置文件已被 `.gitignore` 忽略，不应提交。也可以临时使用 URL 参数 `ionToken=...` / `cesiumIonToken=...` 或页面内的临时 token 输入框，分享链接不会把 token 写回 URL。没有 token 或授权失败时，页面会自动使用 `openstreetmap-imagery` 或 `natural-earth` 继续启动，不再白屏。
+`esri-world-imagery` 是默认真实影像底座，不需要 Cesium ion token。`cesium-world-terrain` 和可选的 `google-photorealistic-3d-tiles` 需要 Cesium ion token；复制 `viewer/earth.config.example.js` 为 `viewer/earth.config.local.js` 并填写 `cesiumIonToken` 即可启用这些增强底座。本地配置文件已被 `.gitignore` 忽略，不应提交。也可以临时使用 URL 参数 `ionToken=...` / `cesiumIonToken=...` 或页面内的临时 token 输入框，分享链接不会把 token 写回 URL。没有 token 或授权失败时，页面会自动使用 `openstreetmap-imagery` 或 `natural-earth` 继续启动，不再白屏。
 
 地图底座和天气 GeoJSON 是两套独立数据：底座负责地球、地形、影像或可选摄影测量网格，天气 GeoJSON 只负责风区、路径、预警点等业务要素。页面支持 `basemap` 参数和底座下拉切换：
 
-- `cesium-world-terrain`: 默认路线，Cesium World Terrain + 影像底图，不依赖 Google Maps API。
-- `esri-world-imagery`: ArcGIS World Imagery 球面影像底图。
+- `esri-world-imagery`: 默认路线，ArcGIS World Imagery 球面影像底图，不依赖 Google Maps API 或 Cesium ion token。
+- `cesium-world-terrain`: Cesium World Terrain + 影像底图，不依赖 Google Maps API，但需要 Cesium ion token。
 - `openstreetmap-imagery`: OpenStreetMap 球面底图，适合无 token 开发兜底。
 - `natural-earth`: 页面本地生成的低分辨率地球纹理，外部地图服务不可用时兜底。
 - `google-photorealistic-3d-tiles`: 可选 Google 摄影测量 3D Tiles，不再是默认依赖。
@@ -267,7 +267,7 @@ http://127.0.0.1:8765/viewer/earth.html?project=../examples/weather-earth-projec
 
 页面提供 `quality=quality|balanced|performance` 三档 Cesium 质量配置，并保存到项目文档 `view.qualityProfile`。`quality` 优先接近 Google Earth 观感，使用完整分辨率和更高抗锯齿；当底座为 Google 3D Tiles 时也会降低 3D Tiles 屏幕误差。`balanced` 适合日常浏览；`performance` 降低瓦片和像素压力，适合弱显卡或慢网络。拖动、滚轮缩放、右键俯仰和连续键盘飞行时，页面会短暂进入交互性能模式，降低拾取频率、延后分享 URL 写入，并临时降低分辨率、抗锯齿和瓦片误差压力；停止操作后自动恢复所选画质。外部系统可调用 `setQualityProfile(...)`、`getQualityProfile()`、`captureMetrics()`、`getBenchmarkPaths()` 和 `runBenchmarkPath(...)` 做可重复的画质/性能验收。
 
-P1 视觉升级把默认相机和地点预设收敛到 Google Earth Studio 建议的 40-60 度斜视范围，并集中调了曝光、天空色偏、地平线雾化和画面滤镜，减少山地近景过暗、过硬的问题。内置 benchmark 路径包括 `google-earth-p1`、`terrain-cinematic`、`city-oblique`、`weather-analysis`，可用于同一镜头路径下反复截图和采样性能指标。
+P1 视觉升级把默认首屏收敛到 Google Earth 式完整地球视角，地点预设和巡航路径仍使用 40-60 度斜视范围，并集中调了曝光、天空色偏、地平线雾化和画面滤镜，减少山地近景过暗、过硬的问题。内置 benchmark 路径包括 `google-earth-p1`、`terrain-cinematic`、`city-oblique`、`weather-analysis`，可用于同一镜头路径下反复截图和采样性能指标。
 
 P2 新增一个独立的 Google Maps JavaScript API 3D Maps 对比页，不替换 Cesium 主地球页：
 

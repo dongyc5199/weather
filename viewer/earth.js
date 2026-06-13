@@ -3,7 +3,7 @@
 
   const ENGINE = "cesium";
   const GOOGLE_TILESET_MODE = "google-photorealistic-3d-tiles";
-  const DEFAULT_TILESET_MODE = "cesium-world-terrain";
+  const DEFAULT_TILESET_MODE = "esri-world-imagery";
   const TILESET_MODE = DEFAULT_TILESET_MODE;
   const FALLBACK_TILESET_MODE = "openstreetmap-imagery";
   const BASEMAP_PROVIDERS = {
@@ -959,6 +959,9 @@
     scene.highDynamicRange = true;
     scene.backgroundColor = Cesium.Color.fromCssColorString("#03070d");
     scene.exposure = treatment.exposure;
+    if (scene.skyBox) scene.skyBox.show = false;
+    if (scene.sun) scene.sun.show = false;
+    if (scene.moon) scene.moon.show = false;
     if (scene.skyAtmosphere) {
       scene.skyAtmosphere.show = true;
       if ("hueShift" in scene.skyAtmosphere) scene.skyAtmosphere.hueShift = treatment.skyAtmosphere.hueShift;
