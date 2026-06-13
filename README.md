@@ -265,7 +265,7 @@ http://127.0.0.1:8765/viewer/earth.html?project=../examples/weather-earth-projec
 
 地球本体由 Cesium 的真实三维相机、空间背景、大气、Globe 地形/影像或可选 3D Tiles 构成。底座、天气面、路径、点标记、光柱和风区体块都属于显示层，不会进入 `下载 GeoJSON` 的业务数据。
 
-页面提供 `quality=quality|balanced|performance` 三档 Cesium 质量配置，并保存到项目文档 `view.qualityProfile`。`quality` 优先接近 Google Earth 观感，使用完整分辨率和更高抗锯齿；当底座为 Google 3D Tiles 时也会降低 3D Tiles 屏幕误差。`balanced` 适合日常浏览；`performance` 降低瓦片和像素压力，适合弱显卡或慢网络。外部系统可调用 `setQualityProfile(...)`、`getQualityProfile()`、`captureMetrics()`、`getBenchmarkPaths()` 和 `runBenchmarkPath(...)` 做可重复的画质/性能验收。
+页面提供 `quality=quality|balanced|performance` 三档 Cesium 质量配置，并保存到项目文档 `view.qualityProfile`。`quality` 优先接近 Google Earth 观感，使用完整分辨率和更高抗锯齿；当底座为 Google 3D Tiles 时也会降低 3D Tiles 屏幕误差。`balanced` 适合日常浏览；`performance` 降低瓦片和像素压力，适合弱显卡或慢网络。拖动、滚轮缩放、右键俯仰和连续键盘飞行时，页面会短暂进入交互性能模式，降低拾取频率、延后分享 URL 写入，并临时降低分辨率、抗锯齿和瓦片误差压力；停止操作后自动恢复所选画质。外部系统可调用 `setQualityProfile(...)`、`getQualityProfile()`、`captureMetrics()`、`getBenchmarkPaths()` 和 `runBenchmarkPath(...)` 做可重复的画质/性能验收。
 
 P1 视觉升级把默认相机和地点预设收敛到 Google Earth Studio 建议的 40-60 度斜视范围，并集中调了曝光、天空色偏、地平线雾化和画面滤镜，减少山地近景过暗、过硬的问题。内置 benchmark 路径包括 `google-earth-p1`、`terrain-cinematic`、`city-oblique`、`weather-analysis`，可用于同一镜头路径下反复截图和采样性能指标。
 

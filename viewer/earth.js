@@ -91,6 +91,7 @@
       detail: "Google Earth-like detail priority for screenshots and close terrain views.",
       maximumScreenSpaceError: 3,
       dynamicScreenSpaceError: false,
+      globeMaximumScreenSpaceError: 2,
       resolutionScale: 1,
       msaaSamples: 4,
       requestsByServer: 18,
@@ -104,6 +105,7 @@
       dynamicScreenSpaceError: true,
       dynamicScreenSpaceErrorDensity: 0.00278,
       dynamicScreenSpaceErrorFactor: 3,
+      globeMaximumScreenSpaceError: 4,
       resolutionScale: 0.92,
       msaaSamples: 2,
       requestsByServer: 18,
@@ -117,6 +119,7 @@
       dynamicScreenSpaceError: true,
       dynamicScreenSpaceErrorDensity: 0.0038,
       dynamicScreenSpaceErrorFactor: 5,
+      globeMaximumScreenSpaceError: 6,
       resolutionScale: 0.78,
       msaaSamples: 1,
       requestsByServer: 12,
@@ -135,6 +138,21 @@
   };
   const CAMERA_UI_UPDATE_INTERVAL_MS = 150;
   const URL_UPDATE_DEBOUNCE_MS = 500;
+  const POINTER_PROBE_INTERVAL_MS = 90;
+  const CAMERA_INTERACTION_IDLE_MS = 260;
+  const CAMERA_INTERACTION_QUALITY = {
+    maximumScreenSpaceError: 10,
+    dynamicScreenSpaceErrorDensity: 0.0038,
+    dynamicScreenSpaceErrorFactor: 5,
+    globeMaximumScreenSpaceError: 6,
+    resolutionScale: 0.82,
+    msaaSamples: 1,
+  };
+  const CAMERA_CONTROL_INERTIA = {
+    spin: 0.86,
+    translate: 0.88,
+    zoom: 0.72,
+  };
   const CAMERA_PITCH_MIN = 0;
   const CAMERA_PITCH_MAX = 85;
   const CAMERA_PITCH_DRAG_DEGREES_PER_PIXEL = 0.14;
@@ -338,6 +356,13 @@
   let keyboardNavigationKeys = new Set();
   let keyboardNavigationModifiers = { shift: false, alt: false, ctrl: false, meta: false };
   let keyboardNavigationCamera = null;
+  let cameraInteractionActive = false;
+  let cameraInteractionReason = "";
+  let cameraInteractionStartedAt = 0;
+  let cameraInteractionRestoreTimer = 0;
+  let interactionQualityActive = false;
+  let pointerProbeLastAt = 0;
+  let replaceUrlQueuedDuringInteraction = false;
   let replaceUrlTimer = 0;
   let renderMetrics = { frameCount: 0, fps: 0, frameLatencyMs: 0, lastFrameAt: 0, sampleStartedAt: 0, sampleFrameCount: 0 };
 
@@ -391,8 +416,7 @@
     configureCreditContainer();
     applyQualityProfileToViewer();
     applyEarthVisualTreatment();
-    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 80;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 45000000;
+    configureCameraController();
     setCameraLookAt(DEFAULT_VIEW);
     applyCesiumLighting();
     syncSunlightClock({ force: true });
@@ -429,15 +453,47 @@
     }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 
     handler.setInputAction((movement) => {
-      pointerLonLat = screenToLonLat(movement.endPosition);
-      scheduleCameraUiUpdate();
+      updatePointerProbeFromScreen(movement.endPosition);
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
     viewer.camera.changed.addEventListener(() => {
+      if (cameraInteractionActive) endCameraInteractionSoon();
       scheduleCameraUiUpdate();
       scheduleReplaceUrlState();
     });
+    bindCameraInteractionGestures();
     bindCameraAngleGestures();
+  }
+
+  function configureCameraController() {
+    if (!viewer?.scene?.screenSpaceCameraController) return;
+    const controller = viewer.scene.screenSpaceCameraController;
+    controller.minimumZoomDistance = 80;
+    controller.maximumZoomDistance = 45000000;
+    if ("inertiaSpin" in controller) controller.inertiaSpin = CAMERA_CONTROL_INERTIA.spin;
+    if ("inertiaTranslate" in controller) controller.inertiaTranslate = CAMERA_CONTROL_INERTIA.translate;
+    if ("inertiaZoom" in controller) controller.inertiaZoom = CAMERA_CONTROL_INERTIA.zoom;
+  }
+
+  function bindCameraInteractionGestures() {
+    const canvas = viewer?.scene?.canvas;
+    if (!canvas) return;
+    canvas.addEventListener("pointerdown", handleCameraInteractionPointerDown, { capture: true });
+    canvas.addEventListener("pointerup", endCameraInteractionSoon, { capture: true });
+    canvas.addEventListener("pointercancel", endCameraInteractionSoon, { capture: true });
+    canvas.addEventListener("pointerleave", endCameraInteractionSoon, { capture: true });
+    canvas.addEventListener("wheel", handleCameraInteractionWheel, { capture: true, passive: true });
+  }
+
+  function handleCameraInteractionPointerDown(event) {
+    if (!viewer || event.defaultPrevented) return;
+    beginCameraInteraction(event.button === 2 ? "right-drag" : "drag");
+  }
+
+  function handleCameraInteractionWheel(event) {
+    if (!viewer || event.defaultPrevented) return;
+    beginCameraInteraction(event.shiftKey || event.altKey ? "tilt-wheel" : "wheel");
+    endCameraInteractionSoon();
   }
 
   function bindCameraAngleGestures() {
@@ -457,6 +513,7 @@
 
   function handleCameraAnglePointerDown(event) {
     if (!viewer || event.button !== 2 || drawMode || measurementState.active) return;
+    beginCameraInteraction("right-drag");
     const canvas = viewer.scene.canvas;
     cameraAngleDrag = {
       pointerId: event.pointerId,
@@ -501,6 +558,7 @@
     cameraAngleDrag = null;
     scheduleCameraUiUpdate();
     scheduleReplaceUrlState();
+    endCameraInteractionSoon();
     if (event) stopCameraGestureEvent(event);
   }
 
@@ -510,7 +568,9 @@
     if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.01) return;
     const pitchDelta = clamp(-deltaY * CAMERA_PITCH_WHEEL_DEGREES_PER_PIXEL, -6, 6);
     const camera = currentCameraState();
+    beginCameraInteraction("tilt-wheel");
     setCameraAngle({ ...camera, pitch: clamp(camera.pitch + pitchDelta, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX) }, { duration: 0 });
+    endCameraInteractionSoon();
     stopCameraGestureEvent(event);
   }
 
@@ -524,6 +584,55 @@
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
+  }
+
+  function beginCameraInteraction(reason = "camera") {
+    if (!viewer) return;
+    window.clearTimeout(cameraInteractionRestoreTimer);
+    cameraInteractionRestoreTimer = 0;
+    cameraInteractionReason = reason;
+    if (!cameraInteractionActive) {
+      cameraInteractionActive = true;
+      cameraInteractionStartedAt = performance.now();
+      viewer.scene.canvas.classList.add("is-camera-interacting");
+    }
+    if (!interactionQualityActive) {
+      interactionQualityActive = true;
+      applyQualityProfileToViewer();
+      applyQualityProfileToTileset();
+    }
+  }
+
+  function endCameraInteractionSoon() {
+    if (!cameraInteractionActive && !interactionQualityActive) return;
+    window.clearTimeout(cameraInteractionRestoreTimer);
+    cameraInteractionRestoreTimer = window.setTimeout(finishCameraInteraction, CAMERA_INTERACTION_IDLE_MS);
+  }
+
+  function finishCameraInteraction() {
+    window.clearTimeout(cameraInteractionRestoreTimer);
+    cameraInteractionRestoreTimer = 0;
+    if (!cameraInteractionActive && !interactionQualityActive) return;
+    cameraInteractionActive = false;
+    cameraInteractionReason = "";
+    cameraInteractionStartedAt = 0;
+    interactionQualityActive = false;
+    viewer?.scene?.canvas?.classList.remove("is-camera-interacting");
+    applyQualityProfileToViewer();
+    applyQualityProfileToTileset();
+    scheduleCameraUiUpdate();
+    if (replaceUrlQueuedDuringInteraction) {
+      replaceUrlQueuedDuringInteraction = false;
+      scheduleReplaceUrlState();
+    }
+  }
+
+  function updatePointerProbeFromScreen(position, options = {}) {
+    const now = performance.now();
+    if (!options.force && cameraInteractionActive && now - pointerProbeLastAt < POINTER_PROBE_INTERVAL_MS) return;
+    pointerProbeLastAt = now;
+    pointerLonLat = screenToLonLat(position);
+    scheduleCameraUiUpdate();
   }
 
   async function loadBaseMapProvider(key = currentBaseMapKey, options = {}) {
@@ -803,17 +912,35 @@
     return QUALITY_PROFILES[activeQualityProfile] || QUALITY_PROFILES[DEFAULT_QUALITY_PROFILE];
   }
 
+  function activeRenderQualitySettings() {
+    const settings = activeQualitySettings();
+    if (!interactionQualityActive) return settings;
+    return {
+      ...settings,
+      maximumScreenSpaceError: Math.max(settings.maximumScreenSpaceError, CAMERA_INTERACTION_QUALITY.maximumScreenSpaceError),
+      dynamicScreenSpaceError: true,
+      dynamicScreenSpaceErrorDensity: Math.max(settings.dynamicScreenSpaceErrorDensity || 0, CAMERA_INTERACTION_QUALITY.dynamicScreenSpaceErrorDensity),
+      dynamicScreenSpaceErrorFactor: Math.max(settings.dynamicScreenSpaceErrorFactor || 0, CAMERA_INTERACTION_QUALITY.dynamicScreenSpaceErrorFactor),
+      globeMaximumScreenSpaceError: Math.max(settings.globeMaximumScreenSpaceError || 2, CAMERA_INTERACTION_QUALITY.globeMaximumScreenSpaceError),
+      resolutionScale: Math.min(settings.resolutionScale, CAMERA_INTERACTION_QUALITY.resolutionScale),
+      msaaSamples: Math.min(settings.msaaSamples, CAMERA_INTERACTION_QUALITY.msaaSamples),
+    };
+  }
+
   function applyQualityProfileToViewer() {
     if (!viewer) return;
-    const settings = activeQualitySettings();
+    const settings = activeRenderQualitySettings();
     viewer.resolutionScale = settings.resolutionScale;
     if ("msaaSamples" in viewer.scene) viewer.scene.msaaSamples = settings.msaaSamples;
+    if (viewer.scene.globe && "maximumScreenSpaceError" in viewer.scene.globe) {
+      viewer.scene.globe.maximumScreenSpaceError = settings.globeMaximumScreenSpaceError;
+    }
     if (viewer.scene?.requestRender) viewer.scene.requestRender();
   }
 
   function applyQualityProfileToTileset() {
     if (!googleTileset) return;
-    const settings = activeQualitySettings();
+    const settings = activeRenderQualitySettings();
     googleTileset.maximumScreenSpaceError = settings.maximumScreenSpaceError;
     googleTileset.dynamicScreenSpaceError = settings.dynamicScreenSpaceError;
     if (settings.dynamicScreenSpaceError) {
@@ -1760,6 +1887,8 @@
         if (updateKeyboardNavigation(seconds)) {
           scheduleCameraUiUpdate(now);
           scheduleReplaceUrlState();
+        } else if (cameraInteractionActive) {
+          scheduleCameraUiUpdate(now);
         } else if (focusOrbitEnabled && focusTarget) {
           rotateAroundFocus(seconds);
           scheduleCameraUiUpdate(now);
@@ -2037,6 +2166,7 @@
     }
     if (!moved) return false;
     keyboardNavigationCamera = next;
+    beginCameraInteraction("keyboard");
     setCameraAngle(next, { duration: 0 });
     return true;
   }
@@ -3153,6 +3283,7 @@
       detail: settings.detail,
       maximumScreenSpaceError: settings.maximumScreenSpaceError,
       dynamicScreenSpaceError: settings.dynamicScreenSpaceError,
+      globeMaximumScreenSpaceError: settings.globeMaximumScreenSpaceError,
       resolutionScale: settings.resolutionScale,
       msaaSamples: settings.msaaSamples,
       requestsByServer: currentBaseMapKey === GOOGLE_TILESET_MODE ? settings.requestsByServer : null,
@@ -3163,6 +3294,7 @@
         detail: profile.detail,
         maximumScreenSpaceError: profile.maximumScreenSpaceError,
         dynamicScreenSpaceError: profile.dynamicScreenSpaceError,
+        globeMaximumScreenSpaceError: profile.globeMaximumScreenSpaceError,
         resolutionScale: profile.resolutionScale,
         msaaSamples: profile.msaaSamples,
         requestsByServer: profile.requestsByServer,
@@ -3184,6 +3316,7 @@
         devicePixelRatio: numberOrNull(window.devicePixelRatio),
         resolutionScale: numberOrNull(viewer?.resolutionScale),
         msaaSamples: numberOrNull(viewer?.scene?.msaaSamples),
+        globeMaximumScreenSpaceError: numberOrNull(viewer?.scene?.globe?.maximumScreenSpaceError),
         canvasClientWidth: numberOrNull(canvas?.clientWidth),
         canvasClientHeight: numberOrNull(canvas?.clientHeight),
         canvasWidth: numberOrNull(canvas?.width),
@@ -3193,6 +3326,14 @@
         fps: round(renderMetrics.fps, 1),
         frameLatencyMs: round(renderMetrics.frameLatencyMs, 1),
         frameCount: renderMetrics.frameCount,
+      },
+      interaction: {
+        active: cameraInteractionActive,
+        qualityActive: interactionQualityActive,
+        reason: cameraInteractionReason,
+        durationMs: cameraInteractionActive ? Math.round(performance.now() - cameraInteractionStartedAt) : 0,
+        pointerProbeIntervalMs: POINTER_PROBE_INTERVAL_MS,
+        urlUpdateDeferred: replaceUrlQueuedDuringInteraction,
       },
       tileset: {
         ...tilesetState(),
@@ -4048,6 +4189,10 @@
 
   function scheduleReplaceUrlState() {
     if (!history.replaceState) return;
+    if (cameraInteractionActive) {
+      replaceUrlQueuedDuringInteraction = true;
+      return;
+    }
     window.clearTimeout(replaceUrlTimer);
     replaceUrlTimer = window.setTimeout(replaceUrlState, URL_UPDATE_DEBOUNCE_MS);
   }
@@ -4138,6 +4283,7 @@
   function finishKeyboardNavigation() {
     keyboardNavigationCamera = null;
     if (viewer) lastCamera = currentCameraState();
+    endCameraInteractionSoon();
   }
 
   function clearKeyboardNavigation() {
