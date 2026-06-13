@@ -1233,20 +1233,25 @@
 
   function initializeFromUrl() {
     const params = new URLSearchParams(window.location.search);
+    const map = parseMapParam(params.get("map"));
+    const preserveUrlCamera = Boolean(map);
+    let initialLoad = null;
     applyInitialFlags(params);
     if (params.get("project")) {
-      loadProjectFromParam(params.get("project"));
+      initialLoad = loadProjectFromParam(params.get("project"));
     } else if (params.get("manifest")) {
-      loadManifestFromUrl(params.get("manifest"));
+      initialLoad = loadManifestFromUrl(params.get("manifest"), { fit: !preserveUrlCamera });
     } else if (params.get("data")) {
-      loadGeoJsonFromUrl(params.get("data"), "", { shareType: "data", shareValue: params.get("data") });
+      initialLoad = loadGeoJsonFromUrl(params.get("data"), "", { shareType: "data", shareValue: params.get("data"), fit: !preserveUrlCamera });
     } else if (params.get("weather") === "0" || params.get("weather") === "false") {
       setStatus("纯 Cesium 地球视图。", "未加载默认天气 GeoJSON。");
     } else {
-      loadDefaultWeather({ silentNotFound: true });
+      initialLoad = loadDefaultWeather({ silentNotFound: true, fit: false });
     }
-    const map = parseMapParam(params.get("map"));
     if (map) flyToCamera(map, { duration: 0 });
+    if (map && initialLoad?.then) {
+      initialLoad.then(() => flyToCamera(map, { duration: 0 })).catch(() => {});
+    }
   }
 
   function initialBaseMapKeyFromUrl() {
@@ -1284,7 +1289,7 @@
 
   async function loadDefaultWeather(options = {}) {
     try {
-      await loadGeoJsonFromUrl(DEFAULT_GEOJSON_URL, "默认风区", { shareType: "", shareValue: "", silentNotFound: options.silentNotFound });
+      await loadGeoJsonFromUrl(DEFAULT_GEOJSON_URL, "默认风区", { shareType: "", shareValue: "", silentNotFound: options.silentNotFound, fit: options.fit !== false });
     } catch (error) {
       if (!options.silentNotFound) setStatus("默认风区加载失败。", error.message || String(error));
     }

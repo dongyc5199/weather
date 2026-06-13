@@ -283,7 +283,7 @@ Google 3D Maps 对比页需要 Google Maps JavaScript API key。可以在本地 
 
 地球本体启用低噪声星空 skyBox、天空大气和地表大气参数，首屏会保留太空背景和贴合球体边缘的蓝色空气辉光。默认展示模式使用无硬昼夜分界的浏览光照，避免亚洲首屏被太阳终止线切开；需要真实太阳时间时仍可通过 `sunlight=1`、工作台开关或 `setSunlight(true)` 启用。这些都是底座视觉处理，不会写入业务 GeoJSON，也不会影响天气图层透明度。
 
-右上角地球控制区支持沉浸模式，开启后侧栏和业务浮层退出布局，地图画布占满视口，更接近 Google Earth 的浏览状态。当前沉浸模式只保留右上角指南针、相机控制按钮和 `☰` 地球菜单；搜索、天气、过程、图层、HUD、概览、夹角滑杆和底部状态面板都会隐藏，移动端也保持右侧竖向控件而不是铺满顶部。`☰` 会先打开轻量菜单，用户可从菜单进入完整工作台、重置视角、切换俯视或倾斜视角；进入工作台后，同一按钮可返回沉浸地球。默认首屏使用响应式完整地球构图，桌面保持地球主体居中偏左、右侧保留操作区空间，窄屏会自动拉远以避免地球左右被裁切。分享链接可用 `immersive=1` 恢复；项目文档会保存 `view.immersive`，外部系统可调用 `setImmersiveMode(true | false)` 控制。沉浸模式只影响工作台布局，不会修改业务 GeoJSON。
+右上角地球控制区支持沉浸模式，开启后侧栏和业务浮层退出布局，地图画布占满视口，更接近 Google Earth 的浏览状态。当前沉浸模式只保留右上角指南针、相机控制按钮和 `☰` 地球菜单；搜索、天气、过程、图层、HUD、概览、夹角滑杆和底部状态面板都会隐藏，移动端也保持右侧竖向控件而不是铺满顶部。`☰` 会先打开轻量菜单，用户可从菜单进入完整工作台、重置视角、切换俯视或倾斜视角；进入工作台后，同一按钮可返回沉浸地球。默认首屏使用响应式完整地球构图，桌面保持地球主体居中偏左、右侧保留操作区空间，窄屏会自动拉远以避免地球左右被裁切。页面启动时的默认风区只作为业务叠加层加载，不会抢占完整地球首屏；分享链接里的 `map` 会在异步数据加载完成后继续保持，需要贴近业务范围时再点击 `缩放到天气` 或调用 `fitWeather()`。分享链接可用 `immersive=1` 恢复；项目文档会保存 `view.immersive`，外部系统可调用 `setImmersiveMode(true | false)` 控制。沉浸模式只影响工作台布局，不会修改业务 GeoJSON。
 
 非沉浸/面板模式提供镜头动作：`聚焦` 会把当前画面中心设为地球聚焦点，`环绕` 会围绕聚焦点自动观察，`书签` 会保存当前镜头，`巡航` 会播放保存的镜头序列。这些状态保存到项目文档的 `view.focusTarget`、`view.focusOrbit` 和 `view.cameraTour`，不会写入业务 GeoJSON。
 
@@ -309,7 +309,7 @@ Google 3D Maps 对比页需要 Google Maps JavaScript API key。可以在本地 
 
 地球模式支持 Cesium Globe 地形状态，默认开启。`cesium-world-terrain` 下会使用 Cesium World Terrain；不支持独立地形的底座会自动使用椭球表面。分享链接可用 `terrain=0` 记录关闭状态，用 `terrainExag=1.35` 调整项目文档中的地形强度；外部系统也可以通过 `setTerrain()` 和 `setTerrainExaggeration()` 控制。
 
-地球模式支持 Cesium 太阳光照，默认开启。未选择业务时次时，页面会定期把 Cesium 时钟同步到浏览器当前时间；选择 `time`、播放 manifest 天气过程或调用 `setSunlightTime("06/10 18:00")` 后，太阳位置会固定到对应天气时次。分享链接可用 `sunlight=0` 关闭，用 `sunlightIntensity=0.85` 调整光照强度；项目文档会保存 `view.sunlight` 的强度和太阳时间状态，外部系统也可以通过 `setSunlight()`、`setSunlightIntensity()` 和 `setSunlightTime()` 控制。光照只影响显示，不会写入导出的业务 GeoJSON。
+地球模式支持 Cesium 太阳光照，默认使用无硬昼夜分界的浏览光照。开启真实太阳后，未选择业务时次时页面会定期把 Cesium 时钟同步到浏览器当前时间；选择 `time`、播放 manifest 天气过程或调用 `setSunlightTime("06/10 18:00")` 后，太阳位置会固定到对应天气时次。分享链接可用 `sunlight=1` 开启真实太阳，用 `sunlightIntensity=0.85` 调整光照强度；项目文档会保存 `view.sunlight` 的强度和太阳时间状态，外部系统也可以通过 `setSunlight()`、`setSunlightIntensity()` 和 `setSunlightTime()` 控制。光照只影响显示，不会写入导出的业务 GeoJSON。
 
 城市尺度摄影测量建筑只在可选 `google-photorealistic-3d-tiles` 底座下可用。非 Google 默认底座会保留 `buildings` 状态用于项目兼容，但 `view.buildings.enabled` 会明确返回不可用。分享链接可用 `buildings=0` 记录关闭状态，用 `buildingScale=1.2` 保存建筑高度偏好；项目文档会保存 `view.buildings`，外部系统也可以通过 `setBuildings()` 和 `setBuildingHeightScale()` 控制。
 
