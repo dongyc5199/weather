@@ -6,7 +6,7 @@
     <title>天气 GeoJSON 地球</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23020910'/%3E%3Cpath d='M6 18c4-8 11-10 20-6-1 10-8 15-18 12l5-5z' fill='%232dd4e8'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Widgets/widgets.css" />
-    <link rel="stylesheet" href="./earth.css?v=20260614-google-earth-attribution-v1" />
+    <link rel="stylesheet" href="./earth.css?v=20260614-google-earth-menu-v1" />
   </head>
   <body>
     <div class="earth-shell is-immersive">
@@ -467,7 +467,13 @@
           <button id="cameraTiltUp" type="button" title="抬高视角" aria-label="抬高视角">⌃</button>
           <button id="cameraTiltDown" type="button" title="降低视角" aria-label="降低视角">⌄</button>
           <button id="cameraHome" type="button" title="重置地球视角" aria-label="重置地球视角">⌖</button>
-          <button id="toggleImmersive" type="button" title="切换工作台面板" aria-label="切换工作台面板" aria-pressed="false">☰</button>
+          <button id="toggleImmersive" type="button" title="打开地球菜单" aria-label="打开地球菜单" aria-haspopup="menu" aria-expanded="false" aria-pressed="false">☰</button>
+        </div>
+        <div id="earthMenuPanel" class="earth-menu-panel" role="menu" aria-label="地球菜单" hidden>
+          <button id="earthMenuWorkbench" type="button" role="menuitem">工作台</button>
+          <button id="earthMenuReset" type="button" role="menuitem">重置视角</button>
+          <button id="earthMenuTopDown" type="button" role="menuitem">俯视</button>
+          <button id="earthMenuOblique" type="button" role="menuitem">倾斜视角</button>
         </div>
         <label class="earth-angle-control" title="拖动调整地面夹角；Shift 或 Option/Alt + 滚动也可调整" aria-label="调整地面夹角">
           <span aria-hidden="true">∠</span>

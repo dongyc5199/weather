@@ -195,7 +195,8 @@
     "immersiveProcessNext", "immersiveSearchInput", "immersiveSearchButton", "immersiveExitPanel",
     "immersiveFocusCenter", "immersiveFocusOrbit", "immersiveAddTourStop", "immersivePlayTour", "immersiveTourCount",
     "cameraZoomIn", "cameraZoomOut", "cameraRotateLeft", "cameraRotateRight", "cameraTiltUp", "cameraTiltDown",
-    "cameraPitchSlider", "cameraHome", "toggleImmersive", "cameraNorth", "compassNeedle", "cameraCenter", "cameraAltitude",
+    "cameraPitchSlider", "cameraHome", "toggleImmersive", "earthMenuPanel", "earthMenuWorkbench", "earthMenuReset",
+    "earthMenuTopDown", "earthMenuOblique", "cameraNorth", "compassNeedle", "cameraCenter", "cameraAltitude",
     "cameraHeading", "cameraPitch", "cameraZoom", "pointerPosition", "pointerElevation", "cameraTourCaption",
     "projectionBadge", "sourceBadge", "earthOverview", "earthOverviewSvg", "earthOverviewChinaOutline",
     "earthOverviewWeatherExtent", "earthOverviewFocusDot", "earthOverviewCameraHeading", "earthOverviewCameraDot",
@@ -325,6 +326,7 @@
   let autoRotateEnabled = DEFAULT_AUTO_ROTATE;
   let focusOrbitEnabled = false;
   let immersiveEnabled = DEFAULT_IMMERSIVE;
+  let earthMenuOpen = false;
   let activeTimeFilter = TIME_FILTER_ALL;
   let showUntimedFeatures = true;
   let focusTarget = null;
@@ -1157,9 +1159,14 @@
     on(elements.cameraPitchSlider, "input", () => setCameraPitch(elements.cameraPitchSlider.value, { duration: 0 }));
     on(elements.cameraHome, "click", () => resetCameraView({ duration: 0.45 }));
     on(elements.cameraNorth, "click", () => flyToCamera({ ...currentCameraState(), bearing: 0 }));
-    on(elements.toggleImmersive, "click", () => applyImmersiveMode(!immersiveEnabled));
+    on(elements.toggleImmersive, "click", () => toggleEarthMenu());
+    on(elements.earthMenuWorkbench, "click", () => { setEarthMenuOpen(false); applyImmersiveMode(false); });
+    on(elements.earthMenuReset, "click", () => { setEarthMenuOpen(false); resetCameraView({ duration: 0.45 }); });
+    on(elements.earthMenuTopDown, "click", () => { setEarthMenuOpen(false); setCameraTopDown({ duration: 0.35 }); });
+    on(elements.earthMenuOblique, "click", () => { setEarthMenuOpen(false); toggleCameraOblique({ duration: 0.35 }); });
     on(elements.immersiveExitPanel, "click", () => applyImmersiveMode(false));
     on(elements.earthOverview, "click", () => flyToCamera(DEFAULT_VIEW));
+    document.addEventListener("pointerdown", handleEarthMenuPointerDown, true);
     window.addEventListener("keydown", handleKeyboard);
     window.addEventListener("keyup", handleKeyboardKeyUp);
     window.addEventListener("blur", clearKeyboardNavigation);
@@ -1874,10 +1881,39 @@
 
   function applyImmersiveMode(enabled) {
     immersiveEnabled = Boolean(enabled);
-    document.querySelector(".earth-shell")?.classList.toggle("is-immersive", immersiveEnabled);
+    if (!immersiveEnabled) earthMenuOpen = false;
     updateAllUi();
     emitWeatherEarthEvent("immersivechange", { immersive: immersiveModeState() });
     return immersiveModeState();
+  }
+
+  function toggleEarthMenu() {
+    if (!immersiveEnabled) {
+      applyImmersiveMode(true);
+      return false;
+    }
+    return setEarthMenuOpen(!earthMenuOpen);
+  }
+
+  function setEarthMenuOpen(open) {
+    earthMenuOpen = Boolean(open) && immersiveEnabled;
+    updateEarthMenuUi();
+    return earthMenuOpen;
+  }
+
+  function updateEarthMenuUi() {
+    const open = immersiveEnabled && earthMenuOpen;
+    const shell = document.querySelector(".earth-shell");
+    shell?.classList.toggle("is-immersive", immersiveEnabled);
+    shell?.classList.toggle("is-earth-menu-open", open);
+    if (elements.earthMenuPanel) elements.earthMenuPanel.hidden = !open;
+    if (elements.toggleImmersive) {
+      elements.toggleImmersive.setAttribute("aria-expanded", open ? "true" : "false");
+      const label = immersiveEnabled ? (open ? "关闭地球菜单" : "打开地球菜单") : "进入沉浸地球";
+      elements.toggleImmersive.setAttribute("aria-label", label);
+      elements.toggleImmersive.title = label;
+    }
+    setPressed(elements.toggleImmersive, open);
   }
 
   function scheduleRenderLoop() {
@@ -2911,8 +2947,8 @@
     setDisabled(elements.normalizeWeatherGeoJson, !currentGeoJson.features.length);
     setDisabled(elements.saveBrowserDraft, !currentGeoJson.features.length);
     setDisabled(elements.restoreBrowserDraft, !localStorage.getItem("weather-earth-draft-geojson"));
-    document.querySelector(".earth-shell")?.classList.toggle("is-immersive", immersiveEnabled);
-    setPressed(elements.toggleImmersive, immersiveEnabled);
+    if (!immersiveEnabled) earthMenuOpen = false;
+    updateEarthMenuUi();
   }
 
   function updateSourceBadges() {
@@ -4276,6 +4312,7 @@
     if (isTypingTarget(document.activeElement)) return;
     keyboardNavigationModifiers = { shift: event.shiftKey, alt: event.altKey, ctrl: event.ctrlKey, meta: event.metaKey };
     const code = normalizedKeyboardCode(event);
+    if (code === "Escape" && earthMenuOpen) { stopKeyboardEvent(event); setEarthMenuOpen(false); return; }
     if (isContinuousNavigationCode(code)) {
       if (!keyboardNavigationKeys.size) keyboardNavigationCamera = normalizeCamera(lastCamera);
       keyboardNavigationKeys.add(code);
@@ -4290,6 +4327,12 @@
     if (code === "Space" && manifestFrames.length) { stopKeyboardEvent(event); toggleManifestPlayback(); return; }
     if (code === "BracketLeft") { stopKeyboardEvent(event); stepManifest(-1); return; }
     if (code === "BracketRight") { stopKeyboardEvent(event); stepManifest(1); }
+  }
+
+  function handleEarthMenuPointerDown(event) {
+    if (!earthMenuOpen) return;
+    if (elements.earthMenuPanel?.contains(event.target) || elements.toggleImmersive?.contains(event.target)) return;
+    setEarthMenuOpen(false);
   }
 
   function handleKeyboardKeyUp(event) {
