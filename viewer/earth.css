@@ -1007,6 +1007,7 @@ button:disabled {
 .earth-shell.is-immersive .camera-tour-caption,
 .earth-shell.is-immersive .earth-badge,
 .earth-shell.is-immersive .earth-overview,
+.earth-shell.is-immersive .earth-angle-control,
 .earth-shell.is-immersive .surface-probe-map-popup {
   display: none;
 }
