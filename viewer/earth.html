@@ -460,14 +460,30 @@
           <button id="immersivePlayTour" type="button" disabled>巡航 <span id="immersiveTourCount">0</span></button>
         </div>
         <div class="earth-orbit-controls" aria-label="地球镜头控制">
-          <button id="cameraZoomIn" type="button" title="放大" aria-label="放大">+</button>
-          <button id="cameraZoomOut" type="button" title="缩小" aria-label="缩小">−</button>
-          <button id="cameraRotateLeft" type="button" title="向左旋转" aria-label="向左旋转">↺</button>
-          <button id="cameraRotateRight" type="button" title="向右旋转" aria-label="向右旋转">↻</button>
-          <button id="cameraTiltUp" type="button" title="抬高视角" aria-label="抬高视角">⌃</button>
-          <button id="cameraTiltDown" type="button" title="降低视角" aria-label="降低视角">⌄</button>
-          <button id="cameraHome" type="button" title="重置地球视角" aria-label="重置地球视角">⌖</button>
-          <button id="toggleImmersive" type="button" title="打开地球菜单" aria-label="打开地球菜单" aria-haspopup="menu" aria-expanded="false" aria-pressed="false">☰</button>
+          <button id="cameraZoomIn" type="button" title="放大" aria-label="放大">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+          <button id="cameraZoomOut" type="button" title="缩小" aria-label="缩小">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </button>
+          <button id="cameraRotateLeft" type="button" title="向左旋转" aria-label="向左旋转">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5V3" /><path d="M5.4 7.3a7 7 0 1 1-.2 9" /></svg>
+          </button>
+          <button id="cameraRotateRight" type="button" title="向右旋转" aria-label="向右旋转">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h4V3" /><path d="M18.6 7.3a7 7 0 1 0 .2 9" /></svg>
+          </button>
+          <button id="cameraTiltUp" type="button" title="抬高视角" aria-label="抬高视角">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5" /></svg>
+          </button>
+          <button id="cameraTiltDown" type="button" title="降低视角" aria-label="降低视角">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+          </button>
+          <button id="cameraHome" type="button" title="重置地球视角" aria-label="重置地球视角">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+          </button>
+          <button id="toggleImmersive" type="button" title="打开地球菜单" aria-label="打开地球菜单" aria-haspopup="menu" aria-expanded="false" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
+          </button>
         </div>
         <div id="earthMenuPanel" class="earth-menu-panel" role="menu" aria-label="地球菜单" hidden>
           <button id="earthMenuWorkbench" type="button" role="menuitem">工作台</button>
@@ -480,7 +496,9 @@
           <input id="cameraPitchSlider" type="range" min="0" max="85" value="0" step="1" />
         </label>
         <button id="cameraNorth" class="earth-compass" type="button" title="回正朝北" aria-label="回正朝北">
-          <span id="compassNeedle" aria-hidden="true">▲</span>
+          <span id="compassNeedle" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3 16.2 18.5 12 16.3 7.8 18.5 12 3Z" /></svg>
+          </span>
           <strong>N</strong>
         </button>
         <div class="earth-camera-hud" aria-label="镜头状态">
