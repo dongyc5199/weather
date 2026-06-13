@@ -279,7 +279,7 @@ http://127.0.0.1:8765/viewer/google-3d-maps-spike.html
 
 Google 3D Maps 对比页需要 Google Maps JavaScript API key。可以在本地 `viewer/earth.config.local.js` 里填写 `googleMapsApiKey`，也可以临时使用 URL 参数 `googleMapsApiKey=...` / `mapsApiKey=...` / `key=...` 或页面内输入框。`viewer/earth.config.local.js` 已被 `.gitignore` 忽略；不要把 API key 提交到仓库。没有 key、授权失败或 referrer 限制不匹配时，页面会显示配置提示，不会白屏。
 
-页面会保留 Cesium/Google 原生 attribution，避免隐藏 Google Photorealistic 3D Tiles 的必要归因。沉浸模式下 attribution 会以低噪声样式显示在画布底部，不会遮挡右上角相机控制区。
+页面会保留 Cesium/Google 原生 attribution，避免隐藏 Google Photorealistic 3D Tiles 的必要归因。沉浸模式下 attribution 会以内容宽度的小型低噪声样式显示在画布底部，不会形成长条空栏，也不会遮挡右上角相机控制区。
 
 右上角地球控制区支持沉浸模式，开启后侧栏和业务浮层退出布局，地图画布占满视口，更接近 Google Earth 的浏览状态。当前沉浸模式只保留右上角指南针和相机控制按钮，搜索、天气、过程、图层、HUD、概览、夹角滑杆和底部状态面板都会隐藏。默认首屏使用完整地球构图，地球主体居中偏左，右侧保留操作区空间。分享链接可用 `immersive=1` 恢复；项目文档会保存 `view.immersive`，外部系统可调用 `setImmersiveMode(true | false)` 控制。沉浸模式只影响工作台布局，不会修改业务 GeoJSON。
 
