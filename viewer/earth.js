@@ -165,6 +165,7 @@
   const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 1.8;
   const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
   const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
+  const KEYBOARD_OBLIQUE_PITCH = 55;
 
   const ELEMENT_IDS = [
     "earthMap", "projectionGlobe", "projectionMap", "scenePresetShowcase", "scenePresetAudit", "scenePresetCity",
@@ -1154,7 +1155,7 @@
     on(elements.cameraTiltUp, "click", () => tiltCamera(8));
     on(elements.cameraTiltDown, "click", () => tiltCamera(-8));
     on(elements.cameraPitchSlider, "input", () => setCameraPitch(elements.cameraPitchSlider.value, { duration: 0 }));
-    on(elements.cameraHome, "click", () => flyToCamera(DEFAULT_VIEW));
+    on(elements.cameraHome, "click", () => resetCameraView({ duration: 0.45 }));
     on(elements.cameraNorth, "click", () => flyToCamera({ ...currentCameraState(), bearing: 0 }));
     on(elements.toggleImmersive, "click", () => applyImmersiveMode(!immersiveEnabled));
     on(elements.immersiveExitPanel, "click", () => applyImmersiveMode(false));
@@ -2162,7 +2163,8 @@
         moved = true;
       }
     }
-    const zoomAxis = (keys.has("Equal") || keys.has("NumpadAdd") ? 1 : 0) - (keys.has("Minus") || keys.has("NumpadSubtract") ? 1 : 0);
+    const zoomAxis = (keys.has("Equal") || keys.has("NumpadAdd") || keys.has("PageUp") ? 1 : 0) -
+      (keys.has("Minus") || keys.has("NumpadSubtract") || keys.has("PageDown") ? 1 : 0);
     if (zoomAxis) {
       next.zoom = clamp(next.zoom + zoomAxis * KEYBOARD_ZOOM_LEVELS_PER_SECOND * seconds, 0.4, 19);
       moved = true;
@@ -2189,6 +2191,21 @@
       lon: clampLon(camera.lon + eastMeters / (metersPerDegreeLat * cosLat)),
       lat: clamp(camera.lat + northMeters / metersPerDegreeLat, -85, 85),
     };
+  }
+
+  function resetCameraView(options = {}) {
+    return flyToCamera(DEFAULT_VIEW, options);
+  }
+
+  function setCameraTopDown(options = {}) {
+    const camera = currentCameraState();
+    return flyToCamera({ ...camera, bearing: 0, pitch: 0 }, options);
+  }
+
+  function toggleCameraOblique(options = {}) {
+    const camera = currentCameraState();
+    const pitch = camera.pitch < 24 ? KEYBOARD_OBLIQUE_PITCH : 0;
+    return flyToCamera({ ...camera, pitch }, options);
   }
 
   function focusCurrentCameraCenter() {
@@ -4266,8 +4283,10 @@
       return;
     }
     if (event.repeat) return;
-    if (code === "KeyH") { stopKeyboardEvent(event); flyToCamera(DEFAULT_VIEW); return; }
+    if (code === "KeyH" || code === "KeyR") { stopKeyboardEvent(event); resetCameraView(); return; }
     if (code === "KeyN") { stopKeyboardEvent(event); flyToCamera({ ...currentCameraState(), bearing: 0 }); return; }
+    if (code === "KeyU") { stopKeyboardEvent(event); setCameraTopDown(); return; }
+    if (code === "KeyO") { stopKeyboardEvent(event); toggleCameraOblique(); return; }
     if (code === "Space" && manifestFrames.length) { stopKeyboardEvent(event); toggleManifestPlayback(); return; }
     if (code === "BracketLeft") { stopKeyboardEvent(event); stepManifest(-1); return; }
     if (code === "BracketRight") { stopKeyboardEvent(event); stepManifest(1); }
@@ -4304,7 +4323,7 @@
   }
 
   function isContinuousNavigationCode(code) {
-    return ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Equal", "Minus", "NumpadAdd", "NumpadSubtract"].includes(code);
+    return ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Equal", "Minus", "NumpadAdd", "NumpadSubtract", "PageUp", "PageDown"].includes(code);
   }
 
   function stopKeyboardEvent(event) {
