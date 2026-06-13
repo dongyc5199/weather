@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专业级交易工作台 Redesigned Trading Workbench</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark trend-china">
+
+  <!-- ==========================================
+       Main Header
+       ========================================== -->
+  <header class="main-header">
+    <div class="header-left">
+      <div class="brand">📊 QUANT_DESK</div>
+      <div class="tabs-container">
+        <div class="tab-item active">交易工作台</div>
+        <div class="tab-item">日历</div>
+        <div class="tab-item">实盘图表</div>
+        <div class="tab-item">资金热力</div>
+        <div class="tab-item" style="padding: 0 8px;">➕</div>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <div class="header-controls">
+        <!-- Theme Switcher -->
+        <button id="btn-theme-toggle" class="control-btn">
+          <span>🌙</span> 暗色模式
+        </button>
+        <!-- Red/Green Color Rule Switcher -->
+        <button id="btn-trend-toggle" class="control-btn">
+          <span>🔴</span> 红涨绿跌 (A股)
+        </button>
+      </div>
+      <div class="user-profile">
+        <div class="user-avatar">DD</div>
+        <span>ddlff</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       Workspace Layout
+       ========================================== -->
+  <div class="workspace-container">
+    
+    <!-- Left Sidebar (Drawing Tools) -->
+    <aside class="left-toolbar">
+      <div class="toolbar-tool active" title="十字光标">🎯</div>
+      <div class="toolbar-tool" title="趋势线">📈</div>
+      <div class="toolbar-tool" title="斐波那契回调">📐</div>
+      <div class="toolbar-tool" title="画笔/涂鸦">✏️</div>
+      <div class="toolbar-tool" title="文字标注">💬</div>
+      <div class="toolbar-separator"></div>
+      <div class="toolbar-tool" title="尺子测量">📏</div>
+      <div class="toolbar-tool" title="放大镜">🔍</div>
+      <div class="toolbar-tool" title="删除所有画线">🗑️</div>
+    </aside>
+
+    <!-- Main Grid Dashboard -->
+    <main class="main-dashboard">
+      
+      <!-- Left column: Indices, Chart, Breadth -->
+      <div class="left-workspace">
+        
+        <!-- Indices Ticker -->
+        <div class="indices-ticker">
+          <div class="index-card" id="index-000001">
+            <div class="index-info">
+              <span class="index-name">上证指数</span>
+              <span class="index-value" id="val-000001">4,031.51</span>
+            </div>
+            <div class="index-trend">
+              <span class="index-change-percent text-up" id="chg-000001">+1.12%</span>
+              <canvas class="index-sparkline" id="spark-000001"></canvas>
+            </div>
+          </div>
+          
+          <div class="index-card" id="index-399001">
+            <div class="index-info">
+              <span class="index-name">深证成指</span>
+              <span class="index-value" id="val-399001">14,963.41</span>
+            </div>
+            <div class="index-trend">
+              <span class="index-change-percent text-up" id="chg-399001">+0.75%</span>
+              <canvas class="index-sparkline" id="spark-399001"></canvas>
+            </div>
+          </div>
+
+          <div class="index-card" id="index-399006">
+            <div class="index-info">
+              <span class="index-name">创业板指</span>
+              <span class="index-value" id="val-399006">3,830.35</span>
+            </div>
+            <div class="index-trend">
+              <span class="index-change-percent text-up" id="chg-399006">+0.50%</span>
+              <canvas class="index-sparkline" id="spark-399006"></canvas>
+            </div>
+          </div>
+
+          <div class="index-card" id="index-000688">
+            <div class="index-info">
+              <span class="index-name">科创50</span>
+              <span class="index-value" id="val-000688">1,663.22</span>
+            </div>
+            <div class="index-trend">
+              <span class="index-change-percent text-up" id="chg-000688">+0.05%</span>
+              <canvas class="index-sparkline" id="spark-000688"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="linking-badge"></span> K-Line Chart / 实时K线图
+            </div>
+            <div class="chart-controls">
+              <button class="chart-btn" data-interval="1m">1分</button>
+              <button class="chart-btn active" data-interval="5m">5分</button>
+              <button class="chart-btn" data-interval="15m">15分</button>
+              <button class="chart-btn" data-interval="1d">日K</button>
+            </div>
+          </div>
+          <div class="chart-content">
+            <div class="chart-legend">
+              <span class="legend-ticker" id="legend-symbol">AAPL.US</span>
+              <div class="legend-values">
+                <span class="legend-ohlc">开: <span id="legend-open">0.00</span></span>
+                <span class="legend-ohlc">高: <span id="legend-high">0.00</span></span>
+                <span class="legend-ohlc">低: <span id="legend-low">0.00</span></span>
+                <span class="legend-ohlc">收: <span id="legend-close">0.00</span></span>
+                <span class="legend-ohlc">量: <span id="legend-volume">0</span></span>
+              </div>
+            </div>
+            <canvas id="kline-canvas" class="chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Market Breadth and Sectors -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Market Breadth & Sectors / 市场宽度与板块热力</div>
+          </div>
+          <div class="breadth-content">
+            <!-- Market Breadth Gauge -->
+            <div class="breadth-gauge-container">
+              <svg class="breadth-gauge-svg" viewBox="0 0 160 100">
+                <!-- Gauge outline -->
+                <path d="M 15 85 A 65 65 0 0 1 145 85" fill="none" stroke="var(--color-border-subtle)" stroke-width="12" stroke-linecap="round"/>
+                <!-- ADV stroke -->
+                <path id="gauge-adv-stroke" d="M 15 85 A 65 65 0 0 1 106 40" fill="none" stroke="var(--color-trend-up)" stroke-width="12" stroke-linecap="round"/>
+                <!-- Needle -->
+                <line id="gauge-needle" x1="80" y1="85" x2="110" y2="40" stroke="var(--color-text-primary)" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="80" cy="85" r="5" fill="var(--color-text-primary)"/>
+              </svg>
+              <div class="breadth-ratio">
+                <div class="breadth-stat">
+                  <span class="breadth-stat-label">上涨家数</span>
+                  <span class="breadth-stat-value text-up" id="val-adv-count">5,188</span>
+                </div>
+                <div class="breadth-stat">
+                  <span class="breadth-stat-label">平盘家数</span>
+                  <span class="breadth-stat-value" style="color: var(--color-text-secondary);">45</span>
+                </div>
+                <div class="breadth-stat">
+                  <span class="breadth-stat-label">下跌家数</span>
+                  <span class="breadth-stat-value text-down" id="val-dec-count">1,696</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Heatmap Sectors (8 Blocks) -->
+            <div class="sector-heatmap" id="sector-heatmap-container">
+              <!-- Dynamically populated sectors -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column: Watchlist, Order Book, Trade Console -->
+      <div class="right-workspace">
+        
+        <!-- Watchlist -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="linking-badge"></span> Watchlist / 自选监控
+            </div>
+            <div class="panel-actions">
+              <span class="panel-action-icon" title="新增自选">➕</span>
+              <span class="panel-action-icon" title="筛选">🔍</span>
+            </div>
+          </div>
+          <div style="flex: 1; overflow-y: auto;">
+            <table class="watchlist-table">
+              <thead>
+                <tr>
+                  <th>名称代码</th>
+                  <th>最新价</th>
+                  <th style="text-align: right;">涨跌幅</th>
+                  <th style="width: 50px;">走势</th>
+                </tr>
+              </thead>
+              <tbody id="watchlist-body">
+                <!-- Dynamically populated watchlist items -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Order Book (L2 Depth) -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="linking-badge"></span> Order Book / 盘口深度
+            </div>
+            <div class="panel-actions">
+              <span id="orderbook-linking-indicator" style="font-size: 10px; color: var(--color-accent-light); font-weight: bold;">[A] Link</span>
+            </div>
+          </div>
+          <div class="orderbook-content" id="orderbook-levels">
+            <!-- Dynamically populated levels -->
+          </div>
+        </div>
+
+        <!-- Trade Console -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Quick Trade / 闪电交易</div>
+            <div class="panel-actions">
+              <span style="font-size: 10px; color: var(--color-text-secondary);">可用余额: $1,425,670.33</span>
+            </div>
+          </div>
+          <div class="trade-content">
+            <!-- Buy / Sell toggle -->
+            <div class="trade-tabs">
+              <button id="btn-trade-buy" class="trade-tab-btn buy active">买入 (BUY)</button>
+              <button id="btn-trade-sell" class="trade-tab-btn sell">卖出 (SELL)</button>
+            </div>
+            
+            <!-- Price Input -->
+            <div class="trade-form-row">
+              <span class="trade-label">价格</span>
+              <div class="trade-input-group">
+                <button class="trade-input-btn" id="btn-price-minus">-</button>
+                <input type="number" id="trade-input-price" class="trade-input" value="192.45" step="0.01">
+                <button class="trade-input-btn" id="btn-price-plus">+</button>
+              </div>
+            </div>
+
+            <!-- Size Input -->
+            <div class="trade-form-row">
+              <span class="trade-label">数量</span>
+              <div class="trade-input-group">
+                <button class="trade-input-btn" id="btn-size-minus">-</button>
+                <input type="number" id="trade-input-size" class="trade-input" value="100" step="100">
+                <button class="trade-input-btn" id="btn-size-plus">+</button>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="btn-submit-order" class="trade-action-btn buy">
+              买入限制单 (Buy Limit)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

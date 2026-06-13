@@ -1,0 +1,19 @@
+{
+  "profiles": [
+    {
+      "label": "wind_level_6_cyan",
+      "lower_hsv": [92, 180, 190],
+      "upper_hsv": [101, 255, 255]
+    },
+    {
+      "label": "wind_level_7_blue",
+      "lower_hsv": [102, 100, 110],
+      "upper_hsv": [111, 255, 255]
+    },
+    {
+      "label": "wind_level_8_deep_blue",
+      "lower_hsv": [112, 100, 80],
+      "upper_hsv": [125, 255, 255]
+    }
+  ]
+}

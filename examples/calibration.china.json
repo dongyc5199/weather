@@ -1,0 +1,10 @@
+{
+  "description": "Rough mainland China map calibration. Crop the image to the actual map area before using this.",
+  "bbox": {
+    "min_lon": 73.0,
+    "min_lat": 18.0,
+    "max_lon": 135.0,
+    "max_lat": 54.0
+  }
+}
+

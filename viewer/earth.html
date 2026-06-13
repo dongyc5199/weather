@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>天气 GeoJSON 地球</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23020910'/%3E%3Cpath d='M6 18c4-8 11-10 20-6-1 10-8 15-18 12l5-5z' fill='%232dd4e8'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Widgets/widgets.css" />
+    <link rel="stylesheet" href="./earth.css?v=20260613-angle-v1" />
+  </head>
+  <body>
+    <div class="earth-shell is-immersive">
+      <aside class="earth-panel">
+        <header class="earth-header">
+          <p class="eyebrow">Weather GeoJSON Earth</p>
+          <h1>天气图层地球</h1>
+          <p>矢量地图底座负责地球、行政区划、城市名和水系；天气数据以 GeoJSON 图层叠加。</p>
+        </header>
+
+        <section class="earth-section">
+          <div class="segmented" role="group" aria-label="投影模式">
+            <button id="projectionGlobe" class="is-active" type="button">地球</button>
+            <button id="projectionMap" type="button">平面</button>
+          </div>
+          <div class="segmented scene-presets" role="group" aria-label="场景预设">
+            <button id="scenePresetShowcase" class="is-active" type="button">展示</button>
+            <button id="scenePresetAudit" type="button">校验</button>
+            <button id="scenePresetCity" type="button">城市</button>
+          </div>
+          <div id="scenePresetInfo" class="editor-meta">真实卫星地表优先，天气作为轻量叠加层，适合接近 Google Earth 的地球浏览。</div>
+          <div class="button-grid">
+            <button id="loadDefaultWeather" type="button">加载默认风区</button>
+            <button id="fitWeather" class="secondary" type="button">缩放到天气</button>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>飞往地点</span>
+              <select id="placePreset"></select>
+            </label>
+            <button id="flyToPlace" class="secondary" type="button">飞行</button>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>搜索定位</span>
+              <input id="locationSearchInput" type="search" placeholder="城市名或经纬度" />
+            </label>
+            <button id="locationSearchButton" class="secondary" type="button">定位</button>
+          </div>
+          <div id="locationSearchInfo" class="editor-meta">支持地名、拼音和经纬度。</div>
+          <div class="button-grid">
+            <button id="focusCurrentView" class="secondary" type="button">聚焦中心</button>
+            <button id="clearFocusTarget" class="secondary" type="button" disabled>清除聚焦</button>
+          </div>
+          <div id="focusTargetInfo" class="editor-meta">单击地表查看信息；双击地图或搜索地点可建立聚焦目标。</div>
+          <label class="check-row">
+            <input id="autoRotateGlobe" type="checkbox" checked />
+            <span>地球自动旋转</span>
+          </label>
+          <label class="check-row">
+            <input id="focusOrbitEnabled" type="checkbox" />
+            <span>环绕聚焦目标</span>
+          </label>
+          <label class="field">
+            <span>地图底座</span>
+            <select id="baseMapStyle">
+              <option value="cesium-world-terrain">Cesium World Terrain</option>
+            </select>
+          </label>
+          <div id="baseMapInfo" class="editor-meta">默认使用非 Google 的 Cesium Globe 底座；Google 3D Tiles 仅作为可选项。</div>
+          <label class="check-row">
+            <input id="mapDetailsEnabled" type="checkbox" checked />
+            <span>真实地图细节</span>
+          </label>
+          <div id="mapDetailsInfo" class="editor-meta">叠加行政边界、水系、道路和地名。</div>
+          <label class="check-row">
+            <input id="terrainEnabled" type="checkbox" checked />
+            <span>3D 地形起伏</span>
+          </label>
+          <label class="range-field">
+            <span>地形强度</span>
+            <input id="terrainExaggeration" type="range" min="0.3" max="2.5" value="1.25" step="0.05" />
+          </label>
+          <div id="terrainInfo" class="editor-meta">DEM 地形用于倾斜视角下的山地起伏和阴影。</div>
+          <label class="check-row">
+            <input id="sunlightEnabled" type="checkbox" checked />
+            <span>昼夜光照</span>
+          </label>
+          <label class="range-field">
+            <span>夜侧强度</span>
+            <input id="sunlightIntensity" type="range" min="0.2" max="1" value="0.38" step="0.02" />
+          </label>
+          <div id="sunlightInfo" class="editor-meta">按当前时次叠加地球昼夜明暗。</div>
+          <label class="check-row">
+            <input id="buildingsEnabled" type="checkbox" checked />
+            <span>3D 城市建筑</span>
+          </label>
+          <label class="range-field">
+            <span>建筑高度</span>
+            <input id="buildingHeightScale" type="range" min="0.5" max="2" value="1" step="0.05" />
+          </label>
+          <div id="buildingInfo" class="editor-meta">放大到城市尺度后显示建筑体块。</div>
+        </section>
+
+        <section class="earth-section camera-tour-section">
+          <div class="section-title">
+            <strong>视角巡航</strong>
+            <button id="clearCameraTour" class="tiny-button" type="button" disabled>清空</button>
+          </div>
+          <div class="button-grid">
+            <button id="addCameraTourStop" type="button">保存当前视角</button>
+            <button id="playCameraTour" class="secondary" type="button" disabled>播放巡航</button>
+          </div>
+          <div id="cameraTourSummary" class="editor-meta">暂无视角书签。</div>
+          <div id="cameraTourList" class="camera-tour-list"></div>
+        </section>
+
+        <section class="earth-section">
+          <label class="field">
+            <span>GeoJSON URL</span>
+            <input id="geoJsonUrlInput" type="url" placeholder="https://.../weather.geojson" />
+          </label>
+          <button id="loadGeoJsonUrl" type="button">加载 URL</button>
+          <label class="file-button">
+            <span>加载本地 GeoJSON</span>
+            <input id="geoJsonFileInput" type="file" accept=".json,.geojson,application/json,application/geo+json" />
+          </label>
+        </section>
+
+        <section class="earth-section data-section">
+          <div class="section-title">
+            <strong>数据文档</strong>
+            <div class="tiny-actions">
+              <button id="saveBrowserDraft" class="tiny-button" type="button" disabled>保存草稿</button>
+              <button id="restoreBrowserDraft" class="tiny-button" type="button" disabled>恢复</button>
+              <button id="normalizeWeatherGeoJson" class="tiny-button" type="button" disabled>标准化</button>
+            </div>
+          </div>
+          <div id="dataInfo" class="data-info">等待 GeoJSON。</div>
+          <div class="button-grid">
+            <button id="downloadProject" type="button">下载项目文档</button>
+            <label class="file-button">
+              <span>加载项目文档</span>
+              <input id="projectFileInput" type="file" accept=".json,application/json" />
+            </label>
+          </div>
+        </section>
+
+        <section class="earth-section">
+          <div class="button-grid">
+            <button id="downloadGeoJson" type="button" disabled>下载 GeoJSON</button>
+            <button id="downloadVisibleGeoJson" type="button" disabled>下载当前显示</button>
+          </div>
+          <div class="button-grid">
+            <button id="copyShareUrl" type="button">复制分享链接</button>
+            <button id="copyInlineShareUrl" type="button" disabled>复制数据链接</button>
+          </div>
+          <button id="copyProjectShareUrl" type="button" disabled>复制项目链接</button>
+          <button id="clearWeather" class="secondary" type="button">清空天气层</button>
+          <div id="shareUrlText" class="share-url">当前链接会随视图变化自动更新。</div>
+          <label class="range-field">
+            <span>天气透明度</span>
+            <input id="weatherOpacity" type="range" min="0.15" max="0.9" value="0.42" step="0.01" />
+          </label>
+          <label class="check-row">
+            <input id="weather3dEnabled" type="checkbox" checked />
+            <span>3D 天气标记</span>
+          </label>
+          <label class="range-field">
+            <span>标记高度</span>
+            <input id="weather3dScale" type="range" min="0.4" max="2.5" value="1" step="0.05" />
+          </label>
+          <div id="weather3dInfo" class="editor-meta">点状天气会以立体光柱突出显示。</div>
+          <label class="check-row">
+            <input id="weatherVolumeEnabled" type="checkbox" />
+            <span>3D 风区体块</span>
+          </label>
+          <label class="range-field">
+            <span>体块高度</span>
+            <input id="weatherVolumeScale" type="range" min="0.25" max="2.5" value="0.55" step="0.05" />
+          </label>
+          <div id="weatherVolumeInfo" class="editor-meta">面状风区会以半透明体块突出显示。</div>
+        </section>
+
+        <section class="earth-section draw-section">
+          <div class="section-title">
+            <strong>绘制天气元素</strong>
+            <button id="cancelDraw" class="tiny-button" type="button" disabled>取消</button>
+          </div>
+          <div class="segmented draw-modes" role="group" aria-label="绘制模式">
+            <button id="drawPoint" type="button">点</button>
+            <button id="drawLine" type="button">线</button>
+            <button id="drawPolygon" type="button">面</button>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>类型</span>
+              <select id="drawWeatherType">
+                <option value="warning">预警点</option>
+                <option value="track">路径</option>
+                <option value="wind-region">风区</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>颜色</span>
+              <input id="drawColor" type="color" value="#ffbd59" />
+            </label>
+          </div>
+          <label class="field">
+            <span>名称</span>
+            <input id="drawName" type="text" value="天气元素" />
+          </label>
+          <div class="button-grid">
+            <button id="finishDraw" type="button" disabled>完成</button>
+            <button id="undoDrawPoint" class="secondary" type="button" disabled>撤销点</button>
+          </div>
+          <div id="drawStatus" class="draw-status">未开始绘制。</div>
+        </section>
+
+        <section class="earth-section measure-section">
+          <div class="section-title">
+            <strong>测量工具</strong>
+            <button id="clearMeasure" class="tiny-button" type="button" disabled>清除</button>
+          </div>
+          <div class="segmented draw-modes" role="group" aria-label="测量模式">
+            <button id="measureDistance" type="button">距离</button>
+            <button id="measureArea" type="button">面积</button>
+          </div>
+          <div class="button-grid">
+            <button id="finishMeasure" type="button" disabled>完成</button>
+            <button id="undoMeasurePoint" class="secondary" type="button" disabled>撤销点</button>
+          </div>
+          <div id="measureStatus" class="draw-status">未开始测量。</div>
+        </section>
+
+        <section class="earth-section feature-edit-section">
+          <div class="section-title">
+            <strong>选中要素</strong>
+            <button id="clearFeatureSelection" class="tiny-button" type="button" disabled>取消选择</button>
+          </div>
+          <div id="selectedFeatureStatus" class="draw-status">点击地图上的天气要素进行编辑。</div>
+          <div class="form-grid">
+            <label class="field">
+              <span>类型</span>
+              <select id="selectedWeatherType" disabled>
+                <option value="warning">预警点</option>
+                <option value="track">路径</option>
+                <option value="wind-region">风区</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>颜色</span>
+              <input id="selectedColor" type="color" value="#ffbd59" disabled />
+            </label>
+          </div>
+          <label class="field">
+            <span>名称</span>
+            <input id="selectedName" type="text" value="" disabled />
+          </label>
+          <label class="field">
+            <span>属性 JSON</span>
+            <textarea id="selectedProperties" class="property-textarea" spellcheck="false" disabled></textarea>
+          </label>
+          <label class="field">
+            <span>几何 JSON</span>
+            <textarea id="selectedGeometry" class="property-textarea geometry-textarea" spellcheck="false" disabled></textarea>
+          </label>
+          <div class="button-grid">
+            <button id="applyWeatherTemplate" class="secondary" type="button" disabled>套用类型模板</button>
+            <button id="formatSelectedProperties" class="secondary" type="button" disabled>格式化属性</button>
+          </div>
+          <button id="formatSelectedGeometry" class="secondary" type="button" disabled>格式化几何</button>
+          <div class="button-grid">
+            <button id="updateSelectedFeature" type="button" disabled>更新要素</button>
+            <button id="deleteSelectedFeature" class="danger" type="button" disabled>删除要素</button>
+          </div>
+        </section>
+
+        <section class="earth-section feature-list-section">
+          <div class="section-title">
+            <strong>要素列表</strong>
+            <button id="fitSelectedFeature" class="tiny-button" type="button" disabled>定位选中</button>
+          </div>
+          <label class="field">
+            <span>筛选</span>
+            <input id="featureSearch" type="search" placeholder="名称、类型、几何" />
+          </label>
+          <div id="featureListSummary" class="editor-meta">暂无要素。</div>
+          <div id="featureList" class="feature-list"></div>
+        </section>
+
+        <section class="earth-section time-filter-section">
+          <div class="section-title">
+            <strong>时次筛选</strong>
+            <button id="resetTimeFilter" class="tiny-button" type="button" disabled>全部</button>
+          </div>
+          <label class="field">
+            <span>当前时次</span>
+            <select id="timeFilterSelect" disabled>
+              <option value="__all__">全部时次</option>
+            </select>
+          </label>
+          <label class="check-row">
+            <input id="showUntimedFeatures" type="checkbox" checked />
+            <span>显示无时次要素</span>
+          </label>
+          <div id="timeFilterSummary" class="editor-meta">等待含时次的 GeoJSON。</div>
+        </section>
+
+        <section class="earth-section element-type-section">
+          <div class="section-title">
+            <strong>天气元素类型</strong>
+            <div class="tiny-actions">
+              <button id="showAllElementTypes" class="tiny-button" type="button">全显</button>
+              <button id="hideAllElementTypes" class="tiny-button" type="button">全隐</button>
+            </div>
+          </div>
+          <div id="elementTypeSummary" class="editor-meta">等待天气元素。</div>
+          <div id="elementTypeList" class="element-type-list"></div>
+        </section>
+
+        <details class="earth-section editor-section">
+          <summary>GeoJSON 文本</summary>
+          <textarea id="geoJsonEditor" spellcheck="false" placeholder='{"type":"FeatureCollection","features":[]}'></textarea>
+          <div class="button-grid">
+            <button id="applyGeoJsonEditor" type="button">应用文本</button>
+            <button id="formatGeoJsonEditor" class="secondary" type="button">格式化</button>
+          </div>
+          <div id="geoJsonEditorMeta" class="editor-meta">等待 GeoJSON。</div>
+        </details>
+
+        <section class="earth-section">
+          <div class="section-title">
+            <strong>天气图层</strong>
+            <div class="tiny-actions">
+              <button id="refreshCityImpact" class="tiny-button" type="button">城市影响</button>
+              <button id="loadTrackExample" class="tiny-button" type="button">路径示例</button>
+            </div>
+          </div>
+          <div id="layerList" class="layer-list"></div>
+        </section>
+
+        <section class="earth-section process-section">
+          <div class="section-title">
+            <strong>天气过程</strong>
+            <div class="tiny-actions">
+              <button id="loadDefaultManifest" class="tiny-button" type="button">默认过程</button>
+            </div>
+          </div>
+          <label class="field">
+            <span>Manifest URL</span>
+            <input id="manifestUrlInput" type="url" placeholder="../outputs/nmc-wind/manifest.json" />
+          </label>
+          <button id="loadManifestUrl" type="button">加载过程</button>
+          <div id="processSummary" class="process-summary">等待过程清单。</div>
+          <input id="processRange" class="process-range" type="range" min="0" max="0" value="0" step="1" disabled />
+          <div id="processTicks" class="process-ticks"></div>
+          <div class="process-controls">
+            <button id="processPrev" class="secondary" type="button" disabled>上一时次</button>
+            <button id="processPlay" type="button" disabled>播放</button>
+            <button id="processNext" class="secondary" type="button" disabled>下一时次</button>
+          </div>
+          <div id="processTime" class="process-time">--</div>
+        </section>
+
+        <section class="earth-section stat-section">
+          <div class="stat-row">
+            <span>图层</span>
+            <strong id="layerName">--</strong>
+          </div>
+          <div class="stat-row">
+            <span>要素</span>
+            <strong id="featureCount">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>面</span>
+            <strong id="polygonCount">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>视图</span>
+            <strong id="viewStateText">--</strong>
+          </div>
+          <div class="section-title quality-title">
+            <strong>数据质量</strong>
+            <div class="tiny-actions">
+              <button id="validateWeatherGeoJson" class="tiny-button" type="button" disabled>校验</button>
+              <button id="downloadValidationReport" class="tiny-button" type="button" disabled>报告</button>
+            </div>
+          </div>
+          <div id="qualitySummary" class="quality-summary">等待 GeoJSON。</div>
+          <div id="qualityIssues" class="quality-issues">等待校验。</div>
+        </section>
+
+        <section class="earth-section status-section">
+          <strong id="statusTitle">等待加载。</strong>
+          <p id="statusDetail">可加载默认风区、远程 GeoJSON 或本地文件。</p>
+        </section>
+
+        <a class="back-link" href="./index.html">返回原校验页</a>
+      </aside>
+
+      <main class="earth-stage">
+        <div id="earthMap" aria-label="天气 GeoJSON 地球地图"></div>
+        <div class="earth-atmosphere" aria-hidden="true"></div>
+        <div class="earth-quick-search" role="search" aria-label="沉浸搜索定位">
+          <input id="immersiveSearchInput" type="search" placeholder="搜索城市或经纬度" />
+          <button id="immersiveSearchButton" type="button">定位</button>
+          <button id="immersiveExitPanel" type="button">面板</button>
+        </div>
+        <div class="earth-quick-weather" aria-label="沉浸天气控制">
+          <label class="earth-quick-field">
+            <span>时次</span>
+            <select id="immersiveTimeFilterSelect" disabled>
+              <option value="__all__">全部时次</option>
+            </select>
+          </label>
+          <button id="immersiveTimeAll" type="button" disabled>全部</button>
+          <label class="earth-quick-opacity">
+            <span>透明度</span>
+            <input id="immersiveWeatherOpacity" type="range" min="0.15" max="0.9" value="0.62" step="0.01" />
+            <strong id="immersiveWeatherOpacityValue">62%</strong>
+          </label>
+        </div>
+        <div id="immersiveProcessPanel" class="earth-quick-process" aria-label="沉浸天气过程" hidden>
+          <button id="immersiveProcessPrev" type="button" title="上一时次" aria-label="上一时次" disabled>‹</button>
+          <button id="immersiveProcessPlay" type="button" disabled>播放</button>
+          <label class="earth-quick-process-range">
+            <span id="immersiveProcessTime">等待过程</span>
+            <input id="immersiveProcessRange" type="range" min="0" max="0" value="0" step="1" disabled />
+          </label>
+          <button id="immersiveProcessNext" type="button" title="下一时次" aria-label="下一时次" disabled>›</button>
+        </div>
+        <div class="earth-quick-layers" aria-label="沉浸地图图层">
+          <label class="earth-quick-field earth-quick-basemap">
+            <span>底图</span>
+            <select id="immersiveBaseMapStyle">
+              <option value="cesium-world-terrain">Cesium World Terrain</option>
+            </select>
+          </label>
+          <label class="earth-quick-toggle">
+            <input id="immersiveMapDetailsEnabled" type="checkbox" checked />
+            <span>细节</span>
+          </label>
+          <label class="earth-quick-toggle">
+            <input id="immersiveTerrainEnabled" type="checkbox" checked />
+            <span>地形</span>
+          </label>
+          <label class="earth-quick-toggle">
+            <input id="immersiveSunlightEnabled" type="checkbox" checked />
+            <span>光照</span>
+          </label>
+          <label class="earth-quick-toggle">
+            <input id="immersiveBuildingsEnabled" type="checkbox" checked />
+            <span>建筑</span>
+          </label>
+        </div>
+        <div class="earth-quick-actions" aria-label="沉浸镜头动作">
+          <button id="immersiveFocusCenter" type="button">聚焦</button>
+          <button id="immersiveFocusOrbit" type="button" aria-pressed="false">环绕</button>
+          <button id="immersiveAddTourStop" type="button">书签</button>
+          <button id="immersivePlayTour" type="button" disabled>巡航 <span id="immersiveTourCount">0</span></button>
+        </div>
+        <div class="earth-orbit-controls" aria-label="地球镜头控制">
+          <button id="cameraZoomIn" type="button" title="放大" aria-label="放大">+</button>
+          <button id="cameraZoomOut" type="button" title="缩小" aria-label="缩小">−</button>
+          <button id="cameraRotateLeft" type="button" title="向左旋转" aria-label="向左旋转">↺</button>
+          <button id="cameraRotateRight" type="button" title="向右旋转" aria-label="向右旋转">↻</button>
+          <button id="cameraTiltUp" type="button" title="抬高视角" aria-label="抬高视角">⌃</button>
+          <button id="cameraTiltDown" type="button" title="降低视角" aria-label="降低视角">⌄</button>
+          <button id="cameraHome" type="button" title="回到中国" aria-label="回到中国">⌂</button>
+          <button id="toggleImmersive" type="button" title="沉浸模式" aria-label="沉浸模式" aria-pressed="false">▣</button>
+        </div>
+        <label class="earth-angle-control" title="拖动调整地面夹角；Shift 或 Option/Alt + 滚动也可调整" aria-label="调整地面夹角">
+          <span aria-hidden="true">∠</span>
+          <input id="cameraPitchSlider" type="range" min="0" max="85" value="48" step="1" />
+        </label>
+        <button id="cameraNorth" class="earth-compass" type="button" title="回正朝北" aria-label="回正朝北">
+          <span id="compassNeedle" aria-hidden="true">▲</span>
+          <strong>N</strong>
+        </button>
+        <div class="earth-camera-hud" aria-label="镜头状态">
+          <div>
+            <span>中心</span>
+            <strong id="cameraCenter">--</strong>
+          </div>
+          <div>
+            <span>视距</span>
+            <strong id="cameraAltitude">--</strong>
+          </div>
+          <div>
+            <span>航向</span>
+            <strong id="cameraHeading">--</strong>
+          </div>
+          <div>
+            <span>倾角</span>
+            <strong id="cameraPitch">--</strong>
+          </div>
+          <div>
+            <span>层级</span>
+            <strong id="cameraZoom">--</strong>
+          </div>
+          <div>
+            <span>指针</span>
+            <strong id="pointerPosition">--</strong>
+          </div>
+          <div>
+            <span>地表</span>
+            <strong id="pointerElevation">--</strong>
+          </div>
+        </div>
+        <div id="cameraTourCaption" class="camera-tour-caption" aria-live="polite">
+          <span>视角导览</span>
+          <strong>--</strong>
+          <small>--</small>
+        </div>
+        <div class="earth-badge">
+          <span id="projectionBadge">Globe</span>
+          <strong id="sourceBadge">Cesium World Terrain</strong>
+        </div>
+        <button id="earthOverview" class="earth-overview" type="button" aria-label="概览导航">
+          <svg id="earthOverviewSvg" viewBox="0 0 220 138" aria-hidden="true" focusable="false">
+            <rect class="overview-bg" x="0" y="0" width="220" height="138" rx="8"></rect>
+            <path id="earthOverviewChinaOutline" class="overview-china"></path>
+            <rect id="earthOverviewWeatherExtent" class="overview-weather" x="0" y="0" width="0" height="0" rx="4" hidden></rect>
+            <circle id="earthOverviewFocusDot" class="overview-focus" cx="0" cy="0" r="0" hidden></circle>
+            <line id="earthOverviewCameraHeading" class="overview-heading" x1="0" y1="0" x2="0" y2="0"></line>
+            <circle id="earthOverviewCameraDot" class="overview-camera" cx="110" cy="69" r="4"></circle>
+          </svg>
+          <span class="earth-overview-meta">
+            <span>概览</span>
+            <strong id="earthOverviewLabel">--</strong>
+          </span>
+        </button>
+      </main>
+    </div>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Cesium.js"></script>
+    <script src="./earth.js?v=20260613-angle-v1"></script>
+  </body>
+</html>

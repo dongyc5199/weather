@@ -1,0 +1,44 @@
+{
+  "name": "nmc_wind_china_city_control_points_v1",
+  "description": "Control-point calibration for NMC national hourly maximum wind-speed images at 2818x2383 layout. Pixel points are city markers on the rendered map; target coordinates are WGS84 city-center coordinates.",
+  "image_size": [2818, 2383],
+  "degree": 2,
+  "ignore_rects": [
+    [0, 0, 250, 260],
+    [0, 1660, 700, 2383]
+  ],
+  "control_points": [
+    {"name": "urumqi", "pixel": [744.0, 655.0], "lon": 87.6168, "lat": 43.8256},
+    {"name": "harbin", "pixel": [2470.5, 490.5], "lon": 126.6424, "lat": 45.7567},
+    {"name": "changchun", "pixel": [2437.5, 616.5], "lon": 125.3235, "lat": 43.8171},
+    {"name": "shenyang", "pixel": [2377.5, 762.5], "lon": 123.4315, "lat": 41.8057},
+    {"name": "hohhot", "pixel": [1839.5, 893.5], "lon": 111.7492, "lat": 40.8426},
+    {"name": "yinchuan", "pixel": [1587.5, 1052.5], "lon": 106.2309, "lat": 38.4872},
+    {"name": "shijiazhuang", "pixel": [1989.5, 1057.5], "lon": 114.5149, "lat": 38.0428},
+    {"name": "taiyuan", "pixel": [1896.5, 1076.5], "lon": 112.5489, "lat": 37.8706},
+    {"name": "jinan", "pixel": [2122.5, 1130.5], "lon": 117.1201, "lat": 36.6512},
+    {"name": "xining", "pixel": [1365.5, 1168.5], "lon": 101.7782, "lat": 36.6171},
+    {"name": "zhengzhou", "pixel": [1966.5, 1268.5], "lon": 113.6254, "lat": 34.7466},
+    {"name": "xian", "pixel": [1728.5, 1315.5], "lon": 108.9398, "lat": 34.3416},
+    {"name": "nanjing", "pixel": [2250.5, 1408.5], "lon": 118.7969, "lat": 32.0603},
+    {"name": "hefei", "pixel": [2173.5, 1430.5], "lon": 117.2272, "lat": 31.8206},
+    {"name": "shanghai", "pixel": [2399.5, 1437.5], "lon": 121.4737, "lat": 31.2304},
+    {"name": "hangzhou", "pixel": [2339.5, 1509.5], "lon": 120.1551, "lat": 30.2741},
+    {"name": "wuhan", "pixel": [2024.5, 1529.5], "lon": 114.3055, "lat": 30.5928},
+    {"name": "chengdu", "pixel": [1476.5, 1546.5], "lon": 104.0665, "lat": 30.5723},
+    {"name": "lhasa", "pixel": [775.5, 1557.5], "lon": 91.1322, "lat": 29.6604},
+    {"name": "chongqing", "pixel": [1608.5, 1615.5], "lon": 106.5516, "lat": 29.563},
+    {"name": "nanchang", "pixel": [2123.5, 1638.5], "lon": 115.8582, "lat": 28.6829},
+    {"name": "changsha", "pixel": [1966.5, 1683.5], "lon": 112.9388, "lat": 28.2282},
+    {"name": "fuzhou", "pixel": [2331.5, 1775.5], "lon": 119.2965, "lat": 26.0745},
+    {"name": "guiyang", "pixel": [1622.5, 1802.5], "lon": 106.6302, "lat": 26.647},
+    {"name": "taipei", "pixel": [2466.5, 1819.5], "lon": 121.5654, "lat": 25.033},
+    {"name": "kunming", "pixel": [1394.5, 1897.5], "lon": 102.8329, "lat": 24.8801},
+    {"name": "guangzhou", "pixel": [2008.5, 1997.5], "lon": 113.2644, "lat": 23.1291},
+    {"name": "nanning", "pixel": [1720.5, 2034.5], "lon": 108.3669, "lat": 22.817},
+    {"name": "hong_kong", "pixel": [2065.0, 2044.5], "lon": 114.1694, "lat": 22.3193},
+    {"name": "macau", "pixel": [2029.5, 2052.5], "lon": 113.5439, "lat": 22.1987},
+    {"name": "haikou", "pixel": [1849.5, 2206.5], "lon": 110.3312, "lat": 20.031}
+  ]
+}
+

@@ -1,0 +1,20 @@
+{
+  "profiles": [
+    {
+      "label": "wind_force_6_plus_red_or_orange",
+      "lower_hsv": [0, 80, 80],
+      "upper_hsv": [25, 255, 255]
+    },
+    {
+      "label": "wind_force_6_plus_red_wrap",
+      "lower_hsv": [170, 80, 80],
+      "upper_hsv": [179, 255, 255]
+    },
+    {
+      "label": "heavy_rain_blue_purple",
+      "lower_hsv": [105, 60, 60],
+      "upper_hsv": [145, 255, 255]
+    }
+  ]
+}
+

@@ -1,0 +1,891 @@
+/* ==========================================
+   Design Tokens & CSS Variables
+   ========================================== */
+
+/* Dark Theme (Default) */
+.theme-dark {
+  --color-bg-workspace: #0b0f19;       /* Deep slate/navy background */
+  --color-bg-panel: #111827;           /* Card/Panel background */
+  --color-bg-panel-hover: #1f2937;     /* Panel hover/active state */
+  --color-border-subtle: #1f2937;      /* Very subtle boundary lines */
+  --color-border-focus: #3b82f6;       /* Bright blue focus indicator */
+  
+  --color-text-primary: #f9fafb;       /* Pure white/off-white */
+  --color-text-secondary: #9ca3af;     /* Muted silver-grey */
+  --color-text-muted: #4b5563;         /* Dark grey for index/metadata */
+  
+  --color-accent: #2563eb;             /* Classic professional blue */
+  --color-accent-light: #3b82f6;       /* Lighter blue accent */
+  --color-accent-bg: rgba(37, 99, 235, 0.1);
+
+  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Light Theme */
+.theme-light {
+  --color-bg-workspace: #f3f4f6;       /* Cool light grey */
+  --color-bg-panel: #ffffff;           /* Clean white */
+  --color-bg-panel-hover: #f9fafb;     /* Very light grey hover */
+  --color-border-subtle: #e5e7eb;      /* Soft grey separators */
+  --color-border-focus: #2563eb;       /* Focused states */
+  
+  --color-text-primary: #111827;       /* Deep charcoal */
+  --color-text-secondary: #4b5563;     /* Slate grey */
+  --color-text-muted: #9ca3af;         /* Soft grey metadata */
+  
+  --color-accent: #2563eb;             /* Blue brand color */
+  --color-accent-light: #1d4ed8;       /* Deeper blue hover */
+  --color-accent-bg: rgba(37, 99, 235, 0.05);
+
+  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Red-Up Green-Down (Standard Chinese A-Share Convention) */
+.trend-china {
+  --color-trend-up: #ef4444;           /* Coral Red for Rise */
+  --color-trend-down: #10b981;         /* Emerald Green for Fall */
+  --color-trend-up-bg: rgba(239, 68, 68, 0.08);
+  --color-trend-down-bg: rgba(16, 185, 129, 0.08);
+}
+
+/* Green-Up Red-Down (International/HK/US Markets Convention) */
+.trend-international {
+  --color-trend-up: #10b981;           /* Emerald Green for Rise */
+  --color-trend-down: #ef4444;         /* Coral Red for Fall */
+  --color-trend-up-bg: rgba(16, 185, 129, 0.08);
+  --color-trend-down-bg: rgba(239, 68, 68, 0.08);
+}
+
+/* Common Font & Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+}
+
+body {
+  background-color: var(--color-bg-workspace);
+  color: var(--color-text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================
+   Header & Navigation
+   ========================================== */
+.main-header {
+  height: 48px;
+  background-color: var(--color-bg-panel);
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, var(--color-text-primary), var(--color-accent-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Top bar tabs */
+.tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab-item {
+  height: 36px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  border: 1px solid transparent;
+}
+
+.tab-item:hover {
+  background-color: var(--color-bg-panel-hover);
+  color: var(--color-text-primary);
+}
+
+.tab-item.active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-btn {
+  background: none;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--color-bg-workspace);
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
+.control-btn.active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* ==========================================
+   Workspace Layout (Grid)
+   ========================================== */
+.workspace-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left toolbar (similar to TradingView) */
+.left-toolbar {
+  width: 44px;
+  background-color: var(--color-bg-panel);
+  border-right: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 16px;
+}
+
+.toolbar-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar-tool:hover {
+  background-color: var(--color-bg-panel-hover);
+  color: var(--color-text-primary);
+}
+
+.toolbar-tool.active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-light);
+}
+
+.toolbar-separator {
+  width: 20px;
+  height: 1px;
+  background-color: var(--color-border-subtle);
+}
+
+/* Main Dashboard Area */
+.main-dashboard {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px; /* 1fr K-line & Breadth, 340px Watchlist/OrderBook/Trade */
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* Panels */
+.panel {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.panel:hover {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.theme-light .panel:hover {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.panel-header {
+  height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-title .linking-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #3b82f6; /* Link indicator */
+  box-shadow: 0 0 4px #3b82f6;
+  display: inline-block;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.panel-action-icon {
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.panel-action-icon:hover {
+  background-color: var(--color-bg-panel-hover);
+  color: var(--color-text-primary);
+}
+
+/* ==========================================
+   Components Styles
+   ========================================== */
+
+/* 1. Indices Ticker at the top of Left section */
+.left-workspace {
+  display: grid;
+  grid-template-rows: 64px 1fr 180px; /* Ticker, Chart, Breadth */
+  gap: 8px;
+  overflow: hidden;
+}
+
+.indices-ticker {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  box-shadow: var(--shadow-panel);
+}
+
+.index-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.index-card:hover {
+  background-color: var(--color-bg-panel-hover);
+}
+
+.index-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.index-name {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.index-value {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.index-trend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.index-change-percent {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.index-sparkline {
+  width: 48px;
+  height: 16px;
+  margin-top: 4px;
+}
+
+/* 2. Chart Panel */
+.chart-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(0,0,0,0.1);
+}
+
+.chart-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.legend-ticker {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.legend-values {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  gap: 8px;
+}
+
+.legend-ohlc span {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chart-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 5;
+}
+
+.chart-btn {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-btn:hover, .chart-btn.active {
+  background-color: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+/* 3. Market Breadth & Sector Heatmap (Left Bottom) */
+.breadth-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.breadth-gauge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--color-border-subtle);
+  padding-right: 12px;
+}
+
+.breadth-gauge-svg {
+  width: 160px;
+  height: 100px;
+}
+
+.breadth-ratio {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.breadth-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.breadth-stat-label {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.breadth-stat-value {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.sector-heatmap {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 6px;
+  overflow: hidden;
+}
+
+.sector-card {
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.sector-card:hover {
+  opacity: 0.85;
+}
+
+.sector-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff; /* Static white text for sector overlay */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.sector-change {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 4. Watchlist Panel (Right Top) */
+.right-workspace {
+  display: grid;
+  grid-template-rows: 240px 1fr 180px; /* Watchlist, Order Book, Trade Console */
+  gap: 8px;
+  overflow: hidden;
+}
+
+.watchlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.watchlist-table th, .watchlist-table td {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.watchlist-table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background-color: rgba(0,0,0,0.02);
+}
+
+.watchlist-row {
+  border-bottom: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.watchlist-row:hover {
+  background-color: var(--color-bg-panel-hover);
+}
+
+.watchlist-row.selected {
+  background-color: var(--color-accent-bg);
+}
+
+.watchlist-name {
+  font-weight: 600;
+}
+
+.watchlist-code {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+}
+
+.watchlist-price {
+  font-weight: 700;
+}
+
+.watchlist-change {
+  font-weight: 600;
+  text-align: right;
+}
+
+.watchlist-cell-spark {
+  width: 48px;
+  padding: 0 !important;
+}
+
+.watchlist-row-sparkline {
+  width: 48px;
+  height: 16px;
+  display: block;
+}
+
+/* 5. Order Book Panel (Right Middle) */
+.orderbook-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  overflow-y: auto;
+}
+
+.ob-section-title {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.ob-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 80px;
+  font-size: 11px;
+  height: 18px;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ob-row:hover {
+  background-color: var(--color-bg-panel-hover);
+}
+
+.ob-level-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ob-label {
+  color: var(--color-text-secondary);
+  z-index: 2;
+}
+
+.ob-price {
+  font-weight: 700;
+  z-index: 2;
+}
+
+.ob-size {
+  text-align: right;
+  z-index: 2;
+  font-family: monospace;
+}
+
+.ob-spread-bar {
+  height: 24px;
+  border-top: 1px dashed var(--color-border-subtle);
+  border-bottom: 1px dashed var(--color-border-subtle);
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  padding: 0 4px;
+  background-color: rgba(0,0,0,0.01);
+}
+
+.ob-spread-val {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+/* 6. Trading Console (Right Bottom) */
+.trade-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+}
+
+.trade-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 28px;
+}
+
+.trade-tab-btn {
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  background-color: var(--color-bg-workspace);
+  color: var(--color-text-secondary);
+}
+
+.trade-tab-btn.buy.active {
+  background-color: #10b981; /* Green Buy */
+  color: #fff;
+}
+
+.trade-tab-btn.sell.active {
+  background-color: #ef4444; /* Red Sell */
+  color: #fff;
+}
+
+.trade-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trade-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  width: 40px;
+}
+
+.trade-input-group {
+  flex: 1;
+  display: flex;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.trade-input {
+  flex: 1;
+  border: none;
+  background: none;
+  color: var(--color-text-primary);
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.trade-input:focus {
+  outline: none;
+}
+
+.trade-input-btn {
+  width: 24px;
+  border: none;
+  background-color: var(--color-bg-panel-hover);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.trade-input-btn:hover {
+  background-color: var(--color-border-subtle);
+}
+
+.trade-action-btn {
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: filter 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trade-action-btn:hover {
+  filter: brightness(1.1);
+}
+
+.trade-action-btn.buy {
+  background-color: #10b981;
+}
+
+.trade-action-btn.sell {
+  background-color: #ef4444;
+}
+
+/* Universal Red/Green text classes */
+.text-up {
+  color: var(--color-trend-up) !important;
+}
+
+.text-down {
+  color: var(--color-trend-down) !important;
+}
+
+.bg-up {
+  background-color: var(--color-trend-up) !important;
+}
+
+.bg-down {
+  background-color: var(--color-trend-down) !important;
+}
+
+/* ==========================================
+   Toast Notifications
+   ========================================== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  background-color: var(--color-bg-panel);
+  border-left: 4px solid var(--color-accent);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text-primary);
+  pointer-events: auto;
+  animation: slideIn 0.3s ease forwards;
+  min-width: 240px;
+}
+
+.toast.toast-success {
+  border-left-color: #10b981;
+}
+
+.toast.toast-error {
+  border-left-color: #ef4444;
+}
+
+.toast-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.toast-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

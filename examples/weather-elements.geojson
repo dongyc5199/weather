@@ -1,0 +1,169 @@
+{
+  "type": "FeatureCollection",
+  "name": "weather-elements-demo",
+  "metadata": {
+    "schema": "weather-earth-geojson-v1",
+    "projection": "WGS84 lon/lat",
+    "source": "manual-demo"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "force 6 wind region",
+        "level": "level_6",
+        "time": "06/10 18:00",
+        "fill": "#00d6f2",
+        "stroke": "#8ef6ff",
+        "stroke-width": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [104.8, 33.8],
+            [108.4, 34.2],
+            [109.0, 36.3],
+            [106.5, 37.2],
+            [104.2, 35.4],
+            [104.8, 33.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "front",
+        "name": "cold front demo",
+        "front_type": "cold-front",
+        "time": "06/10 21:00",
+        "stroke": "#f5f7ff",
+        "stroke-width": 3
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [101.8, 41.2],
+          [105.4, 39.8],
+          [109.8, 38.4],
+          [114.1, 37.6]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "rain-region",
+        "name": "heavy rain region",
+        "intensity": "heavy",
+        "time": "06/10 21:00",
+        "fill": "#2f80ff",
+        "stroke": "#8fc5ff",
+        "stroke-width": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [111.4, 29.8],
+            [115.6, 30.4],
+            [116.2, 32.2],
+            [113.2, 33.0],
+            [110.7, 31.4],
+            [111.4, 29.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "track",
+        "name": "track demo",
+        "time": "06/10 20:00",
+        "stroke": "#ffbd59",
+        "stroke-width": 4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [119.9, 20.2],
+          [119.0, 22.1],
+          [117.8, 24.0],
+          [116.4, 25.8]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "track",
+        "name": "track demo",
+        "label": "latest",
+        "time": "06/11 14:00",
+        "strength": "typhoon",
+        "wind": 35,
+        "marker-color": "#ff4d4d",
+        "marker-size": "large"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [116.4, 25.8]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "warning",
+        "warning_type": "gale-warning",
+        "name": "warning demo",
+        "label": "gale",
+        "level": "orange",
+        "time": "06/11 14:00",
+        "marker-color": "#ff8f3d",
+        "marker-size": "large"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.2, 35.1]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "station",
+        "station_id": "54511",
+        "name": "station demo",
+        "label": "18m/s",
+        "value": "18",
+        "unit": "m/s",
+        "time": "06/11 14:00",
+        "marker-color": "#31d7ff",
+        "marker-size": "medium"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [116.4, 39.9]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "pressure-center",
+        "pressure_type": "low",
+        "name": "pressure center demo",
+        "label": "L",
+        "pressure_hpa": "996",
+        "time": "06/11 14:00",
+        "marker-color": "#b28cff",
+        "marker-size": "large"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [112.8, 42.3]
+      }
+    }
+  ]
+}

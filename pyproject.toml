@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "weather-geo-extractor"
+version = "0.1.0"
+description = "Image recognition and approximate longitude/latitude extraction for weather maps and geotagged photos."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "opencv-python-headless>=4.9",
+  "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+weather-geo = "weather_geo_extractor.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+weather_geo_extractor = ["resources/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

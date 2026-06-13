@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>中国风力区域 GeoJSON 地图底座</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside class="panel">
+        <header class="panel-header">
+          <h1>风力区域地图校验</h1>
+          <p>WGS84 GeoJSON 叠加到标准 Web Mercator 中国地图底座。</p>
+        </header>
+
+        <section class="controls">
+          <form id="urlForm" class="url-form">
+            <label>
+              <span>图片 URL</span>
+              <input
+                id="imageUrlInput"
+                type="url"
+                autocomplete="off"
+                placeholder="https://image.nmc.cn/..."
+              />
+            </label>
+            <button id="processUrlButton" type="submit">识别并渲染</button>
+            <label class="toggle-control">
+              <input id="autoRenderToggle" type="checkbox" checked />
+              <span>输入后自动渲染</span>
+            </label>
+          </form>
+          <button id="loadDefault" type="button">加载默认风区</button>
+          <label class="file-control">
+            <span>加载本地 GeoJSON</span>
+            <input id="fileInput" type="file" accept=".json,.geojson,application/geo+json,application/json" />
+          </label>
+          <button id="downloadGeoJson" type="button" disabled>下载当前 GeoJSON</button>
+          <div class="button-row">
+            <button id="fitChina" type="button">缩放到中国</button>
+            <button id="fitOverlay" type="button">缩放到风区</button>
+          </div>
+          <label class="range-control">
+            <span>风区透明度</span>
+            <input id="opacityInput" type="range" min="0.15" max="0.95" value="0.58" step="0.01" />
+          </label>
+          <label class="toggle-control">
+            <input id="chinaExtentToggle" type="checkbox" checked />
+            <span>显示中国经纬度范围框</span>
+          </label>
+        </section>
+
+        <section class="timeline-panel">
+          <div class="section-heading">
+            <strong>6月10日大风过程</strong>
+            <button id="playTimeline" class="ghost-button" type="button">播放</button>
+          </div>
+          <div id="processOverview" class="process-overview"></div>
+          <input id="timelineSlider" type="range" min="0" max="6" value="2" step="1" />
+          <div id="timelineTicks" class="timeline-ticks"></div>
+          <div class="stats-grid">
+            <div>
+              <span>时间</span>
+              <strong id="statTime">--</strong>
+            </div>
+            <div>
+              <span>风区</span>
+              <strong id="statRegions">--</strong>
+            </div>
+            <div>
+              <span>7级以上</span>
+              <strong id="statSevere">--</strong>
+            </div>
+            <div>
+              <span>轮廓点</span>
+              <strong id="statPoints">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="trend-panel">
+          <div class="section-heading">
+            <strong>过程趋势</strong>
+            <button id="jumpPeakTime" class="ghost-button" type="button">峰值</button>
+          </div>
+          <div id="trendChart" class="trend-chart" aria-label="大风过程趋势"></div>
+          <div class="trend-legend">
+            <span><i class="trend-key region-key"></i>风区</span>
+            <span><i class="trend-key severe-key"></i>7级以上</span>
+            <span><i class="trend-key area-key"></i>面积</span>
+          </div>
+          <div id="trendDetail" class="trend-detail">等待过程清单。</div>
+        </section>
+
+        <section class="city-impact-panel">
+          <div class="section-heading">
+            <strong>城市影响榜</strong>
+            <button id="refreshCityImpact" class="ghost-button" type="button">刷新</button>
+          </div>
+          <div id="cityImpactSummary" class="city-impact-summary">等待过程清单。</div>
+          <div id="cityImpactList" class="city-impact-list"></div>
+        </section>
+
+        <section class="location-panel">
+          <div class="section-heading">
+            <strong>关注地点影响</strong>
+            <button id="pickMapPoint" class="ghost-button" type="button">地图点选</button>
+          </div>
+          <label>
+            <span>城市</span>
+            <select id="watchCitySelect"></select>
+          </label>
+          <div class="coordinate-grid">
+            <label>
+              <span>经度</span>
+              <input id="watchLonInput" type="number" min="70" max="140" step="0.0001" />
+            </label>
+            <label>
+              <span>纬度</span>
+              <input id="watchLatInput" type="number" min="15" max="55" step="0.0001" />
+            </label>
+          </div>
+          <button id="analyzeWatchPoint" type="button">分析影响</button>
+          <div id="watchPointResult" class="watch-result">等待选择地点。</div>
+          <div id="watchProcessSummary" class="watch-process-summary">等待过程清单。</div>
+          <div id="watchImpactTimeline" class="watch-impact-timeline"></div>
+        </section>
+
+        <section class="share-panel">
+          <div class="section-heading">
+            <strong>过程解读</strong>
+            <button id="copyShareSummary" class="ghost-button" type="button">复制</button>
+          </div>
+          <div id="shareSummaryText" class="share-summary-text">等待过程数据。</div>
+          <div id="shareCopyStatus" class="share-copy-status"></div>
+        </section>
+
+        <section id="sourceImagePanel" class="source-image-panel">
+          <div class="section-heading">
+            <strong>原始图片</strong>
+            <button id="openSourceImage" class="ghost-button" type="button">放大</button>
+          </div>
+          <button id="sourceImageButton" class="image-preview-button" type="button">
+            <img id="sourceImagePreview" alt="原始天气图" />
+          </button>
+          <div id="sourceImageMeta" class="image-meta"></div>
+        </section>
+
+        <section class="legend" aria-label="图例">
+          <div><i class="swatch level-6"></i>6级</div>
+          <div><i class="swatch level-7"></i>7级</div>
+          <div><i class="swatch level-8"></i>8级</div>
+          <div><i class="swatch unknown"></i>其他 GeoJSON</div>
+        </section>
+
+        <section class="status">
+          <div id="statusText">等待加载 GeoJSON。</div>
+          <div id="detailText"></div>
+        </section>
+
+        <section class="note">
+          <strong>校准说明</strong>
+          <p>如果风区与底图不贴合，需要回到图片经纬度转换环节调控制点或投影；地图底座本身不会修改 GeoJSON 坐标。</p>
+        </section>
+      </aside>
+      <main class="map-stage" aria-label="天气地图展示">
+        <div class="stage-toolbar" role="group" aria-label="地图显示模式">
+          <button id="viewGlobe" class="stage-mode-button is-active" type="button" aria-pressed="true">3D 地球</button>
+          <button id="viewMap" class="stage-mode-button" type="button" aria-pressed="false">平面地图</button>
+          <a class="stage-mode-link" href="./earth.html?map=6.69/35.13104/107.15353">新地球</a>
+          <div class="stage-zoom-controls" aria-label="地球缩放">
+            <button id="globeZoomOut" class="stage-tool-button" type="button" aria-label="缩小地球">-</button>
+            <button id="globeZoomIn" class="stage-tool-button" type="button" aria-label="放大地球">+</button>
+          </div>
+          <label class="stage-toggle">
+            <input id="globeAutoRotate" type="checkbox" checked />
+            <span>自转</span>
+          </label>
+        </div>
+        <section id="globeView" class="globe-view is-active" aria-label="3D 地球天气展示">
+          <canvas id="globeCanvas"></canvas>
+          <div class="globe-vignette" aria-hidden="true"></div>
+          <div id="globeHud" class="globe-hud">
+            <span>3D 地球</span>
+            <strong>等待风区数据</strong>
+          </div>
+          <div id="globeMapStatus" class="globe-map-status">真实地图底图准备中</div>
+        </section>
+        <section id="map" class="map-view" aria-label="中国平面地图"></section>
+      </main>
+    </div>
+
+    <div id="imageModal" class="image-modal" aria-hidden="true">
+      <div class="image-modal-toolbar">
+        <span id="imageModalTitle">原始图片</span>
+        <button id="closeImageModal" class="ghost-button" type="button">关闭</button>
+      </div>
+      <img id="imageModalImage" alt="原始天气图放大预览" />
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="./app.js?v=20260611-real-map-tiles-v11"></script>
+  </body>
+</html>

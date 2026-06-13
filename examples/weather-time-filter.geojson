@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "name": "weather-time-filter-demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "warning",
+        "name": "timed warning",
+        "time": "06/12 09:00",
+        "marker-color": "#ff8f3d",
+        "marker-size": "large"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [108, 35]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "untimed region",
+        "fill": "#00d6f2",
+        "stroke": "#8ef6ff",
+        "stroke-width": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106, 34],
+            [107, 34],
+            [107, 35],
+            [106, 35],
+            [106, 34]
+          ]
+        ]
+      }
+    }
+  ]
+}

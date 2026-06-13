@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>天气地球嵌入示例</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #061019;
+        --panel: rgba(12, 27, 38, 0.94);
+        --line: rgba(156, 215, 228, 0.22);
+        --text: #effcff;
+        --muted: rgba(224, 244, 249, 0.72);
+        --accent: #2dd4e8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Avenir Next, Helvetica Neue, Arial, sans-serif;
+      }
+
+      .demo-shell {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        width: 100%;
+        height: 100%;
+      }
+
+      .demo-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 0;
+        padding: 22px;
+        overflow-y: auto;
+        border-right: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(12, 31, 45, 0.97), rgba(5, 12, 20, 0.96));
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 26px;
+        line-height: 1.12;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .section {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .button-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      button,
+      a {
+        min-height: 38px;
+        border: 1px solid rgba(45, 212, 232, 0.56);
+        border-radius: 7px;
+        background: rgba(45, 212, 232, 0.14);
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 760;
+        cursor: pointer;
+      }
+
+      button:hover,
+      a:hover {
+        border-color: rgba(142, 246, 255, 0.9);
+        background: rgba(45, 212, 232, 0.23);
+      }
+
+      a {
+        display: grid;
+        place-items: center;
+        text-decoration: none;
+      }
+
+      .status {
+        min-height: 58px;
+        padding: 9px;
+        border: 1px solid rgba(180, 224, 234, 0.16);
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.045);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .status strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text);
+      }
+
+      pre {
+        max-height: 280px;
+        margin: 0;
+        padding: 10px;
+        overflow: auto;
+        border: 1px solid rgba(180, 224, 234, 0.16);
+        border-radius: 7px;
+        background: rgba(0, 0, 0, 0.28);
+        color: #dffaff;
+        font: 11px/1.45 SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+
+      .event-log {
+        min-height: 58px;
+        padding: 9px;
+        border: 1px solid rgba(45, 212, 232, 0.28);
+        border-radius: 7px;
+        background: rgba(45, 212, 232, 0.08);
+        color: #dffaff;
+        font: 11px/1.45 SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .stage {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        background: #02060b;
+      }
+
+      iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
+      @media (max-width: 900px) {
+        body {
+          overflow: auto;
+        }
+
+        .demo-shell {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 72vh;
+          min-height: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-shell">
+      <aside class="demo-panel">
+        <header class="section">
+          <h1>天气地球嵌入示例</h1>
+          <p>模拟外部项目把天气 GeoJSON 发送到地球 iframe。</p>
+        </header>
+
+        <section class="section">
+          <div class="button-grid">
+            <button id="sendWeather" type="button">发送天气 GeoJSON</button>
+            <button id="appendWarning" type="button">追加预警点</button>
+          </div>
+          <div class="button-grid">
+            <button id="setTime" type="button">切到 18:00</button>
+            <button id="setBasemap" type="button">切换浅色底图</button>
+          </div>
+          <div class="button-grid">
+            <button id="getState" type="button">读取状态</button>
+            <button id="clearWeather" type="button">清空天气</button>
+          </div>
+          <div class="button-grid">
+            <button id="getGeoJson" type="button">读取全量 GeoJSON</button>
+            <button id="getVisibleGeoJson" type="button">读取当前显示</button>
+          </div>
+          <div class="button-grid">
+            <button id="getProject" type="button">读取项目文档</button>
+            <button id="setProject" type="button">恢复项目文档</button>
+          </div>
+          <div class="button-grid">
+            <button id="getFeatures" type="button">读取要素列表</button>
+            <button id="getLayers" type="button">读取图层</button>
+          </div>
+          <div class="button-grid">
+            <button id="getElementTypes" type="button">读取类型目录</button>
+            <button id="getElementTypeState" type="button">读取类型显隐</button>
+          </div>
+          <div class="button-grid">
+            <button id="hideRainType" type="button">隐藏降水区</button>
+            <button id="showAllTypes" type="button">显示全部类型</button>
+          </div>
+          <div class="button-grid">
+            <button id="hideWindLayer" type="button">隐藏风区</button>
+            <button id="showWindLayer" type="button">显示风区</button>
+          </div>
+          <button id="setWeatherOpacity" type="button">天气透明度 35%</button>
+          <div class="button-grid">
+            <button id="standardizeWeather" type="button">标准化字段</button>
+            <button id="fitWeatherDemo" type="button">定位天气</button>
+          </div>
+          <div class="button-grid">
+            <button id="addManagedFeature" type="button">新增单要素</button>
+            <button id="updateManagedFeature" type="button">更新单要素</button>
+          </div>
+          <div class="button-grid">
+            <button id="selectManagedFeature" type="button">选中单要素</button>
+            <button id="deleteManagedFeature" type="button">删除单要素</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div id="status" class="status"><strong>等待地球 ready</strong>客户端会自动排队早期调用。</div>
+          <div id="eventLog" class="event-log">等待地球事件。</div>
+          <pre id="result">{}</pre>
+        </section>
+
+        <a href="./earth.html?map=5/35/107&data=../examples/weather-elements.geojson">打开完整地球页</a>
+      </aside>
+
+      <main class="stage">
+        <iframe
+          id="earthFrame"
+          title="天气 GeoJSON 地球"
+          src="./earth.html?map=4.5/35/107&rotate=0&basemap=esri-world-imagery&data=%7B%22type%22%3A%22FeatureCollection%22%2C%22features%22%3A%5B%5D%7D"
+        ></iframe>
+      </main>
+    </div>
+
+    <script src="./weather-earth-client.js"></script>
+    <script>
+      const frame = document.querySelector("#earthFrame");
+      const statusEl = document.querySelector("#status");
+      const resultEl = document.querySelector("#result");
+      const eventLogEl = document.querySelector("#eventLog");
+      const earthClient = new WeatherEarthClient(frame);
+      let eventCount = 0;
+      let managedFeatureId = "";
+      let savedProject = null;
+
+      const demoWeatherGeoJson = {
+        type: "FeatureCollection",
+        name: "embed-demo-weather",
+        metadata: {
+          schema: "weather-earth-geojson-v1",
+          projection: "WGS84 lon/lat",
+          source: "embed-demo",
+        },
+        features: [
+          {
+            type: "Feature",
+            properties: {
+              weather_type: "wind-region",
+              name: "华北大风区",
+              label: "华北大风区",
+              level: "7级",
+              time: "06/10 18:00",
+              fill: "#16d7ef",
+              stroke: "#0d9db4",
+              "stroke-width": 2,
+              source: "embed-demo",
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [110.8, 38.6],
+                  [113.4, 40.8],
+                  [117.2, 41.1],
+                  [119.0, 39.2],
+                  [116.4, 37.3],
+                  [112.4, 36.8],
+                  [110.8, 38.6],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              weather_type: "track",
+              name: "天气系统路径",
+              label: "路径",
+              time: "06/10 18:00",
+              strength: "强风带东移",
+              stroke: "#ffbd59",
+              "stroke-width": 3,
+              source: "embed-demo",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [103.5, 34.2],
+                [108.2, 36.1],
+                [113.0, 38.4],
+                [118.2, 39.5],
+              ],
+            },
+          },
+        ],
+      };
+
+      const demoWarningGeoJson = {
+        type: "FeatureCollection",
+        name: "embed-demo-warning",
+        features: [
+          {
+            type: "Feature",
+            properties: {
+              weather_type: "warning",
+              warning_type: "gale-warning",
+              name: "北京大风预警",
+              label: "北京预警",
+              level: "蓝色",
+              time: "06/10 18:00",
+              "marker-color": "#ff8f3d",
+              "marker-size": "large",
+              source: "embed-demo",
+            },
+            geometry: {
+              type: "Point",
+              coordinates: [116.4074, 39.9042],
+            },
+          },
+        ],
+      };
+
+      function managedFeature() {
+        return {
+          type: "Feature",
+          properties: {
+            weather_type: "warning",
+            warning_type: "gale-warning",
+            name: "外部托管预警点",
+            label: "托管预警",
+            level: "黄色",
+            time: "06/10 18:00",
+            "marker-color": "#ffd166",
+            source: "external-crud-demo",
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [112.55, 37.87],
+          },
+        };
+      }
+
+      async function runAction(label, action) {
+        setStatus("已发送", label);
+        try {
+          const result = await action();
+          resultEl.textContent = `${JSON.stringify({ type: "result", label, result }, null, 2)}\n`;
+          setStatus("收到地球页响应", label);
+        } catch (error) {
+          resultEl.textContent = `${JSON.stringify({ type: "error", label, error: error.message || String(error) }, null, 2)}\n`;
+          setStatus("调用失败", error.message || String(error));
+        }
+      }
+
+      function setStatus(title, detail) {
+        statusEl.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(detail || "")}`;
+      }
+
+      function renderClientEvent(eventName, detail) {
+        eventCount += 1;
+        const state = detail?.state || {};
+        const visible = detail?.visibleGeoJson?.features?.length ?? state.displayedFeatureCount ?? 0;
+        eventLogEl.textContent = `#${eventCount} ${eventName} / ${detail?.reason || "--"} / 全量 ${state.featureCount ?? 0} / 当前 ${visible} / 时次 ${state.activeTimeFilter || "__all__"}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      frame.addEventListener("load", () => {
+        setStatus("iframe 已加载", "等待地球 API ready。");
+      });
+
+      earthClient.on("ready", (detail) => renderClientEvent("ready", detail));
+      earthClient.on("change", (detail) => renderClientEvent("change", detail));
+      earthClient.on("filterchange", (detail) => renderClientEvent("filterchange", detail));
+      earthClient.on("layerchange", (detail) => renderClientEvent("layerchange", detail));
+
+      earthClient.getState().then(
+        (state) => {
+          setStatus("ready 队列验证通过", `${state.projection} / ${state.basemapLabel}`);
+          resultEl.textContent = `${JSON.stringify({ type: "early-getState", state }, null, 2)}\n`;
+        },
+        (error) => {
+          setStatus("ready 队列验证失败", error.message || String(error));
+        }
+      );
+
+      document.querySelector("#sendWeather").addEventListener("click", () =>
+        runAction("setGeoJson", () => earthClient.setGeoJson(demoWeatherGeoJson, { name: "embed-demo-weather.geojson", fit: true }))
+      );
+      document.querySelector("#appendWarning").addEventListener("click", () =>
+        runAction("appendGeoJson", () => earthClient.appendGeoJson(demoWarningGeoJson, { name: "embed-demo-weather.geojson", fit: false }))
+      );
+      document.querySelector("#setTime").addEventListener("click", () => runAction("setTimeFilter", () => earthClient.setTimeFilter("06/10 18:00")));
+      document.querySelector("#setBasemap").addEventListener("click", () => runAction("setBasemap", () => earthClient.setBasemap("bright")));
+      document.querySelector("#getState").addEventListener("click", () => runAction("getState", () => earthClient.getState()));
+      document.querySelector("#getGeoJson").addEventListener("click", () => runAction("getGeoJson", () => earthClient.getGeoJson()));
+      document.querySelector("#getVisibleGeoJson").addEventListener("click", () => runAction("getVisibleGeoJson", () => earthClient.getVisibleGeoJson()));
+      document.querySelector("#getProject").addEventListener("click", () =>
+        runAction("getProject", async () => {
+          savedProject = await earthClient.getProject();
+          return savedProject;
+        })
+      );
+      document.querySelector("#setProject").addEventListener("click", () =>
+        runAction("setProject", () => {
+          if (!savedProject) throw new Error("请先读取项目文档。");
+          return earthClient.setProject(savedProject);
+        })
+      );
+      document.querySelector("#getFeatures").addEventListener("click", () => runAction("getFeatures", () => earthClient.getFeatures()));
+      document.querySelector("#getLayers").addEventListener("click", () => runAction("getLayers", () => earthClient.getLayers()));
+      document.querySelector("#getElementTypes").addEventListener("click", () => runAction("getElementTypes", () => earthClient.getElementTypes()));
+      document.querySelector("#getElementTypeState").addEventListener("click", () => runAction("getElementTypeState", () => earthClient.getElementTypeState()));
+      document.querySelector("#hideRainType").addEventListener("click", () => runAction("setElementTypeVisibility", () => earthClient.setElementTypeVisibility("rain-region", false)));
+      document.querySelector("#showAllTypes").addEventListener("click", () => runAction("setAllElementTypeVisibility", () => earthClient.setAllElementTypeVisibility(true)));
+      document.querySelector("#hideWindLayer").addEventListener("click", () => runAction("setLayerVisibility", () => earthClient.setLayerVisibility("wind-regions", false)));
+      document.querySelector("#showWindLayer").addEventListener("click", () => runAction("setLayerVisibility", () => earthClient.setLayerVisibility("wind-regions", true)));
+      document.querySelector("#setWeatherOpacity").addEventListener("click", () => runAction("setWeatherOpacity", () => earthClient.setWeatherOpacity(0.35)));
+      document.querySelector("#standardizeWeather").addEventListener("click", () => runAction("standardize", () => earthClient.standardize()));
+      document.querySelector("#fitWeatherDemo").addEventListener("click", () => runAction("fitWeather", () => earthClient.fitWeather()));
+      document.querySelector("#addManagedFeature").addEventListener("click", () =>
+        runAction("addFeature", async () => {
+          const result = await earthClient.addFeature(managedFeature(), { select: true, fitSelected: true });
+          managedFeatureId = result.id;
+          return result;
+        })
+      );
+      document.querySelector("#updateManagedFeature").addEventListener("click", () =>
+        runAction("updateFeature", () => {
+          if (!managedFeatureId) throw new Error("请先新增单要素。");
+          return earthClient.updateFeature(
+            managedFeatureId,
+            {
+              properties: {
+                name: "外部托管预警点（已更新）",
+                label: "已更新预警",
+                level: "橙色",
+                "marker-color": "#ff7a45",
+              },
+              geometry: {
+                type: "Point",
+                coordinates: [113.2, 38.1],
+              },
+            },
+            { select: true, fitSelected: true }
+          );
+        })
+      );
+      document.querySelector("#selectManagedFeature").addEventListener("click", () =>
+        runAction("selectFeature", () => {
+          if (!managedFeatureId) throw new Error("请先新增单要素。");
+          return earthClient.selectFeature(managedFeatureId, { fit: true });
+        })
+      );
+      document.querySelector("#deleteManagedFeature").addEventListener("click", () =>
+        runAction("deleteFeature", async () => {
+          if (!managedFeatureId) throw new Error("请先新增单要素。");
+          const result = await earthClient.deleteFeature(managedFeatureId);
+          managedFeatureId = "";
+          return result;
+        })
+      );
+      document.querySelector("#clearWeather").addEventListener("click", () => runAction("clearWeather", () => earthClient.clearWeather()));
+    </script>
+  </body>
+</html>

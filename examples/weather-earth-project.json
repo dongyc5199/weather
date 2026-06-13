@@ -1,0 +1,359 @@
+{
+  "type": "WeatherEarthProject",
+  "schema": "weather-earth-project-v1",
+  "version": 1,
+  "name": "weather-earth-project-demo",
+  "savedAt": "2026-06-12T00:00:00.000Z",
+  "app": "weather-earth",
+  "view": {
+    "projection": "globe",
+    "basemap": "satellite-hybrid",
+    "basemapLabel": "Satellite Hybrid",
+    "immersive": {
+      "enabled": false,
+      "mode": "workspace"
+    },
+    "scenePreset": {
+      "key": "custom",
+      "label": "自定义",
+      "custom": true,
+      "detail": "当前图层、底图或显示参数已偏离内置场景。",
+      "available": [
+        {
+          "key": "showcase",
+          "label": "展示",
+          "detail": "卫星地球、真实地图细节、昼夜光照、3D 地形和天气体块全开，适合态势演示。"
+        },
+        {
+          "key": "audit",
+          "label": "校验",
+          "detail": "浅色平面底图、真实地图细节和高对比风区，关闭 3D 干扰，适合检查 GeoJSON 贴合。"
+        },
+        {
+          "key": "city",
+          "label": "城市",
+          "detail": "卫星混合底图、城市建筑和真实标签增强，适合查看城市尺度预警点和影响范围。"
+        }
+      ]
+    },
+    "autoRotate": false,
+    "focusOrbit": {
+      "enabled": true,
+      "active": true,
+      "speedDegreesPerSecond": 8,
+      "targetId": "xian",
+      "mode": "orbit-focus-target"
+    },
+    "activeTimeFilter": "06/10 18:00",
+    "showUntimedFeatures": true,
+    "weatherOpacity": 0.48,
+    "mapDetails": {
+      "enabled": true,
+      "source": "openmaptiles",
+      "tilejson": "https://tiles.openfreemap.org/planet",
+      "sourceMaxZoom": 14,
+      "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+      "mode": "vector-overlay",
+      "layerCount": 14,
+      "labelPlacement": "above-weather-areas-below-weather-markers",
+      "baseLayers": [
+        "earth-detail-water-fill",
+        "earth-detail-park-fill",
+        "earth-detail-waterway-line",
+        "earth-detail-road-casing",
+        "earth-detail-road-line",
+        "earth-detail-boundary-country",
+        "earth-detail-boundary-admin"
+      ],
+      "labelLayers": [
+        "earth-detail-country-label",
+        "earth-detail-state-label",
+        "earth-detail-water-label",
+        "earth-detail-place-label",
+        "earth-detail-road-label",
+        "earth-detail-poi-label",
+        "earth-detail-peak-label"
+      ],
+      "layers": [
+        "earth-detail-water-fill",
+        "earth-detail-park-fill",
+        "earth-detail-waterway-line",
+        "earth-detail-road-casing",
+        "earth-detail-road-line",
+        "earth-detail-boundary-country",
+        "earth-detail-boundary-admin",
+        "earth-detail-country-label",
+        "earth-detail-state-label",
+        "earth-detail-water-label",
+        "earth-detail-place-label",
+        "earth-detail-road-label",
+        "earth-detail-poi-label",
+        "earth-detail-peak-label"
+      ]
+    },
+    "terrain": {
+      "enabled": true,
+      "exaggeration": 1.35,
+      "source": "earth-terrain-dem",
+      "mode": "terrain"
+    },
+    "sunlight": {
+      "enabled": true,
+      "intensity": 0.72,
+      "source": "time-filter",
+      "time": "2026-06-10T10:00:00.000Z",
+      "subsolar": {
+        "lon": 28.4,
+        "lat": 23.0
+      },
+      "layer": "earth-night-side",
+      "terminatorLayer": "earth-terminator-line",
+      "mode": "day-night-terminator"
+    },
+    "buildings": {
+      "enabled": true,
+      "heightScale": 1,
+      "source": "openmaptiles",
+      "minZoom": 14,
+      "mode": "extrusion"
+    },
+    "weather3d": {
+      "enabled": true,
+      "scale": 1,
+      "featureCount": 1,
+      "source": "weather-3d-beacons",
+      "mode": "beacon"
+    },
+    "weatherVolume": {
+      "enabled": true,
+      "scale": 1.15,
+      "featureCount": 1,
+      "source": "weather-regions",
+      "layer": "weather-regions-3d-volume",
+      "mode": "extrusion"
+    },
+    "locationSearch": {
+      "id": "xian",
+      "label": "西安",
+      "type": "place",
+      "category": "",
+      "query": "西安",
+      "searchedAt": "2026-06-12T00:00:00.000Z",
+      "camera": {
+        "lon": 108.9398,
+        "lat": 34.3416,
+        "zoom": 14.5,
+        "bearing": -24,
+        "pitch": 58
+      }
+    },
+    "focusTarget": {
+      "id": "xian",
+      "label": "西安",
+      "type": "place",
+      "source": "project-location-search",
+      "lon": 108.9398,
+      "lat": 34.3416,
+      "zoom": 14.5,
+      "bearing": -24,
+      "pitch": 58,
+      "color": "#ffdd6e",
+      "setAt": "2026-06-12T00:00:00.000Z"
+    },
+    "measurement": {
+      "mode": "distance",
+      "activeMode": "",
+      "finalized": true,
+      "pointCount": 2,
+      "distanceMeters": 1010000,
+      "areaSquareMeters": 0,
+      "distanceText": "1010 km",
+      "areaText": "",
+      "coordinates": [
+        [108.9398, 34.3416],
+        [116.4074, 39.9042]
+      ],
+      "statusText": "距离 / 2 个点 / 长度 1010 km / 已完成"
+    },
+    "cameraTour": {
+      "enabled": true,
+      "playing": false,
+      "activeIndex": -1,
+      "stopCount": 3,
+      "stops": [
+        {
+          "id": "tour-china",
+          "label": "中国全景",
+          "durationMs": 1800,
+          "time": "06/10 18:00",
+          "camera": {
+            "lon": 107.15,
+            "lat": 35.1,
+            "zoom": 5.35,
+            "bearing": -14,
+            "pitch": 36,
+            "map": "5.35/35.1/107.15/-14/36"
+          }
+        },
+        {
+          "id": "tour-northwest-wind",
+          "label": "西北风区",
+          "durationMs": 1800,
+          "time": "06/10 18:00",
+          "camera": {
+            "lon": 106.7,
+            "lat": 35.3,
+            "zoom": 6.7,
+            "bearing": -24,
+            "pitch": 52,
+            "map": "6.7/35.3/106.7/-24/52"
+          }
+        },
+        {
+          "id": "tour-xian-detail",
+          "label": "西安城市细节",
+          "durationMs": 1800,
+          "time": "06/10 18:00",
+          "camera": {
+            "lon": 108.9398,
+            "lat": 34.3416,
+            "zoom": 14.5,
+            "bearing": -24,
+            "pitch": 58,
+            "map": "14.5/34.3416/108.9398/-24/58"
+          }
+        }
+      ]
+    },
+    "camera": {
+      "zoom": 5.35,
+      "lat": 35.1,
+      "lon": 107.15,
+      "bearing": -14,
+      "pitch": 36,
+      "map": "5.35/35.1/107.15/-14/36"
+    }
+  },
+  "source": {
+    "sourceType": "example-project",
+    "sourceLabel": "weather-earth-project-demo",
+    "projection": "WGS84 lon/lat",
+    "schema": "weather-earth-geojson-v1"
+  },
+  "share": {
+    "sourceType": "",
+    "sourceValue": ""
+  },
+  "layers": [
+    {
+      "id": "wind-regions",
+      "label": "面状天气区",
+      "visible": true
+    },
+    {
+      "id": "track-example",
+      "label": "路径",
+      "visible": true
+    },
+    {
+      "id": "warning-points",
+      "label": "预警点",
+      "visible": true
+    }
+  ],
+  "elementTypes": [
+    {
+      "id": "wind-region",
+      "label": "风区",
+      "visible": true
+    },
+    {
+      "id": "rain-region",
+      "label": "降水区",
+      "visible": false
+    },
+    {
+      "id": "warning",
+      "label": "预警点",
+      "visible": true
+    }
+  ],
+  "geojson": {
+    "type": "FeatureCollection",
+    "name": "weather-earth-project-demo",
+    "metadata": {
+      "schema": "weather-earth-geojson-v1",
+      "projection": "WGS84 lon/lat",
+      "source": "manual-project-demo"
+    },
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "weather_type": "wind-region",
+          "name": "project wind region",
+          "level": "level_6",
+          "time": "06/10 18:00",
+          "fill": "#00d6f2",
+          "stroke": "#8ef6ff",
+          "stroke-width": 2
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [104.8, 33.8],
+              [108.4, 34.2],
+              [109.0, 36.3],
+              [106.5, 37.2],
+              [104.2, 35.4],
+              [104.8, 33.8]
+            ]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "weather_type": "rain-region",
+          "name": "hidden rain region",
+          "intensity": "heavy",
+          "time": "06/10 18:00",
+          "fill": "#2f80ff",
+          "stroke": "#8fc5ff",
+          "stroke-width": 2
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [111.4, 29.8],
+              [115.6, 30.4],
+              [116.2, 32.2],
+              [113.2, 33.0],
+              [110.7, 31.4],
+              [111.4, 29.8]
+            ]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "weather_type": "warning",
+          "warning_type": "gale-warning",
+          "name": "project warning",
+          "label": "gale",
+          "level": "orange",
+          "time": "06/10 18:00",
+          "marker-color": "#ff8f3d",
+          "marker-size": "large"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [107.2, 35.1]
+        }
+      }
+    ]
+  }
+}

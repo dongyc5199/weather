@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Google 3D Maps Spike</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23010509'/%3E%3Cpath d='M6 19c5-10 15-12 21-5-2 9-9 12-20 9l5-4z' fill='%234fd9ff'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./google-3d-maps-spike.css?v=20260613-p2-v1" />
+  </head>
+  <body>
+    <main class="google3d-shell">
+      <div id="google3dMap" class="google3d-map" aria-label="Google Maps JavaScript API 3D Maps 对比地图"></div>
+
+      <section class="spike-control" aria-label="Google 3D Maps 对比控制">
+        <div class="spike-title">
+          <span>P2</span>
+          <strong>Google 3D Maps</strong>
+          <small id="statusText">等待加载</small>
+        </div>
+        <div class="spike-row">
+          <select id="benchmarkSelect" aria-label="benchmark 路径"></select>
+          <button id="runBenchmark" type="button">路径</button>
+          <button id="loadSampleWeather" type="button">天气</button>
+          <button id="clearOverlays" type="button">清空</button>
+          <a href="./earth.html?immersive=1" target="_blank" rel="noreferrer">Cesium</a>
+        </div>
+        <div class="spike-row">
+          <select id="placeSelect" aria-label="地点预设"></select>
+          <button id="flyToPlace" type="button">飞行</button>
+          <button id="captureMetrics" type="button">指标</button>
+        </div>
+        <pre id="metricsText" class="metrics-text" aria-live="polite"></pre>
+      </section>
+
+      <section id="keyPanel" class="key-panel" hidden>
+        <strong>需要 Google Maps JavaScript API key</strong>
+        <p>把 key 写入 <code>viewer/earth.config.local.js</code> 的 <code>googleMapsApiKey</code>，或在这里临时输入。</p>
+        <div class="key-row">
+          <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Google Maps JavaScript API key" />
+          <button id="loadApiKey" type="button">加载</button>
+        </div>
+        <small>临时输入只保存在当前页面内存，不写入项目文件。</small>
+      </section>
+    </main>
+
+    <script src="./google-3d-maps-spike.js?v=20260613-p2-v1"></script>
+  </body>
+</html>
