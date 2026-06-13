@@ -825,6 +825,16 @@ button:disabled {
   gap: 4px;
 }
 
+.cesium-credit-logoContainer img {
+  width: auto !important;
+  max-height: 14px !important;
+  opacity: 0.74;
+}
+
+.cesium-credit-textContainer {
+  font-size: 9px;
+}
+
 .cesium-token-panel {
   position: absolute;
   top: 22px;
@@ -1737,6 +1747,25 @@ button:disabled {
 
   .earth-stage {
     min-height: 520px;
+  }
+
+  .cesium-widget-credits {
+    left: 7px !important;
+    bottom: 7px !important;
+    max-width: min(218px, calc(100vw - 74px));
+    padding: 2px 5px;
+    border-radius: 5px;
+    font-size: 8px;
+    opacity: 0.84;
+  }
+
+  .cesium-credit-logoContainer,
+  .cesium-credit-textContainer {
+    gap: 3px;
+  }
+
+  .cesium-credit-logoContainer img {
+    max-height: 10px !important;
   }
 
   .earth-orbit-controls {
