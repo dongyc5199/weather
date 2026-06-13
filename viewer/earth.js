@@ -64,7 +64,7 @@
   const DEFAULT_GEOJSON_URL = "../outputs/nmc-wind/202606101800.geojson";
   const DEFAULT_MANIFEST_URL = "../outputs/nmc-wind/manifest.json";
   const DEFAULT_VIEW = { zoom: 1.25, lat: 28, lon: 105, bearing: 0, pitch: 0 };
-  const DEFAULT_NARROW_VIEW = { ...DEFAULT_VIEW, zoom: 0.74 };
+  const DEFAULT_NARROW_VIEW = { ...DEFAULT_VIEW, zoom: 0.7 };
   const TIME_FILTER_ALL = "__all__";
   const FEATURE_ID_PROPERTY = "_earthFeatureId";
   const INTERNAL_PROPERTY_KEYS = new Set([FEATURE_ID_PROPERTY, "_weatherColor", "_weatherVolumeHeight", "marker-size-px"]);
@@ -135,6 +135,7 @@
     label: "Google Earth P1",
     exposure: 0.96,
     skyAtmosphere: { hueShift: 0, saturationShift: -0.04, brightnessShift: 0.08 },
+    groundAtmosphere: { hueShift: -0.02, saturationShift: 0.04, brightnessShift: 0.06, lightIntensity: 5.6 },
     fog: { enabled: true, density: 0.00016, minimumBrightness: 0.08, screenSpaceErrorFactor: 2.4 },
   };
   const CAMERA_UI_UPDATE_INTERVAL_MS = 150;
@@ -266,7 +267,7 @@
     showcase: {
       label: "展示",
       detail: "Cesium Globe 三维地球，天气作为轻量叠加层。",
-      settings: { projection: "globe", basemap: TILESET_MODE, terrain: true, sunlight: true, buildings: true, weather3d: true, weatherVolume: false, weatherOpacity: 0.42, autoRotate: false, sunlightIntensity: 0.38, weather3dScale: 0.86, weatherVolumeScale: 0.55 },
+      settings: { projection: "globe", basemap: TILESET_MODE, terrain: true, sunlight: false, buildings: true, weather3d: true, weatherVolume: false, weatherOpacity: 0.42, autoRotate: false, sunlightIntensity: 0.38, weather3dScale: 0.86, weatherVolumeScale: 0.55 },
     },
     audit: {
       label: "校验",
@@ -311,7 +312,7 @@
   let mapDetailsEnabled = true;
   let terrainEnabled = true;
   let terrainExaggeration = DEFAULT_TERRAIN_EXAGGERATION;
-  let sunlightEnabled = true;
+  let sunlightEnabled = false;
   let sunlightIntensity = DEFAULT_SUNLIGHT_INTENSITY;
   let sunlightTimeMode = "realtime";
   let sunlightTimeIso = "";
@@ -974,6 +975,13 @@
       if ("saturationShift" in scene.skyAtmosphere) scene.skyAtmosphere.saturationShift = treatment.skyAtmosphere.saturationShift;
       if ("brightnessShift" in scene.skyAtmosphere) scene.skyAtmosphere.brightnessShift = treatment.skyAtmosphere.brightnessShift;
     }
+    if (scene.globe) {
+      if ("showGroundAtmosphere" in scene.globe) scene.globe.showGroundAtmosphere = true;
+      if ("atmosphereHueShift" in scene.globe) scene.globe.atmosphereHueShift = treatment.groundAtmosphere.hueShift;
+      if ("atmosphereSaturationShift" in scene.globe) scene.globe.atmosphereSaturationShift = treatment.groundAtmosphere.saturationShift;
+      if ("atmosphereBrightnessShift" in scene.globe) scene.globe.atmosphereBrightnessShift = treatment.groundAtmosphere.brightnessShift;
+      if ("atmosphereLightIntensity" in scene.globe) scene.globe.atmosphereLightIntensity = treatment.groundAtmosphere.lightIntensity;
+    }
     if (scene.fog) {
       scene.fog.enabled = treatment.fog.enabled;
       scene.fog.density = treatment.fog.density;
@@ -1202,6 +1210,7 @@
   function applyInitialFlags(params) {
     if (params.get("terrain") === "0" || params.get("terrain") === "false") terrainEnabled = false;
     if (isFiniteNumber(params.get("terrainExag"))) terrainExaggeration = clamp(Number(params.get("terrainExag")), 0.3, 2.5);
+    if (params.get("sunlight") === "1" || params.get("sunlight") === "true") sunlightEnabled = true;
     if (params.get("sunlight") === "0" || params.get("sunlight") === "false") sunlightEnabled = false;
     if (isFiniteNumber(params.get("sunlightIntensity"))) sunlightIntensity = clamp(Number(params.get("sunlightIntensity")), 0.2, 1);
     if (params.get("buildings") === "0" || params.get("buildings") === "false") buildingsEnabled = false;
