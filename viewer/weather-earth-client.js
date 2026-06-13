@@ -318,6 +318,10 @@
       return this.send("set-sunlight-intensity", { value });
     }
 
+    setSunlightTime(time, options = {}) {
+      return this.send("set-sunlight-time", { time, options });
+    }
+
     setBuildings(enabled) {
       return this.send("set-buildings", { enabled });
     }

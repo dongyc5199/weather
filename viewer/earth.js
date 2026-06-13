@@ -140,6 +140,13 @@
   const CAMERA_PITCH_DRAG_DEGREES_PER_PIXEL = 0.14;
   const CAMERA_BEARING_DRAG_DEGREES_PER_PIXEL = 0.18;
   const CAMERA_PITCH_WHEEL_DEGREES_PER_PIXEL = 0.035;
+  const SUNLIGHT_REALTIME_SYNC_INTERVAL_MS = 60000;
+  const KEYBOARD_PAN_HEIGHT_FACTOR = 0.16;
+  const KEYBOARD_PAN_MIN_METERS_PER_SECOND = 35;
+  const KEYBOARD_PAN_MAX_METERS_PER_SECOND = 900000;
+  const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 1.8;
+  const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
+  const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
 
   const ELEMENT_IDS = [
     "earthMap", "projectionGlobe", "projectionMap", "scenePresetShowcase", "scenePresetAudit", "scenePresetCity",
@@ -285,6 +292,11 @@
   let terrainExaggeration = DEFAULT_TERRAIN_EXAGGERATION;
   let sunlightEnabled = true;
   let sunlightIntensity = DEFAULT_SUNLIGHT_INTENSITY;
+  let sunlightTimeMode = "realtime";
+  let sunlightTimeIso = "";
+  let sunlightTimeLabel = "当前时间";
+  let sunlightTimeSource = "browser-clock";
+  let lastSunlightClockSyncAt = 0;
   let buildingsEnabled = true;
   let buildingHeightScale = DEFAULT_BUILDING_HEIGHT_SCALE;
   let weather3dEnabled = true;
@@ -323,6 +335,9 @@
   let elementTypeVisibility = new Map(WEATHER_ELEMENT_TYPES.map((type) => [type.id, true]));
   let cameraUiUpdateQueued = false;
   let lastCameraUiUpdateAt = 0;
+  let keyboardNavigationKeys = new Set();
+  let keyboardNavigationModifiers = { shift: false, alt: false, ctrl: false, meta: false };
+  let keyboardNavigationCamera = null;
   let replaceUrlTimer = 0;
   let renderMetrics = { frameCount: 0, fps: 0, frameLatencyMs: 0, lastFrameAt: 0, sampleStartedAt: 0, sampleFrameCount: 0 };
 
@@ -380,6 +395,7 @@
     viewer.scene.screenSpaceCameraController.maximumZoomDistance = 45000000;
     setCameraLookAt(DEFAULT_VIEW);
     applyCesiumLighting();
+    syncSunlightClock({ force: true });
     bindCesiumEvents();
     loadBaseMapProvider(currentBaseMapKey);
     scheduleRenderLoop();
@@ -1014,6 +1030,9 @@
     on(elements.immersiveExitPanel, "click", () => applyImmersiveMode(false));
     on(elements.earthOverview, "click", () => flyToCamera(DEFAULT_VIEW));
     window.addEventListener("keydown", handleKeyboard);
+    window.addEventListener("keyup", handleKeyboardKeyUp);
+    window.addEventListener("blur", clearKeyboardNavigation);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) clearKeyboardNavigation(); });
   }
 
   function initializeFromUrl() {
@@ -1057,6 +1076,11 @@
     if (params.get("basemap") || params.get("tileset") || params.get("provider")) currentBaseMapKey = normalizeBaseMapKey(params.get("basemap") || params.get("tileset") || params.get("provider"));
     if (params.get("quality") || params.get("qualityProfile")) setQualityProfile(params.get("quality") || params.get("qualityProfile"), { forceEvent: false });
     if (params.get("time")) activeTimeFilter = params.get("time");
+    if (params.get("sunTime") || params.get("sunlightTime")) {
+      setSunlightTime(params.get("sunTime") || params.get("sunlightTime"), { source: "url", fallbackRealtime: true });
+    } else if (params.get("time")) {
+      syncSunlightClockFromActiveTime({ source: "url-time", notify: false });
+    }
     if (params.get("untimed") === "0" || params.get("untimed") === "false") showUntimedFeatures = false;
     if (isFiniteNumber(params.get("opacity"))) currentWeatherOpacity = clamp(Number(params.get("opacity")), 0.15, 0.9);
   }
@@ -1568,6 +1592,7 @@
   function setSunlightEnabled(enabled) {
     sunlightEnabled = Boolean(enabled);
     applyCesiumLighting();
+    syncSunlightClock({ force: true });
     updateAllUi();
     emitWeatherEarthEvent("sunlightchange", { sunlight: sunlightState() });
     return sunlightState();
@@ -1597,6 +1622,62 @@
     } catch {
       // Older Cesium builds may not expose SunLight constructor.
     }
+  }
+
+  function syncSunlightClock(options = {}) {
+    if (!viewer || !Cesium) return sunlightState();
+    const now = performance.now();
+    if (!options.force && sunlightTimeMode === "realtime" && now - lastSunlightClockSyncAt < SUNLIGHT_REALTIME_SYNC_INTERVAL_MS) {
+      return sunlightState();
+    }
+    const date = sunlightTimeMode === "weather-time" && sunlightTimeIso ? new Date(sunlightTimeIso) : new Date();
+    if (!validDate(date)) return sunlightState();
+    const julianDate = Cesium.JulianDate.fromDate(date);
+    viewer.clock.currentTime = julianDate;
+    viewer.clock.shouldAnimate = sunlightEnabled && sunlightTimeMode === "realtime";
+    viewer.clock.multiplier = 1;
+    if (sunlightTimeMode === "realtime") {
+      sunlightTimeIso = date.toISOString();
+      sunlightTimeLabel = "当前时间";
+      sunlightTimeSource = "browser-clock";
+    }
+    lastSunlightClockSyncAt = now;
+    updateSunlightInfoText();
+    viewer.scene.requestRender?.();
+    return sunlightState();
+  }
+
+  function syncSunlightClockFromActiveTime(options = {}) {
+    if (activeTimeFilter === TIME_FILTER_ALL) return setSunlightRealtime(options);
+    return setSunlightTime(activeTimeFilter, { ...options, source: options.source || "time-filter", fallbackRealtime: true });
+  }
+
+  function setSunlightRealtime(options = {}) {
+    sunlightTimeMode = "realtime";
+    sunlightTimeLabel = "当前时间";
+    sunlightTimeSource = options.source || "browser-clock";
+    syncSunlightClock({ force: true });
+    if (options.notify) emitWeatherEarthEvent("sunlightchange", { sunlight: sunlightState() });
+    return sunlightState();
+  }
+
+  function setSunlightTime(value, options = {}) {
+    const raw = String(value ?? "").trim();
+    if (!raw || raw === TIME_FILTER_ALL || raw.toLowerCase() === "realtime" || raw.toLowerCase() === "now") {
+      return setSunlightRealtime({ ...options, source: options.source || "manual-realtime" });
+    }
+    const date = parseWeatherTimeToDate(raw);
+    if (!date) {
+      if (options.fallbackRealtime) return setSunlightRealtime({ ...options, source: "unparsed-time" });
+      throw new Error(`无法解析太阳时间: ${raw}`);
+    }
+    sunlightTimeMode = "weather-time";
+    sunlightTimeIso = date.toISOString();
+    sunlightTimeLabel = raw;
+    sunlightTimeSource = options.source || "manual";
+    syncSunlightClock({ force: true });
+    if (options.notify) emitWeatherEarthEvent("sunlightchange", { sunlight: sunlightState() });
+    return sunlightState();
   }
 
   function setBuildingsEnabled(enabled) {
@@ -1675,7 +1756,11 @@
       updateRenderMetrics(now, now - lastTime);
       lastTime = now;
       if (viewer) {
-        if (focusOrbitEnabled && focusTarget) {
+        if (sunlightEnabled) syncSunlightClock();
+        if (updateKeyboardNavigation(seconds)) {
+          scheduleCameraUiUpdate(now);
+          scheduleReplaceUrlState();
+        } else if (focusOrbitEnabled && focusTarget) {
           rotateAroundFocus(seconds);
           scheduleCameraUiUpdate(now);
         } else if (autoRotateEnabled) {
@@ -1839,17 +1924,27 @@
     if (!viewer) return { ...lastCamera, map: serializeMapParam(lastCamera) };
     const center = cameraCenterLonLat() || { lon: lastCamera.lon, lat: lastCamera.lat };
     const carto = Cesium.Cartographic.fromCartesian(viewer.camera.positionWC);
-    const height = carto.height;
+    const range = cameraRangeToCenter(center) || carto.height;
     const pitch = cameraGroundPitch(center) ?? clamp(90 + Cesium.Math.toDegrees(viewer.camera.pitch), CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
     const camera = {
       lon: center.lon,
       lat: center.lat,
-      zoom: heightToZoom(height),
+      zoom: heightToZoom(range),
       bearing: normalizeBearing(Cesium.Math.toDegrees(viewer.camera.heading)),
       pitch,
     };
     camera.map = serializeMapParam(camera);
     return camera;
+  }
+
+  function cameraRangeToCenter(center) {
+    if (!viewer || !center || !validLonLat(center.lon, center.lat)) return 0;
+    try {
+      const target = Cesium.Cartesian3.fromDegrees(center.lon, center.lat, 0);
+      return Cesium.Cartesian3.distance(viewer.camera.positionWC, target);
+    } catch {
+      return 0;
+    }
   }
 
   function cameraGroundPitch(center) {
@@ -1904,6 +1999,63 @@
     scheduleCameraUiUpdate();
     viewer?.scene?.requestRender();
     return normalized;
+  }
+
+  function updateKeyboardNavigation(seconds) {
+    if (!viewer || !keyboardNavigationKeys.size || isTypingTarget(document.activeElement)) return false;
+    const keys = keyboardNavigationKeys;
+    const camera = keyboardNavigationCamera || normalizeCamera(lastCamera);
+    let next = { ...camera };
+    let moved = false;
+    const shiftMode = keyboardNavigationModifiers.shift;
+    const left = keys.has("ArrowLeft") ? 1 : 0;
+    const right = keys.has("ArrowRight") ? 1 : 0;
+    const up = keys.has("ArrowUp") ? 1 : 0;
+    const down = keys.has("ArrowDown") ? 1 : 0;
+    if (shiftMode) {
+      const bearingDelta = (right - left) * KEYBOARD_ROTATE_DEGREES_PER_SECOND * seconds;
+      const pitchDelta = (up - down) * KEYBOARD_TILT_DEGREES_PER_SECOND * seconds;
+      if (bearingDelta || pitchDelta) {
+        next.bearing += bearingDelta;
+        next.pitch = clamp(next.pitch + pitchDelta, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+        moved = true;
+      }
+    } else {
+      const forwardAxis = up - down;
+      const rightAxis = right - left;
+      if (forwardAxis || rightAxis) {
+        const length = Math.hypot(forwardAxis, rightAxis) || 1;
+        const meters = keyboardPanMetersPerSecond(camera) * seconds;
+        next = panCameraByMeters(next, meters * forwardAxis / length, meters * rightAxis / length);
+        moved = true;
+      }
+    }
+    const zoomAxis = (keys.has("Equal") || keys.has("NumpadAdd") ? 1 : 0) - (keys.has("Minus") || keys.has("NumpadSubtract") ? 1 : 0);
+    if (zoomAxis) {
+      next.zoom = clamp(next.zoom + zoomAxis * KEYBOARD_ZOOM_LEVELS_PER_SECOND * seconds, 0.4, 19);
+      moved = true;
+    }
+    if (!moved) return false;
+    keyboardNavigationCamera = next;
+    setCameraAngle(next, { duration: 0 });
+    return true;
+  }
+
+  function keyboardPanMetersPerSecond(camera) {
+    return clamp(zoomToHeight(camera.zoom) * KEYBOARD_PAN_HEIGHT_FACTOR, KEYBOARD_PAN_MIN_METERS_PER_SECOND, KEYBOARD_PAN_MAX_METERS_PER_SECOND);
+  }
+
+  function panCameraByMeters(camera, forwardMeters, rightMeters) {
+    const heading = Cesium.Math.toRadians(camera.bearing || 0);
+    const eastMeters = Math.sin(heading) * forwardMeters + Math.cos(heading) * rightMeters;
+    const northMeters = Math.cos(heading) * forwardMeters - Math.sin(heading) * rightMeters;
+    const metersPerDegreeLat = 111320;
+    const cosLat = Math.max(0.08, Math.cos(Cesium.Math.toRadians(camera.lat)));
+    return {
+      ...camera,
+      lon: clampLon(camera.lon + eastMeters / (metersPerDegreeLat * cosLat)),
+      lat: clamp(camera.lat + northMeters / metersPerDegreeLat, -85, 85),
+    };
   }
 
   function focusCurrentCameraCenter() {
@@ -2170,6 +2322,7 @@
 
   function setTimeFilter(value, options = {}) {
     activeTimeFilter = value || TIME_FILTER_ALL;
+    syncSunlightClockFromActiveTime({ source: options.sunlightSource || "time-filter", notify: options.notify !== false });
     renderWeather();
     if (options.notify !== false) emitWeatherEarthEvent("filterchange", { activeTimeFilter });
     return activeTimeFilter;
@@ -2216,6 +2369,7 @@
     const frame = manifestFrames[manifestIndex];
     await loadGeoJsonFromUrl(frame.geojsonUrl, frame.label, { fit: options.fit === true, shareType: "manifest", shareValue: currentShareSourceValue || DEFAULT_MANIFEST_URL });
     if (frame.time) setTimeFilter(frame.time, { notify: false });
+    else setSunlightTime(frame.label || frame.geojsonUrl, { source: "manifest-frame", fallbackRealtime: true });
     renderManifestControls();
   }
 
@@ -2361,7 +2515,11 @@
       syncEditor: options.syncEditor !== false,
       eventReason: options.eventReason || "project-load",
     });
-    setTimeFilter(view.activeTimeFilter || TIME_FILTER_ALL, { notify: false });
+    if (view.activeTimeFilter) {
+      setTimeFilter(view.activeTimeFilter, { notify: false });
+    } else if (!projectHasFixedSunlightTime(view)) {
+      setTimeFilter(TIME_FILTER_ALL, { notify: false });
+    }
     if (view.camera || view.map || view.zoom) flyToCamera(view.camera || view, { duration: 0 });
     applyImmersiveMode(Boolean(view.immersive?.enabled ?? view.immersive ?? immersiveEnabled));
     renderWeather();
@@ -2376,6 +2534,7 @@
     const sunlight = view.sunlight && typeof view.sunlight === "object" ? view.sunlight : {};
     sunlightEnabled = Boolean(sunlight.enabled ?? view.sunlightEnabled ?? sunlightEnabled);
     sunlightIntensity = clamp(Number(sunlight.intensity ?? sunlight.opacity ?? view.sunlightIntensity ?? sunlightIntensity), 0.2, 1);
+    applyProjectSunlightTimeState(sunlight);
     const mapDetails = view.mapDetails && typeof view.mapDetails === "object" ? view.mapDetails : {};
     mapDetailsEnabled = Boolean(mapDetails.enabled ?? view.mapDetailsEnabled ?? mapDetailsEnabled);
     const buildings = view.buildings && typeof view.buildings === "object" ? view.buildings : {};
@@ -2388,6 +2547,22 @@
     weatherVolumeEnabled = Boolean(weatherVolume.enabled ?? view.weatherVolumeEnabled ?? weatherVolumeEnabled);
     weatherVolumeScale = clamp(Number(weatherVolume.scale ?? weatherVolume.heightScale ?? view.weatherVolumeScale ?? weatherVolumeScale), 0.25, 2.5);
     applyCesiumLighting();
+  }
+
+  function applyProjectSunlightTimeState(sunlight = {}) {
+    const mode = sunlight.clockMode || sunlight.timeMode || sunlight.time?.mode;
+    const value = sunlight.currentTime || sunlight.time?.currentTime || sunlight.time?.iso || sunlight.timeIso || sunlight.label;
+    if (mode === "weather-time" && value) {
+      setSunlightTime(value, { source: "project", fallbackRealtime: true });
+    } else if (mode === "realtime") {
+      setSunlightRealtime({ source: "project" });
+    }
+  }
+
+  function projectHasFixedSunlightTime(view = {}) {
+    const sunlight = view.sunlight && typeof view.sunlight === "object" ? view.sunlight : {};
+    return Boolean((sunlight.clockMode === "weather-time" || sunlight.timeMode === "weather-time" || sunlight.time?.mode === "weather-time") &&
+      (sunlight.currentTime || sunlight.time?.currentTime || sunlight.time?.iso || sunlight.timeIso || sunlight.label));
   }
 
   async function loadProjectFromFile(file) {
@@ -2573,7 +2748,7 @@
     if (elements.terrainInfo) elements.terrainInfo.textContent = activeProvider.supportsTerrain
       ? (terrainEnabled ? `Cesium Globe 地形开启 / 强度 ${terrainExaggeration.toFixed(2)}` : "地形关闭，使用椭球表面。")
       : "当前底座不提供独立地形；天气仍贴合地球表面。";
-    if (elements.sunlightInfo) elements.sunlightInfo.textContent = sunlightEnabled ? `Cesium 太阳光照开启 / 强度 ${sunlightIntensity.toFixed(2)}` : "光照关闭。";
+    updateSunlightInfoText();
     if (elements.buildingInfo) elements.buildingInfo.textContent = activeProvider.supportsBuildings
       ? (buildingsEnabled ? "摄影测量建筑随 3D Tiles 加载。" : "建筑显示状态已关闭记录；摄影测量底座不回退。")
       : "当前非 Google 底座不提供摄影测量城市建筑。";
@@ -2642,6 +2817,23 @@
       <div>范围：${bounds ? `${formatLngLat(bounds.west, bounds.south)} - ${formatLngLat(bounds.east, bounds.north)}` : "--"}</div>
       <div>质量：${validation.errors.length} 错误 / ${validation.warnings.length} 提示</div>
     `;
+  }
+
+  function sunlightClockText() {
+    if (sunlightTimeMode === "weather-time") return `太阳时间 ${sunlightTimeLabel || formatSunlightIso(sunlightTimeIso)}`;
+    return `太阳时间实时同步 ${formatSunlightIso(sunlightTimeIso)}`;
+  }
+
+  function updateSunlightInfoText() {
+    if (elements.sunlightInfo) elements.sunlightInfo.textContent = sunlightEnabled ? `Cesium 太阳光照开启 / 强度 ${sunlightIntensity.toFixed(2)} / ${sunlightClockText()}` : "光照关闭。";
+  }
+
+  function formatSunlightIso(iso) {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (!validDate(date)) return "";
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
   function updateTimeFilterControls() {
@@ -3161,7 +3353,16 @@
   }
 
   function sunlightState() {
-    return { enabled: sunlightEnabled, intensity: Number(sunlightIntensity.toFixed(2)), mode: sunlightEnabled ? "cesium-sun-light" : "off" };
+    return {
+      enabled: sunlightEnabled,
+      intensity: Number(sunlightIntensity.toFixed(2)),
+      mode: sunlightEnabled ? "cesium-sun-light" : "off",
+      clockMode: sunlightTimeMode,
+      currentTime: sunlightTimeIso || "",
+      label: sunlightTimeLabel,
+      source: sunlightTimeSource,
+      autoUpdate: sunlightTimeMode === "realtime",
+    };
   }
 
   function buildingState() {
@@ -3348,6 +3549,7 @@
     setTerrainExaggeration(value) { const terrain = setTerrainExaggeration(value); return { terrain, state: this.getState() }; },
     setSunlight(enabled) { const sunlight = setSunlightEnabled(enabled); return { sunlight, state: this.getState() }; },
     setSunlightIntensity(value) { const sunlight = setSunlightIntensity(value); return { sunlight, state: this.getState() }; },
+    setSunlightTime(value, options = {}) { const sunlight = setSunlightTime(value, { ...options, notify: options.notify !== false }); updateAllUi(); return { sunlight, state: this.getState() }; },
     setBuildings(enabled) { const buildings = setBuildingsEnabled(enabled); return { buildings, state: this.getState() }; },
     setBuildingHeightScale(value) { const buildings = setBuildingHeightScale(value); return { buildings, state: this.getState() }; },
     setWeather3d(enabled) { const weather3d = setWeather3dEnabled(enabled); return { weather3d, state: this.getState() }; },
@@ -3418,6 +3620,7 @@
       case "set-terrain-exaggeration": return weatherEarthApi.setTerrainExaggeration(message.value ?? message.exaggeration);
       case "set-sunlight": return weatherEarthApi.setSunlight(message.enabled ?? message.value);
       case "set-sunlight-intensity": return weatherEarthApi.setSunlightIntensity(message.value ?? message.intensity ?? message.opacity);
+      case "set-sunlight-time": return weatherEarthApi.setSunlightTime(message.time ?? message.value, options);
       case "set-buildings": return weatherEarthApi.setBuildings(message.enabled ?? message.value);
       case "set-building-height-scale": return weatherEarthApi.setBuildingHeightScale(message.value ?? message.heightScale ?? message.scale);
       case "set-weather-3d": return weatherEarthApi.setWeather3d(message.enabled ?? message.value);
@@ -3573,6 +3776,40 @@
 
   function cloneJson(value) {
     return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  }
+
+  function parseWeatherTimeToDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const isoWithZone = raw.match(/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/);
+    if (isoWithZone) {
+      const parsed = new Date(raw);
+      return validDate(parsed) ? parsed : null;
+    }
+    const compact = raw.match(/(?:^|[^\d])(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(?:[^\d]|$)/) || raw.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (compact) return localDate(Number(compact[1]), Number(compact[2]), Number(compact[3]), Number(compact[4]), Number(compact[5]));
+    const compactDate = raw.match(/(?:^|[^\d])(\d{4})(\d{2})(\d{2})(?:[^\d]|$)/) || raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (compactDate) return localDate(Number(compactDate[1]), Number(compactDate[2]), Number(compactDate[3]));
+    const full = raw.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})(?:日)?(?:[ T\s]+(\d{1,2})(?::?(\d{2}))?)?/);
+    if (full) return localDate(Number(full[1]), Number(full[2]), Number(full[3]), Number(full[4] || 0), Number(full[5] || 0));
+    const md = raw.match(/(?:^|[^\d])(\d{1,2})[-/月](\d{1,2})(?:日)?(?:[ T\s]+(\d{1,2})(?::?(\d{2}))?)?/);
+    if (md) {
+      const year = new Date().getFullYear();
+      return localDate(year, Number(md[1]), Number(md[2]), Number(md[3] || 0), Number(md[4] || 0));
+    }
+    const fallback = new Date(raw);
+    return validDate(fallback) ? fallback : null;
+  }
+
+  function localDate(year, month, day, hour = 0, minute = 0) {
+    const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (!validDate(date)) return null;
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day || date.getHours() !== hour || date.getMinutes() !== minute) return null;
+    return date;
+  }
+
+  function validDate(date) {
+    return date instanceof Date && Number.isFinite(date.getTime());
   }
 
   function featureLabel(feature) {
@@ -3764,6 +4001,7 @@
     url.searchParams.set("quality", activeQualityProfile);
     if (currentShareSourceType && currentShareSourceValue) url.searchParams.set(currentShareSourceType, currentShareSourceValue);
     if (activeTimeFilter !== TIME_FILTER_ALL) url.searchParams.set("time", activeTimeFilter);
+    if (activeTimeFilter === TIME_FILTER_ALL && sunlightTimeMode === "weather-time" && sunlightTimeIso) url.searchParams.set("sunTime", sunlightTimeIso);
     if (!showUntimedFeatures) url.searchParams.set("untimed", "0");
     if (!autoRotateEnabled) url.searchParams.set("rotate", "0");
     if (focusOrbitEnabled) url.searchParams.set("focusOrbit", "1");
@@ -3870,18 +4108,63 @@
   }
 
   function handleKeyboard(event) {
-    if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
-    if (event.key === "h" || event.key === "H") flyToCamera(DEFAULT_VIEW);
-    if (event.key === "+" || event.key === "=") zoomCamera(-0.6);
-    if (event.key === "-") zoomCamera(0.6);
-    if (event.key === "n" || event.key === "N") flyToCamera({ ...currentCameraState(), bearing: 0 });
-    if (event.key === "ArrowLeft") event.shiftKey ? rotateCamera(-8) : viewer.camera.moveLeft(90000);
-    if (event.key === "ArrowRight") event.shiftKey ? rotateCamera(8) : viewer.camera.moveRight(90000);
-    if (event.key === "ArrowUp") event.shiftKey ? tiltCamera(6) : viewer.camera.moveForward(90000);
-    if (event.key === "ArrowDown") event.shiftKey ? tiltCamera(-6) : viewer.camera.moveBackward(90000);
-    if (event.key === " " && manifestFrames.length) { event.preventDefault(); toggleManifestPlayback(); }
-    if (event.key === "[") stepManifest(-1);
-    if (event.key === "]") stepManifest(1);
+    if (isTypingTarget(document.activeElement)) return;
+    keyboardNavigationModifiers = { shift: event.shiftKey, alt: event.altKey, ctrl: event.ctrlKey, meta: event.metaKey };
+    const code = normalizedKeyboardCode(event);
+    if (isContinuousNavigationCode(code)) {
+      if (!keyboardNavigationKeys.size) keyboardNavigationCamera = normalizeCamera(lastCamera);
+      keyboardNavigationKeys.add(code);
+      stopKeyboardEvent(event);
+      return;
+    }
+    if (event.repeat) return;
+    if (code === "KeyH") { stopKeyboardEvent(event); flyToCamera(DEFAULT_VIEW); return; }
+    if (code === "KeyN") { stopKeyboardEvent(event); flyToCamera({ ...currentCameraState(), bearing: 0 }); return; }
+    if (code === "Space" && manifestFrames.length) { stopKeyboardEvent(event); toggleManifestPlayback(); return; }
+    if (code === "BracketLeft") { stopKeyboardEvent(event); stepManifest(-1); return; }
+    if (code === "BracketRight") { stopKeyboardEvent(event); stepManifest(1); }
+  }
+
+  function handleKeyboardKeyUp(event) {
+    keyboardNavigationModifiers = { shift: event.shiftKey, alt: event.altKey, ctrl: event.ctrlKey, meta: event.metaKey };
+    const code = normalizedKeyboardCode(event);
+    if (isContinuousNavigationCode(code)) {
+      keyboardNavigationKeys.delete(code);
+      if (!keyboardNavigationKeys.size) finishKeyboardNavigation();
+      stopKeyboardEvent(event);
+    }
+  }
+
+  function finishKeyboardNavigation() {
+    keyboardNavigationCamera = null;
+    if (viewer) lastCamera = currentCameraState();
+  }
+
+  function clearKeyboardNavigation() {
+    keyboardNavigationKeys.clear();
+    keyboardNavigationModifiers = { shift: false, alt: false, ctrl: false, meta: false };
+    finishKeyboardNavigation();
+  }
+
+  function normalizedKeyboardCode(event) {
+    if (event.code === "Equal" || event.key === "+" || event.key === "=") return "Equal";
+    if (event.code === "Minus" || event.key === "-") return "Minus";
+    if (event.code === "NumpadAdd") return "NumpadAdd";
+    if (event.code === "NumpadSubtract") return "NumpadSubtract";
+    return event.code || event.key;
+  }
+
+  function isContinuousNavigationCode(code) {
+    return ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Equal", "Minus", "NumpadAdd", "NumpadSubtract"].includes(code);
+  }
+
+  function stopKeyboardEvent(event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function isTypingTarget(element) {
+    return ["INPUT", "TEXTAREA", "SELECT"].includes(element?.tagName) || Boolean(element?.isContentEditable);
   }
 
   function setStatus(title, detail = "") {
