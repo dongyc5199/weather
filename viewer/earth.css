@@ -1740,20 +1740,20 @@ button:disabled {
   }
 
   .earth-orbit-controls {
-    top: 12px;
-    left: 12px;
+    top: 64px;
+    left: auto;
     right: 12px;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 6px;
-    padding: 6px;
+    grid-template-columns: 36px;
+    gap: 7px;
+    padding: 0;
   }
 
   .earth-menu-panel {
-    top: 68px;
-    left: 12px;
-    right: 12px;
-    width: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    top: 64px;
+    left: auto;
+    right: 58px;
+    width: 162px;
+    grid-template-columns: 1fr;
     padding: 7px;
   }
 
@@ -1761,7 +1761,7 @@ button:disabled {
     min-height: 36px;
     padding: 0 10px;
     font-size: 12px;
-    text-align: center;
+    text-align: left;
   }
 
   .earth-quick-search {
@@ -1851,7 +1851,7 @@ button:disabled {
   }
 
   .earth-orbit-controls button {
-    width: auto;
+    width: 36px;
   }
 
   .earth-angle-control {
@@ -1875,7 +1875,7 @@ button:disabled {
   }
 
   .earth-compass {
-    top: 76px;
+    top: 18px;
     right: 12px;
   }
 
