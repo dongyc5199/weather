@@ -134,6 +134,7 @@
     id: "google-earth-p1",
     label: "Google Earth P1",
     exposure: 0.96,
+    skyBox: true,
     skyAtmosphere: { hueShift: 0, saturationShift: -0.04, brightnessShift: 0.08 },
     groundAtmosphere: { hueShift: -0.02, saturationShift: 0.04, brightnessShift: 0.06, lightIntensity: 5.6 },
     fog: { enabled: true, density: 0.00016, minimumBrightness: 0.08, screenSpaceErrorFactor: 2.4 },
@@ -354,6 +355,7 @@
   let utilityEntities = [];
   let drawEntities = [];
   let measurementEntities = [];
+  let earthSkyBox = null;
   let layerVisibility = new Map(WEATHER_LAYERS.map((layer) => [layer.id, true]));
   let elementTypeVisibility = new Map(WEATHER_ELEMENT_TYPES.map((type) => [type.id, true]));
   let cameraUiUpdateQueued = false;
@@ -966,7 +968,13 @@
     scene.highDynamicRange = true;
     scene.backgroundColor = Cesium.Color.fromCssColorString("#03070d");
     scene.exposure = treatment.exposure;
-    if (scene.skyBox) scene.skyBox.show = false;
+    if (treatment.skyBox && Cesium.SkyBox) {
+      earthSkyBox ||= createEarthSkyBox();
+      scene.skyBox = earthSkyBox;
+      scene.skyBox.show = true;
+    } else if (scene.skyBox) {
+      scene.skyBox.show = false;
+    }
     if (scene.sun) scene.sun.show = false;
     if (scene.moon) scene.moon.show = false;
     if (scene.skyAtmosphere) {
@@ -988,6 +996,45 @@
       scene.fog.minimumBrightness = treatment.fog.minimumBrightness;
       if ("screenSpaceErrorFactor" in scene.fog) scene.fog.screenSpaceErrorFactor = treatment.fog.screenSpaceErrorFactor;
     }
+  }
+
+  function createEarthSkyBox() {
+    return new Cesium.SkyBox({
+      sources: {
+        positiveX: starFieldDataUrl(11),
+        negativeX: starFieldDataUrl(23),
+        positiveY: starFieldDataUrl(37),
+        negativeY: starFieldDataUrl(41),
+        positiveZ: starFieldDataUrl(53),
+        negativeZ: starFieldDataUrl(67),
+      },
+    });
+  }
+
+  function starFieldDataUrl(seed) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    ctx.fillStyle = "#000207";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let state = seed >>> 0;
+    const next = () => {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
+    for (let i = 0; i < 160; i += 1) {
+      const x = next() * canvas.width;
+      const y = next() * canvas.height;
+      const radius = 0.25 + next() * 0.55;
+      const alpha = 0.1 + next() * 0.32;
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(235, 246, 255, ${alpha.toFixed(3)})`;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return canvas.toDataURL("image/png");
   }
 
   function setQualityProfile(profile, options = {}) {
