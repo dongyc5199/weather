@@ -520,7 +520,7 @@
 
   function handleCameraInteractionWheel(event) {
     if (!viewer || event.defaultPrevented) return;
-    beginCameraInteraction(event.shiftKey || event.altKey ? "tilt-wheel" : "wheel");
+    beginCameraInteraction(isCameraAngleModifier(event) ? "tilt-wheel" : "wheel");
     endCameraInteractionSoon();
   }
 
@@ -542,7 +542,7 @@
   function handleCameraAnglePointerDown(event) {
     if (!viewer || drawMode || measurementState.active) return;
     const isRightDrag = event.button === 2;
-    const isModifierLeftDrag = event.button === 0 && (event.shiftKey || event.altKey);
+    const isModifierLeftDrag = event.button === 0 && isCameraAngleModifier(event);
     if (!isRightDrag && !isModifierLeftDrag) return;
     beginCameraInteraction(isRightDrag ? "right-drag" : "modifier-drag");
     const canvas = viewer.scene.canvas;
@@ -596,7 +596,7 @@
 
   function handleCameraAngleWheel(event) {
     if (!viewer || drawMode || measurementState.active) return;
-    if (!(event.shiftKey || event.altKey)) {
+    if (!isCameraAngleModifier(event)) {
       if (immersiveEnabled) handleImmersiveWheelZoom(event);
       return;
     }
@@ -608,6 +608,10 @@
     setCameraAngle({ ...camera, pitch: clamp(camera.pitch + pitchDelta, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX) }, { duration: 0 });
     endCameraInteractionSoon();
     stopCameraGestureEvent(event);
+  }
+
+  function isCameraAngleModifier(event) {
+    return Boolean(event?.shiftKey || event?.altKey || event?.ctrlKey || event?.metaKey);
   }
 
   function handleImmersiveWheelZoom(event) {
