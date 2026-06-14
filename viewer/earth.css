@@ -1287,7 +1287,7 @@ button:disabled {
 .earth-menu-panel {
   position: absolute;
   top: 82px;
-  right: 76px;
+  right: 124px;
   z-index: 5;
   display: none;
   width: 172px;
