@@ -159,19 +159,21 @@
   };
   const CAMERA_PITCH_MIN = 0;
   const CAMERA_PITCH_MAX = 85;
+  const CAMERA_TOP_DOWN_BEARING_PITCH = 0.1;
+  const CAMERA_TOP_DOWN_PUBLIC_PITCH_EPSILON = 0.2;
   const CAMERA_PITCH_DRAG_DEGREES_PER_PIXEL = 0.14;
   const CAMERA_BEARING_DRAG_DEGREES_PER_PIXEL = 0.18;
   const CAMERA_PITCH_WHEEL_DEGREES_PER_PIXEL = 0.035;
   const SUNLIGHT_REALTIME_SYNC_INTERVAL_MS = 60000;
-  const KEYBOARD_PAN_HEIGHT_FACTOR = 0.16;
-  const KEYBOARD_PAN_MIN_METERS_PER_SECOND = 35;
-  const KEYBOARD_PAN_MAX_METERS_PER_SECOND = 900000;
-  const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 1.8;
-  const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
-  const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
-  const KEYBOARD_ACCELERATION_PER_SECOND = 10;
-  const KEYBOARD_DECELERATION_PER_SECOND = 12;
-  const KEYBOARD_NAVIGATION_EPSILON = 0.015;
+  const KEYBOARD_PAN_HEIGHT_FACTOR = 0.02;
+  const KEYBOARD_PAN_MIN_METERS_PER_SECOND = 24;
+  const KEYBOARD_PAN_MAX_METERS_PER_SECOND = 320000;
+  const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 0.95;
+  const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 28;
+  const KEYBOARD_TILT_DEGREES_PER_SECOND = 24;
+  const KEYBOARD_ACCELERATION_PER_SECOND = 4.4;
+  const KEYBOARD_DECELERATION_PER_SECOND = 5;
+  const KEYBOARD_NAVIGATION_EPSILON = 0.006;
   const IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA = 1.35;
   const IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL = 0.0028;
   const IMMERSIVE_WHEEL_ZOOM_MAX_DELTA = 0.95;
@@ -2211,7 +2213,7 @@
   function cameraOffset(camera) {
     return new Cesium.HeadingPitchRange(
       Cesium.Math.toRadians(camera.bearing || 0),
-      Cesium.Math.toRadians(-90 + clamp(Number(camera.pitch ?? 45), 0, 85)),
+      Cesium.Math.toRadians(-90 + cesiumCameraPitch(camera)),
       zoomToHeight(camera.zoom)
     );
   }
@@ -2219,9 +2221,19 @@
   function cameraOrientation(camera) {
     return {
       heading: Cesium.Math.toRadians(camera.bearing || 0),
-      pitch: Cesium.Math.toRadians(-90 + clamp(Number(camera.pitch ?? 45), 0, 85)),
+      pitch: Cesium.Math.toRadians(-90 + cesiumCameraPitch(camera)),
       roll: 0,
     };
+  }
+
+  function cesiumCameraPitch(camera) {
+    const pitch = clamp(Number(camera.pitch ?? 45), CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    return pitch <= CAMERA_PITCH_MIN ? CAMERA_TOP_DOWN_BEARING_PITCH : pitch;
+  }
+
+  function publicCameraPitch(pitch) {
+    const value = clamp(Number(pitch), CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    return value < CAMERA_TOP_DOWN_PUBLIC_PITCH_EPSILON ? 0 : value;
   }
 
   function normalizeCamera(camera = {}) {
@@ -2242,7 +2254,8 @@
     const center = cameraCenterLonLat() || { lon: lastCamera.lon, lat: lastCamera.lat };
     const carto = Cesium.Cartographic.fromCartesian(viewer.camera.positionWC);
     const range = cameraRangeToCenter(center) || carto.height;
-    const pitch = cameraGroundPitch(center) ?? clamp(90 + Cesium.Math.toDegrees(viewer.camera.pitch), CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    const measuredPitch = cameraGroundPitch(center) ?? clamp(90 + Cesium.Math.toDegrees(viewer.camera.pitch), CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    const pitch = publicCameraPitch(measuredPitch);
     const camera = {
       lon: center.lon,
       lat: center.lat,
