@@ -63,7 +63,7 @@
   const PROJECT_SCHEMA = "weather-earth-project-v1";
   const DEFAULT_GEOJSON_URL = "../outputs/nmc-wind/202606101800.geojson";
   const DEFAULT_MANIFEST_URL = "../outputs/nmc-wind/manifest.json";
-  const DEFAULT_VIEW = { zoom: 1.25, lat: 28, lon: 105, bearing: 0, pitch: 0 };
+  const DEFAULT_VIEW = { zoom: 1.32, lat: 28, lon: 105, bearing: 0, pitch: 0 };
   const DEFAULT_NARROW_VIEW = { ...DEFAULT_VIEW, zoom: 0.7 };
   const TIME_FILTER_ALL = "__all__";
   const FEATURE_ID_PROPERTY = "_earthFeatureId";
