@@ -143,6 +143,7 @@
   const URL_UPDATE_DEBOUNCE_MS = 500;
   const POINTER_PROBE_INTERVAL_MS = 90;
   const CAMERA_INTERACTION_IDLE_MS = 260;
+  const VIEWPORT_HOME_RESIZE_DEBOUNCE_MS = 160;
   const CAMERA_INTERACTION_QUALITY = {
     maximumScreenSpaceError: 10,
     dynamicScreenSpaceErrorDensity: 0.0038,
@@ -372,6 +373,8 @@
   let cameraInteractionRestoreTimer = 0;
   let interactionQualityActive = false;
   let pointerProbeLastAt = 0;
+  let responsiveHomeCamera = false;
+  let viewportResizeTimer = 0;
   let replaceUrlQueuedDuringInteraction = false;
   let replaceUrlTimer = 0;
   let renderMetrics = { frameCount: 0, fps: 0, frameLatencyMs: 0, lastFrameAt: 0, sampleStartedAt: 0, sampleFrameCount: 0 };
@@ -642,6 +645,7 @@
 
   function beginCameraInteraction(reason = "camera") {
     if (!viewer) return;
+    responsiveHomeCamera = false;
     window.clearTimeout(cameraInteractionRestoreTimer);
     cameraInteractionRestoreTimer = 0;
     cameraInteractionReason = reason;
@@ -1272,6 +1276,7 @@
     document.addEventListener("pointerdown", handleEarthMenuPointerDown, true);
     window.addEventListener("keydown", handleKeyboard);
     window.addEventListener("keyup", handleKeyboardKeyUp);
+    window.addEventListener("resize", handleViewportResize);
     window.addEventListener("blur", clearKeyboardNavigation);
     document.addEventListener("visibilitychange", () => { if (document.hidden) clearKeyboardNavigation(); });
   }
@@ -1280,6 +1285,7 @@
     const params = new URLSearchParams(window.location.search);
     const map = parseMapParam(params.get("map"));
     const preserveUrlCamera = Boolean(map);
+    responsiveHomeCamera = !map && !params.get("project") && !params.get("manifest") && !params.get("data");
     let initialLoad = null;
     applyInitialFlags(params);
     if (params.get("project")) {
@@ -2095,6 +2101,18 @@
     return { ...DEFAULT_VIEW, zoom };
   }
 
+  function handleViewportResize() {
+    if (!responsiveHomeCamera || !viewer) return;
+    window.clearTimeout(viewportResizeTimer);
+    viewportResizeTimer = window.setTimeout(() => {
+      viewportResizeTimer = 0;
+      if (!responsiveHomeCamera || !viewer || cameraInteractionActive) return;
+      flyToCamera(defaultCameraView(), { duration: 0, keepResponsiveHome: true });
+      scheduleCameraUiUpdate();
+      scheduleReplaceUrlState();
+    }, VIEWPORT_HOME_RESIZE_DEBOUNCE_MS);
+  }
+
   function flyToSearch(query, options = {}) {
     const raw = String(query || "").trim();
     if (!raw) return null;
@@ -2136,6 +2154,7 @@
 
   function flyToCamera(camera = {}, options = {}) {
     if (!viewer) return null;
+    if (!options.keepResponsiveHome) responsiveHomeCamera = false;
     const normalized = normalizeCamera(camera);
     if (options.duration === 0) {
       setCameraLookAt(normalized);
@@ -2367,7 +2386,8 @@
   }
 
   function resetCameraView(options = {}) {
-    return flyToCamera(defaultCameraView(), options);
+    responsiveHomeCamera = true;
+    return flyToCamera(defaultCameraView(), { ...options, keepResponsiveHome: true });
   }
 
   function setCameraTopDown(options = {}) {
