@@ -1600,7 +1600,7 @@
 
   function attachEntityFeature(entity, featureId) {
     entity.__weatherFeatureId = featureId;
-    if (entity.id) entity.id.__weatherFeatureId = featureId;
+    if (entity.id && typeof entity.id === "object") entity.id.__weatherFeatureId = featureId;
   }
 
   function renderUtilityLayers() {
@@ -3011,10 +3011,16 @@
   }
 
   function currentExportGeoJson(options = {}) {
-    const source = options.visible ? displayedGeoJson : currentGeoJson;
+    const source = options.visible ? visibleWeatherGeoJson() : currentGeoJson;
     const collection = normalizeFeatureCollection(source);
     collection.features = collection.features.map((feature) => publicFeatureEnvelope(feature).feature);
     if (collection.metadata) collection.metadata = cloneJson(collection.metadata);
+    return collection;
+  }
+
+  function visibleWeatherGeoJson() {
+    const collection = normalizeFeatureCollection(currentGeoJson);
+    collection.features = collection.features.filter(isFeatureVisible);
     return collection;
   }
 
