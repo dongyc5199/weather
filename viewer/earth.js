@@ -1238,7 +1238,7 @@
     let initialLoad = null;
     applyInitialFlags(params);
     if (params.get("project")) {
-      initialLoad = loadProjectFromParam(params.get("project"));
+      initialLoad = loadProjectFromParam(params.get("project"), { fit: !preserveUrlCamera });
     } else if (params.get("manifest")) {
       initialLoad = loadManifestFromUrl(params.get("manifest"), { fit: !preserveUrlCamera });
     } else if (params.get("data")) {
@@ -2863,7 +2863,7 @@
       }
     } catch (error) {
       setStatus("URL 项目文档加载失败。", error.message || String(error));
-      loadDefaultWeather({ silentNotFound: true });
+      await loadDefaultWeather({ silentNotFound: true, fit: options.fit !== false });
     }
   }
 
