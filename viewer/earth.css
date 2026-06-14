@@ -776,6 +776,17 @@ button:disabled {
   z-index: 1;
 }
 
+@media (min-width: 960px) {
+  .earth-shell.is-immersive #earthMap {
+    left: -100px;
+    right: 0;
+  }
+
+  .earth-shell.is-immersive #earthMap .cesium-viewer-bottom {
+    left: 106px !important;
+  }
+}
+
 #earthMap canvas {
   filter: saturate(0.94) contrast(1.05) brightness(0.99);
 }
