@@ -169,6 +169,8 @@
   const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
   const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
   const IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA = 1.35;
+  const IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL = 0.0028;
+  const IMMERSIVE_WHEEL_ZOOM_MAX_DELTA = 0.95;
   const KEYBOARD_OBLIQUE_PITCH = 55;
 
   const ELEMENT_IDS = [
@@ -580,7 +582,11 @@
   }
 
   function handleCameraAngleWheel(event) {
-    if (!viewer || drawMode || measurementState.active || !(event.shiftKey || event.altKey)) return;
+    if (!viewer || drawMode || measurementState.active) return;
+    if (!(event.shiftKey || event.altKey)) {
+      if (immersiveEnabled) handleImmersiveWheelZoom(event);
+      return;
+    }
     const deltaY = normalizeWheelDeltaY(event);
     if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.01) return;
     const pitchDelta = clamp(-deltaY * CAMERA_PITCH_WHEEL_DEGREES_PER_PIXEL, -6, 6);
@@ -591,10 +597,41 @@
     stopCameraGestureEvent(event);
   }
 
+  function handleImmersiveWheelZoom(event) {
+    const deltaY = normalizeWheelDeltaY(event);
+    if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.01) return;
+    const zoomDelta = clamp(
+      -deltaY * IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL,
+      -IMMERSIVE_WHEEL_ZOOM_MAX_DELTA,
+      IMMERSIVE_WHEEL_ZOOM_MAX_DELTA
+    );
+    if (Math.abs(zoomDelta) < 0.01) return;
+    const position = eventCanvasPosition(event);
+    const pointerTarget = position ? screenToLonLat(position) : null;
+    const camera = currentCameraState();
+    const target = zoomDelta > 0 && pointerTarget ? pointerTarget : camera;
+    beginCameraInteraction("wheel-zoom");
+    flyToCamera({
+      ...camera,
+      lon: target.lon,
+      lat: target.lat,
+      zoom: clamp(camera.zoom + zoomDelta, 0.4, 19),
+    }, { duration: 0 });
+    endCameraInteractionSoon();
+    stopCameraGestureEvent(event);
+  }
+
   function normalizeWheelDeltaY(event) {
     if (event.deltaMode === 1) return event.deltaY * 16;
     if (event.deltaMode === 2) return event.deltaY * 120;
     return event.deltaY;
+  }
+
+  function eventCanvasPosition(event) {
+    const canvas = viewer?.scene?.canvas;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return new Cesium.Cartesian2(event.clientX - rect.left, event.clientY - rect.top);
   }
 
   function stopCameraGestureEvent(event) {
