@@ -540,11 +540,15 @@
   }
 
   function handleCameraAnglePointerDown(event) {
-    if (!viewer || event.button !== 2 || drawMode || measurementState.active) return;
-    beginCameraInteraction("right-drag");
+    if (!viewer || drawMode || measurementState.active) return;
+    const isRightDrag = event.button === 2;
+    const isModifierLeftDrag = event.button === 0 && (event.shiftKey || event.altKey);
+    if (!isRightDrag && !isModifierLeftDrag) return;
+    beginCameraInteraction(isRightDrag ? "right-drag" : "modifier-drag");
     const canvas = viewer.scene.canvas;
     cameraAngleDrag = {
       pointerId: event.pointerId,
+      buttonMask: isRightDrag ? 2 : 1,
       startX: event.clientX,
       startY: event.clientY,
       camera: currentCameraState(),
@@ -558,7 +562,7 @@
 
   function handleCameraAnglePointerMove(event) {
     if (!cameraAngleDrag || cameraAngleDrag.pointerId !== event.pointerId || !viewer) return;
-    if ((event.buttons & 2) !== 2) {
+    if ((event.buttons & cameraAngleDrag.buttonMask) !== cameraAngleDrag.buttonMask) {
       endCameraAnglePointerDrag(event);
       return;
     }
