@@ -1272,7 +1272,7 @@
     on(elements.earthMenuTopDown, "click", () => { setEarthMenuOpen(false); setCameraTopDown({ duration: 0.35 }); });
     on(elements.earthMenuOblique, "click", () => { setEarthMenuOpen(false); toggleCameraOblique({ duration: 0.35 }); });
     on(elements.immersiveExitPanel, "click", () => applyImmersiveMode(false));
-    on(elements.earthOverview, "click", () => flyToCamera(defaultCameraView()));
+    on(elements.earthOverview, "click", () => resetCameraView({ duration: 0.45 }));
     document.addEventListener("pointerdown", handleEarthMenuPointerDown, true);
     window.addEventListener("keydown", handleKeyboard);
     window.addEventListener("keyup", handleKeyboardKeyUp);
