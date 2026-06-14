@@ -168,6 +168,7 @@
   const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 1.8;
   const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
   const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
+  const IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA = 1.35;
   const KEYBOARD_OBLIQUE_PITCH = 55;
 
   const ELEMENT_IDS = [
@@ -451,6 +452,8 @@
       const id = picked?.id?.__weatherFeatureId || picked?.primitive?.id?.__weatherFeatureId || "";
       if (id) {
         selectFeatureById(id, { fit: false });
+      } else if (immersiveEnabled) {
+        closeSurfaceProbe();
       } else {
         setSurfaceProbeFromLngLat(lonLat, { source: "click" });
       }
@@ -458,7 +461,12 @@
 
     handler.setInputAction((movement) => {
       const lonLat = screenToLonLat(movement.position);
-      if (lonLat) setFocusTargetState({ ...lonLat, label: "聚焦目标" }, { eventReason: "double-click" });
+      if (!lonLat) return;
+      if (immersiveEnabled) {
+        zoomToLocation(lonLat, { source: "double-click" });
+        return;
+      }
+      setFocusTargetState({ ...lonLat, label: "聚焦目标" }, { eventReason: "double-click" });
     }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 
     handler.setInputAction((movement) => {
@@ -2222,6 +2230,20 @@
   function zoomCamera(delta) {
     const camera = currentCameraState();
     flyToCamera({ ...camera, zoom: clamp(camera.zoom - delta, 0.4, 19) }, { duration: 0.35 });
+  }
+
+  function zoomToLocation(lonLat, options = {}) {
+    if (!validLonLat(lonLat?.lon, lonLat?.lat)) return null;
+    const camera = currentCameraState();
+    beginCameraInteraction(options.source || "zoom-to-location");
+    const next = flyToCamera({
+      ...camera,
+      lon: Number(lonLat.lon),
+      lat: Number(lonLat.lat),
+      zoom: clamp(camera.zoom + Number(options.delta ?? IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA), 0.4, 19),
+    }, { duration: Number(options.duration ?? 0.55) });
+    endCameraInteractionSoon();
+    return next;
   }
 
   function rotateCamera(delta) {
