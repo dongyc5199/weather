@@ -1376,7 +1376,7 @@ button:disabled {
 .earth-compass {
   position: absolute;
   top: 24px;
-  right: 140px;
+  right: 124px;
   z-index: 4;
   display: grid;
   place-items: center;
