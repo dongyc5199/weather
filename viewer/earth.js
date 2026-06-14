@@ -169,6 +169,9 @@
   const KEYBOARD_ZOOM_LEVELS_PER_SECOND = 1.8;
   const KEYBOARD_ROTATE_DEGREES_PER_SECOND = 88;
   const KEYBOARD_TILT_DEGREES_PER_SECOND = 54;
+  const KEYBOARD_ACCELERATION_PER_SECOND = 10;
+  const KEYBOARD_DECELERATION_PER_SECOND = 12;
+  const KEYBOARD_NAVIGATION_EPSILON = 0.015;
   const IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA = 1.35;
   const IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL = 0.0028;
   const IMMERSIVE_WHEEL_ZOOM_MAX_DELTA = 0.95;
@@ -367,6 +370,7 @@
   let keyboardNavigationKeys = new Set();
   let keyboardNavigationModifiers = { shift: false, alt: false, ctrl: false, meta: false };
   let keyboardNavigationCamera = null;
+  let keyboardNavigationVelocity = zeroKeyboardNavigationVelocity();
   let cameraInteractionActive = false;
   let cameraInteractionReason = "";
   let cameraInteractionStartedAt = 0;
@@ -2080,9 +2084,11 @@
   function flyToPlace(placeId, options = {}) {
     const place = EARTH_PLACE_PRESETS.find((entry) => entry.id === placeId) || EARTH_PLACE_PRESETS[0];
     const camera = placeCamera(place);
+    const useResponsiveHome = place?.id === "china";
     lastLocationSearch = { id: place.id, label: place.label, camera, source: "preset" };
     if (options.focus !== false) setFocusTargetState({ lon: camera.lon, lat: camera.lat, label: place.label, id: place.id }, { notify: false });
-    flyToCamera(camera, options);
+    if (useResponsiveHome) responsiveHomeCamera = true;
+    flyToCamera(camera, useResponsiveHome ? { ...options, keepResponsiveHome: true } : options);
     updateAllUi();
     emitWeatherEarthEvent("searchchange", { locationSearch: publicLocationSearchResult(lastLocationSearch) });
     return cloneJson(lastLocationSearch);
@@ -2327,45 +2333,76 @@
   }
 
   function updateKeyboardNavigation(seconds) {
-    if (!viewer || !keyboardNavigationKeys.size || isTypingTarget(document.activeElement)) return false;
+    if (!viewer) return false;
+    if (isTypingTarget(document.activeElement)) {
+      clearKeyboardNavigation();
+      return false;
+    }
     const keys = keyboardNavigationKeys;
+    const velocityActive = hasKeyboardNavigationVelocity();
+    if (!keys.size && !velocityActive) return false;
     const camera = keyboardNavigationCamera || normalizeCamera(lastCamera);
     let next = { ...camera };
-    let moved = false;
     const shiftMode = keyboardNavigationModifiers.shift;
     const left = keys.has("ArrowLeft") ? 1 : 0;
     const right = keys.has("ArrowRight") ? 1 : 0;
     const up = keys.has("ArrowUp") ? 1 : 0;
     const down = keys.has("ArrowDown") ? 1 : 0;
+    const targetVelocity = zeroKeyboardNavigationVelocity();
     if (shiftMode) {
-      const bearingDelta = (right - left) * KEYBOARD_ROTATE_DEGREES_PER_SECOND * seconds;
-      const pitchDelta = (up - down) * KEYBOARD_TILT_DEGREES_PER_SECOND * seconds;
-      if (bearingDelta || pitchDelta) {
-        next.bearing += bearingDelta;
-        next.pitch = clamp(next.pitch + pitchDelta, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
-        moved = true;
-      }
+      targetVelocity.bearing = right - left;
+      targetVelocity.pitch = up - down;
     } else {
-      const forwardAxis = up - down;
-      const rightAxis = right - left;
-      if (forwardAxis || rightAxis) {
-        const length = Math.hypot(forwardAxis, rightAxis) || 1;
-        const meters = keyboardPanMetersPerSecond(camera) * seconds;
-        next = panCameraByMeters(next, meters * forwardAxis / length, meters * rightAxis / length);
-        moved = true;
-      }
+      targetVelocity.forward = up - down;
+      targetVelocity.right = right - left;
     }
-    const zoomAxis = (keys.has("Equal") || keys.has("NumpadAdd") || keys.has("PageUp") ? 1 : 0) -
+    targetVelocity.zoom = (keys.has("Equal") || keys.has("NumpadAdd") || keys.has("PageUp") ? 1 : 0) -
       (keys.has("Minus") || keys.has("NumpadSubtract") || keys.has("PageDown") ? 1 : 0);
-    if (zoomAxis) {
-      next.zoom = clamp(next.zoom + zoomAxis * KEYBOARD_ZOOM_LEVELS_PER_SECOND * seconds, 0.4, 19);
-      moved = true;
+    smoothKeyboardVelocity(targetVelocity, seconds);
+    if (!hasKeyboardNavigationVelocity()) {
+      if (!keys.size) finishKeyboardNavigation();
+      return false;
     }
-    if (!moved) return false;
+    if (keyboardNavigationVelocity.forward || keyboardNavigationVelocity.right) {
+      const length = Math.max(1, Math.hypot(keyboardNavigationVelocity.forward, keyboardNavigationVelocity.right));
+      const meters = keyboardPanMetersPerSecond(camera) * seconds;
+      next = panCameraByMeters(
+        next,
+        meters * keyboardNavigationVelocity.forward / length,
+        meters * keyboardNavigationVelocity.right / length
+      );
+    }
+    if (keyboardNavigationVelocity.bearing) next.bearing += keyboardNavigationVelocity.bearing * KEYBOARD_ROTATE_DEGREES_PER_SECOND * seconds;
+    if (keyboardNavigationVelocity.pitch) next.pitch = clamp(next.pitch + keyboardNavigationVelocity.pitch * KEYBOARD_TILT_DEGREES_PER_SECOND * seconds, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    if (keyboardNavigationVelocity.zoom) next.zoom = clamp(next.zoom + keyboardNavigationVelocity.zoom * KEYBOARD_ZOOM_LEVELS_PER_SECOND * seconds, 0.4, 19);
     keyboardNavigationCamera = next;
     beginCameraInteraction("keyboard");
     setCameraAngle(next, { duration: 0 });
     return true;
+  }
+
+  function zeroKeyboardNavigationVelocity() {
+    return { forward: 0, right: 0, zoom: 0, bearing: 0, pitch: 0 };
+  }
+
+  function hasKeyboardNavigationVelocity() {
+    return Object.values(keyboardNavigationVelocity).some((value) => Math.abs(value) > KEYBOARD_NAVIGATION_EPSILON);
+  }
+
+  function smoothKeyboardVelocity(targetVelocity, seconds) {
+    for (const key of Object.keys(keyboardNavigationVelocity)) {
+      keyboardNavigationVelocity[key] = smoothKeyboardAxis(
+        keyboardNavigationVelocity[key],
+        targetVelocity[key] || 0,
+        seconds
+      );
+    }
+  }
+
+  function smoothKeyboardAxis(current, target, seconds) {
+    const rate = target ? KEYBOARD_ACCELERATION_PER_SECOND : KEYBOARD_DECELERATION_PER_SECOND;
+    const next = current + (target - current) * (1 - Math.exp(-rate * Math.max(0, seconds)));
+    return !target && Math.abs(next) < KEYBOARD_NAVIGATION_EPSILON ? 0 : next;
   }
 
   function keyboardPanMetersPerSecond(camera) {
@@ -4497,13 +4534,14 @@
     const code = normalizedKeyboardCode(event);
     if (isContinuousNavigationCode(code)) {
       keyboardNavigationKeys.delete(code);
-      if (!keyboardNavigationKeys.size) finishKeyboardNavigation();
+      if (!keyboardNavigationKeys.size && !hasKeyboardNavigationVelocity()) finishKeyboardNavigation();
       stopKeyboardEvent(event);
     }
   }
 
   function finishKeyboardNavigation() {
     keyboardNavigationCamera = null;
+    keyboardNavigationVelocity = zeroKeyboardNavigationVelocity();
     if (viewer) lastCamera = currentCameraState();
     endCameraInteractionSoon();
   }
