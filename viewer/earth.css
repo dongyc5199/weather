@@ -777,13 +777,17 @@ button:disabled {
 }
 
 @media (min-width: 960px) {
+  .earth-shell.is-immersive .earth-stage {
+    --earth-immersive-map-offset: clamp(0px, calc((100vw - 960px) * 0.2778), 100px);
+  }
+
   .earth-shell.is-immersive #earthMap {
-    left: -100px;
+    left: calc(var(--earth-immersive-map-offset) * -1);
     right: 0;
   }
 
   .earth-shell.is-immersive #earthMap .cesium-viewer-bottom {
-    left: 106px !important;
+    left: calc(6px + var(--earth-immersive-map-offset)) !important;
   }
 }
 
