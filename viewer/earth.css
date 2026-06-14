@@ -1195,16 +1195,18 @@ button:disabled {
 
 .earth-orbit-controls {
   position: absolute;
-  top: 82px;
+  top: 24px;
   right: 24px;
   z-index: 4;
   display: grid;
-  grid-template-columns: 42px;
+  grid-template-columns: repeat(2, 42px);
   gap: 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 8px;
+  border: 1px solid rgba(180, 224, 234, 0.16);
+  border-radius: 10px;
+  background: rgba(5, 10, 15, 0.34);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .earth-orbit-controls button,
@@ -1350,7 +1352,7 @@ button:disabled {
 .earth-compass {
   position: absolute;
   top: 24px;
-  right: 24px;
+  right: 140px;
   z-index: 4;
   display: grid;
   place-items: center;
