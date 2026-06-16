@@ -61,8 +61,8 @@
     },
   };
   const PROJECT_SCHEMA = "weather-earth-project-v1";
-  const DEFAULT_GEOJSON_URL = "../outputs/nmc-wind/202606101800.geojson";
-  const DEFAULT_MANIFEST_URL = "../outputs/nmc-wind/manifest.json";
+  const DEFAULT_GEOJSON_URL = "../examples/open-data-weather-elements.geojson";
+  const DEFAULT_MANIFEST_URL = "../examples/open-data-weather-manifest.json";
   const DEFAULT_VIEW = { zoom: 1.32, lat: 28, lon: 105, bearing: 0, pitch: 0 };
   const DEFAULT_NARROW_VIEW = { ...DEFAULT_VIEW, zoom: 0.7 };
   const TIME_FILTER_ALL = "__all__";
@@ -79,6 +79,9 @@
   const DEFAULT_BUILDING_HEIGHT_SCALE = 1;
   const DEFAULT_WEATHER_3D_SCALE = 0.86;
   const DEFAULT_WEATHER_VOLUME_SCALE = 0.55;
+  const DEFAULT_RASTER_OVERLAY_OPACITY = 0.62;
+  const NASA_GIBS_CLOUD_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor";
+  const RAINVIEWER_WEATHER_MAPS_URL = "https://api.rainviewer.com/public/weather-maps.json";
   const DEFAULT_AUTO_ROTATE = false;
   const DEFAULT_IMMERSIVE = true;
   const AUTO_ROTATE_DEGREES_PER_SECOND = 0.45;
@@ -192,7 +195,11 @@
     "projectFileInput", "downloadGeoJson", "downloadVisibleGeoJson", "copyShareUrl", "copyInlineShareUrl",
     "copyProjectShareUrl", "clearWeather", "shareUrlText", "weatherOpacity", "immersiveWeatherOpacity",
     "immersiveWeatherOpacityValue", "weather3dEnabled", "weather3dScale", "weather3dInfo", "weatherVolumeEnabled",
-    "weatherVolumeScale", "weatherVolumeInfo", "drawPoint", "drawLine", "drawPolygon", "drawWeatherType",
+    "weatherVolumeScale", "weatherVolumeInfo", "cloudOverlayUrl", "cloudOverlayMode", "cloudOverlayBounds",
+    "cloudOverlayOpacity", "cloudOverlayOpacityValue", "loadCloudOverlay", "loadCloudOverlayLive", "clearCloudOverlay",
+    "radarOverlayUrl", "radarOverlayMode", "radarOverlayBounds", "radarOverlayOpacity", "radarOverlayOpacityValue",
+    "loadRadarOverlay", "loadRadarOverlayLive", "clearRadarOverlay", "rasterOverlayStatus",
+    "drawPoint", "drawLine", "drawPolygon", "drawWeatherType",
     "drawColor", "drawName", "finishDraw", "undoDrawPoint", "cancelDraw", "drawStatus", "measureDistance",
     "measureArea", "finishMeasure", "undoMeasurePoint", "clearMeasure", "measureStatus", "clearFeatureSelection",
     "selectedFeatureStatus", "selectedWeatherType", "selectedColor", "selectedName", "selectedProperties",
@@ -200,8 +207,11 @@
     "updateSelectedFeature", "deleteSelectedFeature", "featureSearch", "featureListSummary", "featureList",
     "fitSelectedFeature", "timeFilterSelect", "immersiveTimeFilterSelect", "resetTimeFilter", "immersiveTimeAll",
     "showUntimedFeatures", "timeFilterSummary", "showAllElementTypes", "hideAllElementTypes", "elementTypeSummary",
-    "elementTypeList", "geoJsonEditor", "applyGeoJsonEditor", "formatGeoJsonEditor", "validationSummary",
-    "validateGeoJson", "downloadValidationReport", "processTimeline", "processSummary", "loadManifestUrl",
+    "elementTypeList", "weatherRecapSummary", "weatherRecapFocus", "weatherRecapEvidence", "weatherRecapLegend",
+    "weatherCaseOverview", "weatherCaseCore", "weatherCaseCity", "weatherCaseEvidence",
+    "geoJsonEditor", "applyGeoJsonEditor", "formatGeoJsonEditor", "validationSummary", "qualitySummary",
+    "validateGeoJson", "validateWeatherGeoJson", "downloadValidationReport", "processTimeline", "processTicks",
+    "processRange", "processTime", "processPrev", "processPlay", "processNext", "processSummary", "loadManifestUrl",
     "manifestUrlInput", "loadDefaultManifest", "playManifest", "resetManifest", "immersiveProcessPanel",
     "immersiveProcessPrev", "immersiveProcessPlay", "immersiveProcessTime", "immersiveProcessRange",
     "immersiveProcessNext", "immersiveSearchInput", "immersiveSearchButton", "immersiveExitPanel",
@@ -212,18 +222,53 @@
     "cameraHeading", "cameraPitch", "cameraZoom", "pointerPosition", "pointerElevation", "cameraTourCaption",
     "projectionBadge", "sourceBadge", "earthOverview", "earthOverviewSvg", "earthOverviewChinaOutline",
     "earthOverviewWeatherExtent", "earthOverviewFocusDot", "earthOverviewCameraHeading", "earthOverviewCameraDot",
-    "earthOverviewLabel", "statusTitle", "statusDetail"
+    "earthOverviewLabel", "qualityIssues", "statusTitle", "statusDetail"
   ];
 
   const elements = Object.fromEntries(ELEMENT_IDS.map((id) => [id, document.getElementById(id)]));
   const Cesium = globalThis.Cesium;
 
+  const WEATHER_SYSTEM = {
+    id: "severe-convection-gale-replay",
+    label: "强对流/大风过程复盘",
+    requiredFields: ["weather_type", "source"],
+    timeFields: ["time", "valid_time", "validTime"],
+    intensityFields: ["level", "intensity", "observed_value", "value", "wind", "wind_speed"],
+    p0Types: ["wind-region", "warning", "station", "front", "pressure-center", "track"],
+    p1Types: ["rain-region"],
+    reservedTypes: ["typhoon", "cold-wave", "heat-region", "dust-region"],
+    unknownOrder: 900,
+    levelStyles: {
+      level_6: { label: "6级风区", color: "#00d6f2", opacity: 0.58, height: 2700, order: 60 },
+      "6级": { label: "6级风区", color: "#00d6f2", opacity: 0.58, height: 2700, order: 60 },
+      level_7: { label: "7级风区", color: "#ffbd59", opacity: 0.62, height: 3600, order: 70 },
+      "7级": { label: "7级风区", color: "#ffbd59", opacity: 0.62, height: 3600, order: 70 },
+      level_8: { label: "8级及以上风区", color: "#ff4d4d", opacity: 0.66, height: 4800, order: 80 },
+      "8级": { label: "8级及以上风区", color: "#ff4d4d", opacity: 0.66, height: 4800, order: 80 },
+      orange: { label: "橙色预警", color: "#ff8f3d", opacity: 0.72, height: 4200, order: 65 },
+      red: { label: "红色预警", color: "#ff3b4e", opacity: 0.78, height: 5400, order: 75 },
+      heavy: { label: "强降水", color: "#2f80ff", opacity: 0.58, height: 3200, order: 30 },
+    },
+    caseViews: {
+      overview: { label: "全国概览", camera: { zoom: 4.65, lat: 35.8, lon: 106.4, bearing: -12, pitch: 44 } },
+      core: { label: "核心区", camera: { zoom: 6.65, lat: 35.6, lon: 107.3, bearing: -24, pitch: 54 } },
+      city: { label: "城市影响", camera: { zoom: 8.4, lat: 34.65, lon: 108.78, bearing: -22, pitch: 55 } },
+      evidence: { label: "观测证据", camera: { zoom: 8.15, lat: 35.16, lon: 108.34, bearing: -18, pitch: 52 } },
+    },
+  };
+
   const WEATHER_ELEMENT_TYPES = [
-    { id: "wind-region", label: "风区", geometry: "Polygon", color: "#00d6f2", aliases: ["wind", "gale", "polygon"], properties: { weather_type: "wind-region", level: "6级", time: "", source: "manual" } },
-    { id: "rain-region", label: "降水区", geometry: "Polygon", color: "#2f80ff", aliases: ["rain", "precipitation"], properties: { weather_type: "rain-region", intensity: "", time: "", source: "manual" } },
-    { id: "temperature-region", label: "温度区", geometry: "Polygon", color: "#ff6f5e", aliases: ["temperature", "heat"], properties: { weather_type: "temperature-region", value: "", time: "", source: "manual" } },
-    { id: "warning", label: "预警点", geometry: "Point", color: "#ffbd59", aliases: ["alert", "station", "point"], properties: { weather_type: "warning", level: "橙色", time: "", source: "manual" } },
-    { id: "track", label: "路径", geometry: "LineString", color: "#8ef6ff", aliases: ["path", "line", "route"], properties: { weather_type: "track", time: "", source: "manual" } },
+    { id: "wind-region", label: "大风区", geometry: "Polygon", color: "#00d6f2", opacity: 0.62, height: 3200, order: 10, aliases: ["wind", "gale", "polygon"], legend: "贴地半透明面，颜色随 6/7/8 级增强。", properties: { weather_type: "wind-region", level: "6级", time: "", source: "manual" } },
+    { id: "warning", label: "预警点", geometry: "Point", color: "#ffbd59", opacity: 0.92, height: 4200, order: 20, aliases: ["alert"], legend: "地表点和轻量光柱表示预警位置与等级。", properties: { weather_type: "warning", level: "橙色", time: "", source: "manual" } },
+    { id: "station", label: "站点观测", geometry: "Point", color: "#31d7ff", opacity: 0.95, height: 3200, order: 30, aliases: ["observation", "obs", "point"], legend: "站点点位和光柱表达实况风速等关键证据。", properties: { weather_type: "station", observed_value: "", unit: "m/s", time: "", source: "manual" } },
+    { id: "front", label: "锋面/切变线", geometry: "LineString", color: "#f5f7ff", opacity: 0.86, height: 0, order: 40, aliases: ["front-line", "shear-line"], legend: "方向线配合时次播放表达触发带移动。", properties: { weather_type: "front", front_type: "shear-line", time: "", source: "manual" } },
+    { id: "pressure-center", label: "气压中心", geometry: "Point", color: "#b28cff", opacity: 0.95, height: 3600, order: 50, aliases: ["pressure", "low", "high"], legend: "少量符号标注低压/高压等关键触发点。", properties: { weather_type: "pressure-center", pressure_type: "low", time: "", source: "manual" } },
+    { id: "track", label: "移动路径", geometry: "LineString", color: "#8ef6ff", opacity: 0.88, height: 0, order: 60, aliases: ["path", "line", "route"], legend: "带方向感的线表达系统或影响区移动。", properties: { weather_type: "track", time: "", source: "manual" } },
+    { id: "rain-region", label: "降水区", geometry: "Polygon", color: "#2f80ff", opacity: 0.56, height: 2800, order: 110, aliases: ["rain", "precipitation"], legend: "P1 复用面状表达，后续补充强度和移动方向。", properties: { weather_type: "rain-region", intensity: "", time: "", source: "manual" } },
+    { id: "typhoon", label: "台风", geometry: "Point", color: "#ff6f5e", opacity: 0.88, height: 5200, order: 210, aliases: ["tropical-cyclone"], reserved: true, properties: { weather_type: "typhoon", intensity: "", time: "", source: "manual" } },
+    { id: "cold-wave", label: "寒潮", geometry: "Polygon", color: "#5eb7ff", opacity: 0.54, height: 2600, order: 220, aliases: ["cold"], reserved: true, properties: { weather_type: "cold-wave", intensity: "", time: "", source: "manual" } },
+    { id: "heat-region", label: "高温区", geometry: "Polygon", color: "#ff6f5e", opacity: 0.54, height: 2600, order: 230, aliases: ["temperature-region", "temperature", "heat"], reserved: true, properties: { weather_type: "heat-region", intensity: "", time: "", source: "manual" } },
+    { id: "dust-region", label: "沙尘区", geometry: "Polygon", color: "#d6b45b", opacity: 0.52, height: 2600, order: 240, aliases: ["dust", "sand"], reserved: true, properties: { weather_type: "dust-region", intensity: "", time: "", source: "manual" } },
   ];
 
   const EARTH_PLACE_PRESETS = [
@@ -297,6 +342,11 @@
     { id: "weather-points", label: "点标记", geometry: new Set(["Point", "MultiPoint"]) },
   ];
 
+  const RASTER_OVERLAY_TYPES = {
+    cloud: { id: "cloud", layerId: "raster-cloud", label: "云图", defaultOpacity: 0.58, defaultBounds: [-180, -85, 180, 85], defaultMaximumLevel: 9 },
+    radar: { id: "radar", layerId: "raster-radar", label: "雷达图", defaultOpacity: 0.68, defaultBounds: [-180, -85, 180, 85], defaultMaximumLevel: 7 },
+  };
+
   let viewer = null;
   let googleTileset = null;
   let activeImageryLayer = null;
@@ -365,6 +415,23 @@
   let drawEntities = [];
   let measurementEntities = [];
   let earthSkyBox = null;
+  let rasterOverlayStates = Object.fromEntries(Object.values(RASTER_OVERLAY_TYPES).map((type) => [type.id, {
+    ...type,
+    mode: "single",
+    url: "",
+    layers: "",
+    parameters: {},
+    bounds: [...type.defaultBounds],
+    opacity: type.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY,
+    maximumLevel: type.defaultMaximumLevel,
+    visible: true,
+    loaded: false,
+    source: "",
+    sourceLabel: "",
+    validTime: "",
+    layer: null,
+    error: "",
+  }]));
   let layerVisibility = new Map(WEATHER_LAYERS.map((layer) => [layer.id, true]));
   let elementTypeVisibility = new Map(WEATHER_ELEMENT_TYPES.map((type) => [type.id, true]));
   let cameraUiUpdateQueued = false;
@@ -501,16 +568,41 @@
     if ("inertiaSpin" in controller) controller.inertiaSpin = CAMERA_CONTROL_INERTIA.spin;
     if ("inertiaTranslate" in controller) controller.inertiaTranslate = CAMERA_CONTROL_INERTIA.translate;
     if ("inertiaZoom" in controller) controller.inertiaZoom = CAMERA_CONTROL_INERTIA.zoom;
+    if ("zoomEventTypes" in controller && Cesium?.CameraEventType) {
+      controller.zoomEventTypes = [
+        Cesium.CameraEventType.RIGHT_DRAG,
+        Cesium.CameraEventType.PINCH,
+      ].filter((eventType) => eventType !== undefined);
+    }
   }
 
   function bindCameraInteractionGestures() {
     const canvas = viewer?.scene?.canvas;
     if (!canvas) return;
+    document.addEventListener("wheel", handleDocumentCanvasWheel, { capture: true, passive: false });
     canvas.addEventListener("pointerdown", handleCameraInteractionPointerDown, { capture: true });
     canvas.addEventListener("pointerup", endCameraInteractionSoon, { capture: true });
     canvas.addEventListener("pointercancel", endCameraInteractionSoon, { capture: true });
     canvas.addEventListener("pointerleave", endCameraInteractionSoon, { capture: true });
     canvas.addEventListener("wheel", handleCameraInteractionWheel, { capture: true, passive: true });
+  }
+
+  function handleDocumentCanvasWheel(event) {
+    if (!viewer || !isEarthCanvasWheelEvent(event)) return;
+    stopCameraGestureEvent(event);
+    if (drawMode || measurementState.active) return;
+    if (isCameraAngleModifier(event)) {
+      handleCameraAngleWheel(event);
+    } else {
+      handleCanvasWheelZoom(event);
+    }
+  }
+
+  function isEarthCanvasWheelEvent(event) {
+    const canvas = viewer?.scene?.canvas;
+    if (!canvas) return false;
+    const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+    return path.includes(canvas) || event.target === canvas;
   }
 
   function handleCameraInteractionPointerDown(event) {
@@ -597,7 +689,7 @@
   function handleCameraAngleWheel(event) {
     if (!viewer || drawMode || measurementState.active) return;
     if (!isCameraAngleModifier(event)) {
-      if (immersiveEnabled) handleImmersiveWheelZoom(event);
+      handleCanvasWheelZoom(event);
       return;
     }
     const deltaY = normalizeWheelDeltaY(event);
@@ -607,14 +699,14 @@
     beginCameraInteraction("tilt-wheel");
     setCameraAngle({ ...camera, pitch: clamp(camera.pitch + pitchDelta, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX) }, { duration: 0 });
     endCameraInteractionSoon();
-    stopCameraGestureEvent(event);
+    if (!event.defaultPrevented) stopCameraGestureEvent(event);
   }
 
   function isCameraAngleModifier(event) {
     return Boolean(event?.shiftKey || event?.altKey || event?.ctrlKey || event?.metaKey);
   }
 
-  function handleImmersiveWheelZoom(event) {
+  function handleCanvasWheelZoom(event) {
     const deltaY = normalizeWheelDeltaY(event);
     if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.01) return;
     const zoomDelta = clamp(
@@ -623,19 +715,10 @@
       IMMERSIVE_WHEEL_ZOOM_MAX_DELTA
     );
     if (Math.abs(zoomDelta) < 0.01) return;
-    const position = eventCanvasPosition(event);
-    const pointerTarget = position ? screenToLonLat(position) : null;
-    const camera = currentCameraState();
-    const target = zoomDelta > 0 && pointerTarget ? pointerTarget : camera;
     beginCameraInteraction("wheel-zoom");
-    flyToCamera({
-      ...camera,
-      lon: target.lon,
-      lat: target.lat,
-      zoom: clamp(camera.zoom + zoomDelta, 0.4, 19),
-    }, { duration: 0 });
+    zoomCameraRange(zoomDelta);
     endCameraInteractionSoon();
-    stopCameraGestureEvent(event);
+    if (!event.defaultPrevented) stopCameraGestureEvent(event);
   }
 
   function normalizeWheelDeltaY(event) {
@@ -730,6 +813,7 @@
       if (sequence !== basemapLoadSeq) return;
       tilesetStatus = "ready";
       tilesetError = "";
+      await restoreRasterOverlays();
       setStatus("地球底座已加载。", provider.detail);
       updateSourceBadges();
       updateAllUi();
@@ -749,6 +833,7 @@
     clearBaseMapLayers();
     try {
       await loadImageryGlobeProvider(FALLBACK_TILESET_MODE);
+      await restoreRasterOverlays();
       tilesetStatus = provider.requiresIonToken && !configuredIonToken() ? "missing-token" : "fallback";
       tilesetError = reason || "";
       const message = provider.requiresIonToken && !configuredIonToken()
@@ -777,6 +862,7 @@
     if (viewer.imageryLayers) {
       viewer.imageryLayers.removeAll();
       activeImageryLayer = null;
+      for (const state of Object.values(rasterOverlayStates)) state.layer = null;
     }
     activeTerrainProvider = new Cesium.EllipsoidTerrainProvider();
     viewer.terrainProvider = activeTerrainProvider;
@@ -955,6 +1041,328 @@
   async function addImageryProvider(provider) {
     activeImageryLayer = viewer.imageryLayers.addImageryProvider(await provider);
     return activeImageryLayer;
+  }
+
+  async function setRasterOverlay(typeId, input = {}) {
+    const base = rasterOverlayStates[typeId];
+    if (!viewer || !Cesium || !base) throw new Error(`Unknown raster overlay: ${typeId}`);
+    const next = {
+      ...base,
+      mode: normalizeRasterOverlayMode(input.mode ?? base.mode),
+      url: String((input.url ?? base.url) || "").trim(),
+      layers: String((input.layers ?? base.layers) || "").trim(),
+      parameters: input.parameters && typeof input.parameters === "object" ? cloneJson(input.parameters) : cloneJson(base.parameters || {}),
+      bounds: normalizeRasterOverlayBounds(input.bounds ?? base.bounds ?? base.defaultBounds),
+      opacity: clamp(Number(input.opacity ?? base.opacity ?? base.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY), 0, 1),
+      maximumLevel: normalizeRasterMaximumLevel(input.maximumLevel ?? base.maximumLevel ?? base.defaultMaximumLevel),
+      visible: input.visible !== false,
+      source: String((input.source ?? base.source) || "").trim(),
+      sourceLabel: String((input.sourceLabel ?? base.sourceLabel) || "").trim(),
+      validTime: String((input.validTime ?? base.validTime) || "").trim(),
+      error: "",
+      layer: null,
+    };
+    if (!next.url) throw new Error(`${base.label} URL 为空。`);
+    removeRasterOverlayLayer(typeId);
+    try {
+      const provider = await createRasterOverlayProvider(next);
+      next.layer = viewer.imageryLayers.addImageryProvider(provider);
+      next.layer.alpha = next.opacity;
+      next.layer.show = next.visible;
+      next.loaded = true;
+      rasterOverlayStates[typeId] = next;
+      updateRasterOverlayUi();
+      updateAllUi();
+      viewer.scene.requestRender?.();
+      if (!input.silent) setStatus(`${base.label}已加载。`, `${next.sourceLabel || next.source || next.url}${next.validTime ? ` / ${next.validTime}` : ""}`);
+      if (!input.silent) emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
+      return rasterOverlayPublicState(next);
+    } catch (error) {
+      next.loaded = false;
+      next.error = error?.message || String(error);
+      rasterOverlayStates[typeId] = next;
+      updateRasterOverlayUi();
+      if (!input.silent) setStatus(`${base.label}加载失败。`, next.error);
+      throw error;
+    }
+  }
+
+  async function createRasterOverlayProvider(config) {
+    if (config.mode === "wms") {
+      return new Cesium.WebMapServiceImageryProvider({
+        url: config.url,
+        layers: config.layers,
+        parameters: {
+          transparent: true,
+          format: "image/png",
+          ...config.parameters,
+        },
+        rectangle: boundsToRectangle(config.bounds),
+        maximumLevel: config.maximumLevel ?? config.defaultMaximumLevel ?? 12,
+        credit: `${config.label} raster overlay`,
+      });
+    }
+    if (config.mode === "template") {
+      return new Cesium.UrlTemplateImageryProvider({
+        url: config.url,
+        rectangle: boundsToRectangle(config.bounds),
+        credit: `${config.label} raster overlay`,
+        maximumLevel: config.maximumLevel ?? config.defaultMaximumLevel ?? 12,
+        tileWidth: config.source === "RainViewer" ? 512 : 256,
+        tileHeight: config.source === "RainViewer" ? 512 : 256,
+      });
+    }
+    const options = {
+      rectangle: boundsToRectangle(config.bounds),
+      credit: `${config.label} raster overlay`,
+    };
+    if (Cesium.SingleTileImageryProvider?.fromUrl) return Cesium.SingleTileImageryProvider.fromUrl(config.url, options);
+    return new Cesium.SingleTileImageryProvider({ url: config.url, ...options });
+  }
+
+  async function restoreRasterOverlays() {
+    for (const [typeId, state] of Object.entries(rasterOverlayStates)) {
+      if (state.loaded && state.url) {
+        try {
+          await setRasterOverlay(typeId, { ...state, silent: true });
+        } catch {
+          state.layer = null;
+        }
+      }
+    }
+  }
+
+  function removeRasterOverlayLayer(typeId) {
+    const state = rasterOverlayStates[typeId];
+    if (!state?.layer || !viewer?.imageryLayers) return;
+    try {
+      viewer.imageryLayers.remove(state.layer, true);
+    } catch {
+      // Cesium can throw if the layer was already removed by a basemap reset.
+    }
+    state.layer = null;
+  }
+
+  function clearRasterOverlay(typeId, options = {}) {
+    const base = rasterOverlayStates[typeId];
+    if (!base) return null;
+    removeRasterOverlayLayer(typeId);
+    rasterOverlayStates[typeId] = {
+      ...base,
+      mode: "single",
+      url: "",
+      layers: "",
+      parameters: {},
+      bounds: [...base.defaultBounds],
+      opacity: base.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY,
+      maximumLevel: base.defaultMaximumLevel,
+      visible: true,
+      loaded: false,
+      source: "",
+      sourceLabel: "",
+      validTime: "",
+      layer: null,
+      error: "",
+    };
+    updateRasterOverlayUi();
+    updateAllUi();
+    viewer?.scene.requestRender?.();
+    if (!options.silent) emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
+    return rasterOverlayPublicState(rasterOverlayStates[typeId]);
+  }
+
+  function setRasterOverlayOpacity(typeId, value) {
+    const state = rasterOverlayStates[typeId];
+    if (!state) return null;
+    state.opacity = clamp(Number(value), 0, 1);
+    if (state.layer) state.layer.alpha = state.opacity;
+    updateRasterOverlayUi();
+    viewer?.scene.requestRender?.();
+    emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
+    return rasterOverlayPublicState(state);
+  }
+
+  function setRasterOverlayVisibility(typeId, visible) {
+    const state = rasterOverlayStates[typeId];
+    if (!state) return null;
+    state.visible = Boolean(visible);
+    if (state.layer) state.layer.show = state.visible;
+    updateAllUi();
+    viewer?.scene.requestRender?.();
+    emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
+    return rasterOverlayPublicState(state);
+  }
+
+  async function loadRasterOverlayFromControls(typeId) {
+    const controls = rasterOverlayControls(typeId);
+    if (!controls) return null;
+    try {
+      return await setRasterOverlay(typeId, {
+        url: controls.url?.value || "",
+        mode: controls.mode?.value || "single",
+        bounds: controls.bounds?.value || RASTER_OVERLAY_TYPES[typeId]?.defaultBounds,
+        opacity: controls.opacity?.value ?? RASTER_OVERLAY_TYPES[typeId]?.defaultOpacity,
+        visible: true,
+      });
+    } catch (error) {
+      setStatus(`${RASTER_OVERLAY_TYPES[typeId]?.label || "栅格图层"}加载失败。`, error.message || String(error));
+      return null;
+    }
+  }
+
+  async function loadLiveRasterOverlay(typeId) {
+    try {
+      const config = await resolveLiveRasterOverlay(typeId);
+      if (!config) return null;
+      return await setRasterOverlay(typeId, config);
+    } catch (error) {
+      const label = RASTER_OVERLAY_TYPES[typeId]?.label || "实时栅格";
+      setStatus(`${label}加载失败。`, error.message || String(error));
+      return null;
+    }
+  }
+
+  function rasterOverlayControls(typeId) {
+    if (typeId === "cloud") {
+      return { url: elements.cloudOverlayUrl, mode: elements.cloudOverlayMode, bounds: elements.cloudOverlayBounds, opacity: elements.cloudOverlayOpacity, value: elements.cloudOverlayOpacityValue, load: elements.loadCloudOverlay, live: elements.loadCloudOverlayLive, clear: elements.clearCloudOverlay };
+    }
+    if (typeId === "radar") {
+      return { url: elements.radarOverlayUrl, mode: elements.radarOverlayMode, bounds: elements.radarOverlayBounds, opacity: elements.radarOverlayOpacity, value: elements.radarOverlayOpacityValue, load: elements.loadRadarOverlay, live: elements.loadRadarOverlayLive, clear: elements.clearRadarOverlay };
+    }
+    return null;
+  }
+
+  function updateRasterOverlayUi() {
+    for (const [typeId, state] of Object.entries(rasterOverlayStates)) {
+      const controls = rasterOverlayControls(typeId);
+      if (!controls) continue;
+      if (controls.url && document.activeElement !== controls.url) setValue(controls.url, state.url || "");
+      if (controls.mode && document.activeElement !== controls.mode) setValue(controls.mode, state.mode || "single");
+      if (controls.bounds && document.activeElement !== controls.bounds) setValue(controls.bounds, (state.bounds || state.defaultBounds || []).join(","));
+      if (controls.opacity) setValue(controls.opacity, state.opacity ?? state.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY);
+      if (controls.value) controls.value.textContent = `${Math.round((state.opacity ?? 0) * 100)}%`;
+      setDisabled(controls.clear, !state.loaded && !state.url);
+    }
+    if (elements.rasterOverlayStatus) {
+      const loaded = rasterOverlayState().filter((overlay) => overlay.loaded);
+      elements.rasterOverlayStatus.textContent = loaded.length
+        ? loaded.map((overlay) => `${overlay.label} ${overlay.sourceLabel || "已加载"} ${Math.round(overlay.opacity * 100)}%`).join(" / ")
+        : "未加载云图或雷达图。";
+    }
+  }
+
+  async function resolveLiveRasterOverlay(typeId) {
+    if (typeId === "cloud") return resolveLiveCloudOverlay();
+    if (typeId === "radar") return resolveLiveRadarOverlay();
+    throw new Error(`Unknown live raster overlay: ${typeId}`);
+  }
+
+  function resolveLiveCloudOverlay() {
+    const date = recentGibsDate();
+    return {
+      url: "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi",
+      mode: "wms",
+      layers: NASA_GIBS_CLOUD_LAYER,
+      parameters: {
+        time: date,
+        format: "image/png",
+        transparent: true,
+      },
+      bounds: RASTER_OVERLAY_TYPES.cloud.defaultBounds,
+      opacity: RASTER_OVERLAY_TYPES.cloud.defaultOpacity,
+      maximumLevel: RASTER_OVERLAY_TYPES.cloud.defaultMaximumLevel,
+      visible: true,
+      source: "NASA GIBS",
+      sourceLabel: "NASA GIBS 近实时卫星",
+      validTime: date,
+    };
+  }
+
+  async function resolveLiveRadarOverlay() {
+    const response = await fetch(RAINVIEWER_WEATHER_MAPS_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`RainViewer ${response.status} ${response.statusText}`);
+    const payload = await response.json();
+    const frames = [...(payload?.radar?.past || []), ...(payload?.radar?.nowcast || [])].filter((frame) => frame?.path);
+    const frame = frames.at(-1);
+    if (!frame) throw new Error("RainViewer 暂无可用雷达帧。");
+    const host = String(payload.host || "https://tilecache.rainviewer.com").replace(/\/$/, "");
+    return {
+      url: `${host}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`,
+      mode: "template",
+      bounds: RASTER_OVERLAY_TYPES.radar.defaultBounds,
+      opacity: RASTER_OVERLAY_TYPES.radar.defaultOpacity,
+      maximumLevel: RASTER_OVERLAY_TYPES.radar.defaultMaximumLevel,
+      visible: true,
+      source: "RainViewer",
+      sourceLabel: "RainViewer 最新雷达",
+      validTime: frame.time ? new Date(frame.time * 1000).toISOString() : "",
+    };
+  }
+
+  function recentGibsDate() {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function normalizeRasterOverlayMode(value) {
+    const mode = String(value || "").trim().toLowerCase();
+    if (mode === "wms") return "wms";
+    return mode === "template" || mode === "tile" || mode === "tiles" ? "template" : "single";
+  }
+
+  function normalizeRasterOverlayBounds(value) {
+    if (Array.isArray(value)) return validateRasterOverlayBounds(value);
+    const parts = String(value || "").split(/[,\s]+/).map(Number).filter(Number.isFinite);
+    return validateRasterOverlayBounds(parts);
+  }
+
+  function normalizeRasterMaximumLevel(value) {
+    const level = Number(value);
+    return Number.isFinite(level) ? clamp(Math.round(level), 0, 18) : undefined;
+  }
+
+  function validateRasterOverlayBounds(values) {
+    if (!values || values.length !== 4) throw new Error("栅格范围需要 west,south,east,north 四个数值。");
+    const [west, south, east, north] = values.map(Number);
+    if (!validLonLat(west, south) || !validLonLat(east, north) || west >= east || south >= north) {
+      throw new Error("栅格范围无效，应为 west,south,east,north。");
+    }
+    return [west, south, east, north];
+  }
+
+  function boundsToRectangle(bounds) {
+    const [west, south, east, north] = normalizeRasterOverlayBounds(bounds);
+    return Cesium.Rectangle.fromDegrees(west, south, east, north);
+  }
+
+  function rasterOverlayPublicState(state) {
+    return {
+      id: state.id,
+      layerId: state.layerId,
+      label: state.label,
+      mode: state.mode,
+      url: state.url,
+      layers: state.layers || "",
+      parameters: cloneJson(state.parameters || {}),
+      bounds: cloneJson(state.bounds),
+      opacity: Number(state.opacity.toFixed(2)),
+      maximumLevel: state.maximumLevel,
+      visible: state.visible,
+      loaded: Boolean(state.layer),
+      source: state.source || "",
+      sourceLabel: state.sourceLabel || "",
+      validTime: state.validTime || "",
+      error: state.error || "",
+    };
+  }
+
+  function rasterOverlayState() {
+    return Object.values(rasterOverlayStates).map(rasterOverlayPublicState);
+  }
+
+  function rasterOverlayLayerIdToType(id) {
+    return Object.values(RASTER_OVERLAY_TYPES).find((type) => type.layerId === id || type.id === id)?.id || "";
   }
 
   function configureCreditContainer() {
@@ -1233,6 +1641,14 @@
     on(elements.weather3dScale, "input", () => setWeather3dScale(elements.weather3dScale.value));
     on(elements.weatherVolumeEnabled, "change", () => setWeatherVolumeEnabled(Boolean(elements.weatherVolumeEnabled.checked)));
     on(elements.weatherVolumeScale, "input", () => setWeatherVolumeScale(elements.weatherVolumeScale.value));
+    on(elements.loadCloudOverlay, "click", () => loadRasterOverlayFromControls("cloud"));
+    on(elements.loadCloudOverlayLive, "click", () => loadLiveRasterOverlay("cloud"));
+    on(elements.clearCloudOverlay, "click", () => clearRasterOverlay("cloud"));
+    on(elements.cloudOverlayOpacity, "input", () => setRasterOverlayOpacity("cloud", elements.cloudOverlayOpacity.value));
+    on(elements.loadRadarOverlay, "click", () => loadRasterOverlayFromControls("radar"));
+    on(elements.loadRadarOverlayLive, "click", () => loadLiveRasterOverlay("radar"));
+    on(elements.clearRadarOverlay, "click", () => clearRasterOverlay("radar"));
+    on(elements.radarOverlayOpacity, "input", () => setRasterOverlayOpacity("radar", elements.radarOverlayOpacity.value));
     on(elements.drawPoint, "click", () => startDrawMode("Point"));
     on(elements.drawLine, "click", () => startDrawMode("LineString"));
     on(elements.drawPolygon, "click", () => startDrawMode("Polygon"));
@@ -1262,15 +1678,24 @@
     on(elements.applyGeoJsonEditor, "click", () => applyGeoJsonEditor());
     on(elements.formatGeoJsonEditor, "click", () => formatTextareaJson(elements.geoJsonEditor));
     on(elements.validateGeoJson, "click", () => updateValidationSummary(true));
+    on(elements.validateWeatherGeoJson, "click", () => updateValidationSummary(true));
     on(elements.downloadValidationReport, "click", () => downloadJsonPayload(buildValidationReport(), "weather-earth-validation-report.json", "application/json;charset=utf-8"));
     on(elements.loadManifestUrl, "click", () => loadManifestFromUrl(elements.manifestUrlInput?.value || DEFAULT_MANIFEST_URL));
     on(elements.loadDefaultManifest, "click", () => loadManifestFromUrl(DEFAULT_MANIFEST_URL));
     on(elements.playManifest, "click", () => toggleManifestPlayback());
     on(elements.resetManifest, "click", () => resetManifest());
+    on(elements.processPlay, "click", () => toggleManifestPlayback());
+    on(elements.processPrev, "click", () => stepManifest(-1));
+    on(elements.processNext, "click", () => stepManifest(1));
+    on(elements.processRange, "input", () => setManifestIndex(Number(elements.processRange.value), { fit: false }));
     on(elements.immersiveProcessPlay, "click", () => toggleManifestPlayback());
     on(elements.immersiveProcessPrev, "click", () => stepManifest(-1));
     on(elements.immersiveProcessNext, "click", () => stepManifest(1));
     on(elements.immersiveProcessRange, "input", () => setManifestIndex(Number(elements.immersiveProcessRange.value)));
+    on(elements.weatherCaseOverview, "click", () => flyToWeatherCaseView("overview"));
+    on(elements.weatherCaseCore, "click", () => flyToWeatherCaseView("core"));
+    on(elements.weatherCaseCity, "click", () => flyToWeatherCaseView("city"));
+    on(elements.weatherCaseEvidence, "click", () => flyToWeatherCaseView("evidence"));
     on(elements.cameraZoomIn, "click", () => zoomCamera(-0.8));
     on(elements.cameraZoomOut, "click", () => zoomCamera(0.8));
     on(elements.cameraRotateLeft, "click", () => rotateCamera(-12));
@@ -1317,6 +1742,9 @@
     if (map && initialLoad?.then) {
       initialLoad.then(() => flyToCamera(map, { duration: 0 })).catch(() => {});
     }
+    const liveRaster = params.get("raster") === "live" || params.get("rasterOverlays") === "live";
+    if (liveRaster || params.get("cloud") === "live") loadLiveRasterOverlay("cloud");
+    if (liveRaster || params.get("radar") === "live") loadLiveRasterOverlay("radar");
   }
 
   function initialBaseMapKeyFromUrl() {
@@ -1354,9 +1782,9 @@
 
   async function loadDefaultWeather(options = {}) {
     try {
-      await loadGeoJsonFromUrl(DEFAULT_GEOJSON_URL, "默认风区", { shareType: "", shareValue: "", silentNotFound: options.silentNotFound, fit: options.fit !== false });
+      await loadGeoJsonFromUrl(DEFAULT_GEOJSON_URL, "默认开放数据", { shareType: "", shareValue: "", silentNotFound: options.silentNotFound, fit: options.fit !== false });
     } catch (error) {
-      if (!options.silentNotFound) setStatus("默认风区加载失败。", error.message || String(error));
+      if (!options.silentNotFound) setStatus("默认开放数据加载失败。", error.message || String(error));
     }
   }
 
@@ -1461,7 +1889,7 @@
     if (!geometry) return;
     const id = feature.properties?.[FEATURE_ID_PROPERTY] || "";
     const color = featureColor(feature);
-    const alpha = currentWeatherOpacity;
+    const alpha = featureOpacity(feature);
     if (geometry.type === "Point") renderPointFeature(feature, geometry.coordinates, color, id);
     if (geometry.type === "MultiPoint") geometry.coordinates.forEach((coord) => renderPointFeature(feature, coord, color, id));
     if (geometry.type === "LineString") renderLineFeature(feature, geometry.coordinates, color, id);
@@ -1500,7 +1928,7 @@
     attachEntityFeature(entity, featureId);
     weatherEntities.push(entity);
     if (weather3dEnabled) {
-      const height = 900 * weather3dScale;
+      const height = featureBeaconHeight(feature);
       const beacon = viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(lon, lat, height / 2),
         cylinder: {
@@ -1547,6 +1975,23 @@
       });
       attachEntityFeature(labelEntity, featureId);
       weatherEntities.push(labelEntity);
+    }
+    const last = coordinates.at(-1);
+    if (validLonLat(last?.[0], last?.[1])) {
+      const arrow = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(Number(last[0]), Number(last[1]), 120),
+        label: {
+          text: ">",
+          font: "800 18px sans-serif",
+          fillColor: color.withAlpha(0.95),
+          outlineColor: Cesium.Color.BLACK.withAlpha(0.7),
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+      attachEntityFeature(arrow, featureId);
+      weatherEntities.push(arrow);
     }
   }
 
@@ -1772,7 +2217,7 @@
     const normalized = String(key || "").trim().toLowerCase();
     if (BASEMAP_PROVIDERS[normalized]) return normalized;
     if (normalized === "google" || normalized === "google-3d" || normalized === "photorealistic") return GOOGLE_TILESET_MODE;
-    if (normalized === "world-terrain" || normalized === "terrain" || normalized === "cesium") return DEFAULT_TILESET_MODE;
+    if (normalized === "world-terrain" || normalized === "terrain" || normalized === "cesium") return "cesium-world-terrain";
     if (normalized === "osm" || normalized === "openstreetmap") return "openstreetmap-imagery";
     if (normalized === "esri" || normalized === "arcgis" || normalized === "satellite") return "esri-world-imagery";
     if (normalized === "naturalearth" || normalized === "local") return "natural-earth";
@@ -2315,6 +2760,34 @@
     flyToCamera({ ...camera, zoom: clamp(camera.zoom - delta, 0.4, 19) }, { duration: 0.35 });
   }
 
+  function zoomCameraRange(zoomDelta) {
+    if (!viewer || !Cesium) return null;
+    const camera = currentCameraState();
+    const nextZoom = clamp(camera.zoom + Number(zoomDelta || 0), 0.4, 19);
+    const currentRange = zoomToHeight(camera.zoom);
+    const nextRange = zoomToHeight(nextZoom);
+    const moveMeters = currentRange - nextRange;
+    const direction = Cesium.Cartesian3.normalize(viewer.camera.directionWC, new Cesium.Cartesian3());
+    const up = Cesium.Cartesian3.normalize(viewer.camera.upWC, new Cesium.Cartesian3());
+    const destination = Cesium.Cartesian3.add(
+      viewer.camera.positionWC,
+      Cesium.Cartesian3.multiplyByScalar(direction, moveMeters, new Cesium.Cartesian3()),
+      new Cesium.Cartesian3()
+    );
+    viewer.camera.setView({
+      destination,
+      orientation: {
+        direction,
+        up,
+      },
+    });
+    lastCamera = currentCameraState();
+    scheduleCameraUiUpdate();
+    scheduleReplaceUrlState();
+    viewer.scene.requestRender?.();
+    return lastCamera;
+  }
+
   function zoomToLocation(lonLat, options = {}) {
     if (!validLonLat(lonLat?.lon, lonLat?.lat)) return null;
     const camera = currentCameraState();
@@ -2802,24 +3275,40 @@
 
   function renderManifestControls() {
     const hasFrames = manifestFrames.length > 0;
+    const recap = currentWeatherRecap();
     setHidden(elements.immersiveProcessPanel, !hasFrames);
     setDisabled(elements.playManifest, !hasFrames);
     setDisabled(elements.resetManifest, !hasFrames);
+    setDisabled(elements.processPlay, !hasFrames);
+    setDisabled(elements.processPrev, !hasFrames);
+    setDisabled(elements.processNext, !hasFrames);
     setDisabled(elements.immersiveProcessPlay, !hasFrames);
     setDisabled(elements.immersiveProcessPrev, !hasFrames);
     setDisabled(elements.immersiveProcessNext, !hasFrames);
-    if (elements.processSummary) elements.processSummary.textContent = hasFrames ? `${manifestFrames.length} 个时次 / 当前 ${manifestFrames[manifestIndex]?.label || "--"}` : "未加载天气过程。";
+    if (elements.processSummary) {
+      elements.processSummary.textContent = hasFrames
+        ? `${manifestFrames.length} 个时次 / 当前 ${manifestFrames[manifestIndex]?.label || "--"} / ${weatherRecapOneLine(recap)}`
+        : weatherRecapOneLine(recap) || "未加载天气过程。";
+    }
+    if (elements.processTime) elements.processTime.textContent = hasFrames ? manifestFrames[manifestIndex]?.label || "--" : (recap.timeLabel || "--");
     if (elements.immersiveProcessTime) elements.immersiveProcessTime.textContent = hasFrames ? manifestFrames[manifestIndex]?.label || "--" : "等待过程";
+    if (elements.processRange) {
+      elements.processRange.max = String(Math.max(0, manifestFrames.length - 1));
+      elements.processRange.value = String(manifestIndex);
+      elements.processRange.disabled = !hasFrames;
+    }
     if (elements.immersiveProcessRange) {
       elements.immersiveProcessRange.max = String(Math.max(0, manifestFrames.length - 1));
       elements.immersiveProcessRange.value = String(manifestIndex);
       elements.immersiveProcessRange.disabled = !hasFrames;
     }
     if (elements.playManifest) elements.playManifest.textContent = manifestPlaying ? "暂停" : "播放";
+    if (elements.processPlay) elements.processPlay.textContent = manifestPlaying ? "暂停" : "播放";
     if (elements.immersiveProcessPlay) elements.immersiveProcessPlay.textContent = manifestPlaying ? "暂停" : "播放";
-    if (elements.processTimeline) {
-      elements.processTimeline.innerHTML = manifestFrames.map((frame, index) => `<button type="button" data-frame="${index}" class="${index === manifestIndex ? "is-active" : ""}">${escapeHtml(frame.label)}</button>`).join("");
-      elements.processTimeline.querySelectorAll("[data-frame]").forEach((button) => {
+    for (const container of [elements.processTimeline, elements.processTicks]) {
+      if (!container) continue;
+      container.innerHTML = manifestFrames.map((frame, index) => `<button type="button" data-frame="${index}" class="${index === manifestIndex ? "is-active" : ""}">${escapeHtml(frame.label)}</button>`).join("");
+      container.querySelectorAll("[data-frame]").forEach((button) => {
         button.addEventListener("click", () => setManifestIndex(Number(button.dataset.frame), { fit: false }));
       });
     }
@@ -2855,6 +3344,7 @@
         buildings: buildingState(),
         weather3d: weather3dState(),
         weatherVolume: weatherVolumeState(),
+        rasterOverlays: rasterOverlayState().map(({ id, label, mode, url, layers, parameters, bounds, opacity, maximumLevel, visible, loaded, source, sourceLabel, validTime }) => ({ id, label, mode, url, layers, parameters, bounds, opacity, maximumLevel, visible, loaded, source, sourceLabel, validTime })),
         locationSearch: publicLocationSearchResult(lastLocationSearch),
         focusTarget: publicFocusTarget(focusTarget),
         surfaceProbe: publicSurfaceProbe(surfaceProbe),
@@ -2897,6 +3387,7 @@
     currentProjection = "globe";
     currentBaseMapKey = normalizeBaseMapKey(view.basemap || view.tileset?.id || TILESET_MODE);
     await loadBaseMapProvider(currentBaseMapKey);
+    await applyProjectRasterOverlayState(view);
     setQualityProfile(view.qualityProfile?.id || view.qualityProfile || view.quality || activeQualityProfile, { forceEvent: false });
     autoRotateEnabled = Boolean(view.autoRotate ?? autoRotateEnabled);
     focusOrbitEnabled = Boolean(view.focusOrbit?.enabled ?? view.focusOrbit ?? focusOrbitEnabled);
@@ -3048,6 +3539,8 @@
       else if (!["Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"].includes(geometry.type)) errors.push({ index, message: `不支持的 geometry: ${geometry.type}` });
       if (!feature.properties?.weather_type) warnings.push({ index, message: "缺少 properties.weather_type。" });
       if (!feature.properties?.time && !feature.properties?.valid_time && !feature.properties?.validTime) warnings.push({ index, message: "缺少时次字段。" });
+      if (!feature.properties?.source) warnings.push({ index, message: "缺少 properties.source。" });
+      if (!WEATHER_SYSTEM.intensityFields.some((field) => feature.properties?.[field] !== undefined && feature.properties?.[field] !== "")) warnings.push({ index, message: "缺少等级或强度字段。" });
       const type = feature.properties?.weather_type || geometry?.type || "unknown";
       counts[type] = (counts[type] || 0) + 1;
       forEachGeometryCoordinate(geometry, (coord) => {
@@ -3106,6 +3599,8 @@
     updateDataDocumentInfo();
     updateTimeFilterControls();
     renderElementTypeList();
+    renderLayerList();
+    renderWeatherRecap();
     renderFeatureList();
     updateSelectedFeatureEditor();
     updateDrawUi();
@@ -3146,6 +3641,7 @@
     setValue(elements.weatherOpacity, currentWeatherOpacity);
     setValue(elements.immersiveWeatherOpacity, currentWeatherOpacity);
     if (elements.immersiveWeatherOpacityValue) elements.immersiveWeatherOpacityValue.textContent = `${Math.round(currentWeatherOpacity * 100)}%`;
+    updateRasterOverlayUi();
     setChecked(elements.showUntimedFeatures, showUntimedFeatures);
     const provider = baseMapProvider(currentBaseMapKey);
     const activeProvider = activeBaseMapProvider();
@@ -3276,6 +3772,143 @@
     });
   }
 
+  function renderLayerList() {
+    const layers = weatherLayerState();
+    if (!elements.layerList) return;
+    elements.layerList.innerHTML = layers.map((layer) => `
+      <label class="layer-item">
+        <input type="checkbox" data-layer="${escapeHtml(layer.id)}" ${layer.visible ? "checked" : ""} ${layer.disabled ? "disabled" : ""} />
+        <strong>${escapeHtml(layer.label)}</strong>
+        <span>${escapeHtml(layer.summary || "")}</span>
+        <small>${escapeHtml(layer.kind === "raster" ? rasterLayerMetaText(layer) : "GeoJSON")}</small>
+      </label>
+    `).join("");
+    elements.layerList.querySelectorAll("[data-layer]").forEach((input) => {
+      input.addEventListener("change", () => setWeatherLayerVisibility(input.dataset.layer, input.checked));
+    });
+  }
+
+  function rasterLayerMetaText(layer) {
+    if (layer.loaded) return `${layer.mode === "template" ? "瓦片" : "单图"} / ${Math.round((layer.opacity || 0) * 100)}%`;
+    if (layer.error) return `错误：${layer.error}`;
+    return "待加载";
+  }
+
+  function renderWeatherRecap() {
+    const recap = currentWeatherRecap();
+    const hasFeatures = recap.featureCount > 0;
+    if (elements.weatherRecapSummary) elements.weatherRecapSummary.textContent = hasFeatures ? weatherRecapOneLine(recap) : "加载强对流/大风样例或过程清单后显示复盘摘要。";
+    if (elements.weatherRecapFocus) {
+      elements.weatherRecapFocus.innerHTML = hasFeatures ? [
+        recap.narrative ? `<div><strong>解释</strong><span>${escapeHtml(recap.narrative)}</span></div>` : "",
+        `<div><strong>天气系统</strong><span>${escapeHtml(WEATHER_SYSTEM.label)}</span></div>`,
+        `<div><strong>当前时次</strong><span>${escapeHtml(recap.timeLabel || "全部时次")}</span></div>`,
+        `<div><strong>影响城市</strong><span>${escapeHtml(recap.citiesText || "待补充")}</span></div>`,
+        `<div><strong>关键观测</strong><span>${escapeHtml(recap.observationsText || "待补充")}</span></div>`,
+      ].filter(Boolean).join("") : "";
+    }
+    if (elements.weatherRecapEvidence) {
+      elements.weatherRecapEvidence.innerHTML = hasFeatures
+        ? `<div>来源：${escapeHtml(recap.sourcesText || "未标注")} / 可信度：${escapeHtml(recap.confidenceText || "未标注")}</div>`
+        : "等待可复盘的天气要素。";
+    }
+    if (elements.weatherRecapLegend) {
+      const typeState = elementTypeState().filter((type) => type.count > 0 || WEATHER_SYSTEM.p0Types.includes(type.id) || WEATHER_SYSTEM.p1Types.includes(type.id));
+      elements.weatherRecapLegend.innerHTML = typeState.map((type) => {
+        const config = elementTypeById(type.id) || type;
+        const badge = WEATHER_SYSTEM.p0Types.includes(type.id) ? "P0" : WEATHER_SYSTEM.p1Types.includes(type.id) ? "P1" : config.reserved ? "P2" : "";
+        return `<div class="legend-row">
+          <span class="type-swatch" style="background:${type.color}"></span>
+          <strong>${escapeHtml(config.label || type.label)}</strong>
+          <small>${escapeHtml([badge, config.legend || "未知类型兜底显示"].filter(Boolean).join(" / "))}</small>
+        </div>`;
+      }).join("");
+    }
+    for (const button of [elements.weatherCaseOverview, elements.weatherCaseCore, elements.weatherCaseCity, elements.weatherCaseEvidence]) {
+      setDisabled(button, !hasFeatures);
+    }
+  }
+
+  function currentWeatherRecap() {
+    const features = displayedGeoJson.features.length ? displayedGeoJson.features : currentGeoJson.features;
+    const counts = {};
+    const sources = new Set();
+    const confidences = [];
+    const cities = [];
+    const observations = [];
+    const narratives = [];
+    let maxLevel = null;
+    features.forEach((feature) => {
+      const props = feature.properties || {};
+      const type = weatherTypeId(feature);
+      counts[type] = (counts[type] || 0) + 1;
+      if (props.source) sources.add(String(props.source));
+      if (props.confidence !== undefined && props.confidence !== "") confidences.push(Number(props.confidence));
+      extractCityImpact(props).forEach((city) => cities.push(city));
+      if (props.narrative) narratives.push(String(props.narrative));
+      const level = weatherSeverityKey(feature);
+      if (level && (!maxLevel || weatherSeverityOrder(level) > weatherSeverityOrder(maxLevel))) maxLevel = level;
+      if (type === "station" || props.observed_value || props.wind_speed || props.wind || props.value) {
+        const value = props.observed_value ?? props.wind_speed ?? props.wind ?? props.value;
+        const unit = props.unit || (value ? "m/s" : "");
+        const name = props.name || props.station_id || "观测";
+        if (value !== undefined && value !== "") observations.push(`${name} ${value}${unit}`);
+      }
+    });
+    const times = uniqueTimes(features);
+    const uniqueCities = uniqueStable(cities).slice(0, 8);
+    const uniqueObservations = uniqueStable(observations).slice(0, 4);
+    const confidenceAverage = confidences.length ? confidences.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0) / confidences.length : null;
+    return {
+      featureCount: features.length,
+      counts,
+      windRegionCount: counts["wind-region"] || 0,
+      warningCount: counts.warning || 0,
+      stationCount: counts.station || 0,
+      maxLevel,
+      maxLevelLabel: weatherSeverityLabel(maxLevel),
+      timeLabel: activeTimeFilter !== TIME_FILTER_ALL ? activeTimeFilter : (times.length === 1 ? times[0] : times.length ? `${times.length} 个时次` : ""),
+      cities: uniqueCities,
+      citiesText: uniqueCities.join("、"),
+      observations: uniqueObservations,
+      observationsText: uniqueObservations.join("；"),
+      sourcesText: [...sources].slice(0, 4).join("、"),
+      confidenceText: confidenceAverage === null ? "" : `${Math.round(confidenceAverage * 100)}%`,
+      narrative: uniqueStable(narratives)[0] || "",
+    };
+  }
+
+  function weatherRecapOneLine(recap = currentWeatherRecap()) {
+    if (!recap.featureCount) return "";
+    const parts = [
+      `${recap.featureCount} 个要素`,
+      `${recap.windRegionCount} 个风区`,
+      recap.maxLevelLabel ? `最高 ${recap.maxLevelLabel}` : "",
+      recap.citiesText ? `影响 ${recap.citiesText}` : "",
+      recap.observationsText ? `观测 ${recap.observationsText}` : "",
+    ].filter(Boolean);
+    return parts.join(" / ");
+  }
+
+  function extractCityImpact(props = {}) {
+    const value = props.city_impact ?? props.cityImpact ?? props.impact_city ?? props.affected_cities;
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => typeof item === "string" ? [item] : [item?.name || item?.city || item?.label].filter(Boolean)).map(String);
+    }
+    if (typeof value === "string") return value.split(/[、,，;；]/).map((item) => item.trim()).filter(Boolean);
+    return [];
+  }
+
+  function uniqueStable(values = []) {
+    const seen = new Set();
+    return values.filter((value) => {
+      const key = String(value || "").trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function renderFeatureList() {
     if (!elements.featureList) return;
     const query = String(elements.featureSearch?.value || "").trim().toLowerCase();
@@ -3348,11 +3981,20 @@
   }
 
   function updateValidationSummary(verbose) {
-    if (!elements.validationSummary) return;
     const validation = validateWeatherGeoJson(currentGeoJson);
-    elements.validationSummary.textContent = currentGeoJson.features.length
+    const text = currentGeoJson.features.length
       ? `${validation.ok ? "通过" : "有错误"} / ${validation.summary.featureCount} 要素 / ${validation.errors.length} 错误 / ${validation.warnings.length} 提示`
       : "等待 GeoJSON。";
+    if (elements.validationSummary) elements.validationSummary.textContent = text;
+    if (elements.qualitySummary) elements.qualitySummary.textContent = text;
+    setDisabled(elements.validateWeatherGeoJson, !currentGeoJson.features.length);
+    setDisabled(elements.validateGeoJson, !currentGeoJson.features.length);
+    setDisabled(elements.downloadValidationReport, !currentGeoJson.features.length);
+    if (elements.qualityIssues) {
+      elements.qualityIssues.innerHTML = validation.issues.length
+        ? validation.issues.slice(0, 5).map((issue) => `<div>${issue.index + 1}: ${escapeHtml(issue.message)}</div>`).join("")
+        : (currentGeoJson.features.length ? "未发现阻断性问题。" : "等待校验。");
+    }
     if (verbose) setStatus(validation.ok ? "GeoJSON 校验通过。" : "GeoJSON 校验发现问题。", `${validation.errors.length} 错误 / ${validation.warnings.length} 提示`);
   }
 
@@ -3452,6 +4094,42 @@
     flyToBounds(bounds);
   }
 
+  function flyToWeatherCaseView(id) {
+    const key = WEATHER_SYSTEM.caseViews[id] ? id : "overview";
+    const features = caseViewFeatures(key);
+    const bounds = geoJsonBounds({ type: "FeatureCollection", features });
+    if (bounds) {
+      const lon = (bounds.west + bounds.east) / 2;
+      const lat = (bounds.south + bounds.north) / 2;
+      const span = Math.max(bounds.east - bounds.west, bounds.north - bounds.south, 0.01);
+      const base = WEATHER_SYSTEM.caseViews[key].camera;
+      return flyToCamera({
+        ...base,
+        lon,
+        lat,
+        zoom: clamp(Math.log2((key === "overview" ? 220 : 150) / span), key === "overview" ? 3.6 : 5.5, key === "evidence" ? 10.2 : 9.2),
+      }, { duration: 0.75 });
+    }
+    return flyToCamera(WEATHER_SYSTEM.caseViews[key].camera, { duration: 0.75 });
+  }
+
+  function caseViewFeatures(key) {
+    const source = displayedGeoJson.features.length ? displayedGeoJson.features : currentGeoJson.features;
+    if (key === "core") {
+      const core = source.filter((feature) => ["wind-region", "rain-region", "front"].includes(weatherTypeId(feature)));
+      return core.length ? core : source;
+    }
+    if (key === "city") {
+      const city = source.filter((feature) => extractCityImpact(feature.properties || {}).length || ["warning", "station"].includes(weatherTypeId(feature)));
+      return city.length ? city : source;
+    }
+    if (key === "evidence") {
+      const evidence = source.filter((feature) => ["station", "warning", "pressure-center"].includes(weatherTypeId(feature)) || feature.properties?.evidence_url);
+      return evidence.length ? evidence : source;
+    }
+    return source;
+  }
+
   function fitFeatureById(id) {
     const feature = findFeatureById(id);
     if (!feature) return;
@@ -3501,6 +4179,7 @@
       buildings: buildingState(),
       weather3d: weather3dState(),
       weatherVolume: weatherVolumeState(),
+      rasterOverlays: rasterOverlayState(),
       locationSearch: publicLocationSearchResult(lastLocationSearch),
       focusTarget: publicFocusTarget(focusTarget),
       surfaceProbe: publicSurfaceProbe(surfaceProbe),
@@ -3820,6 +4499,7 @@
       coordinates: measurementState.coordinates.map((p) => [p.lon, p.lat]),
       lengthMeters: Math.round(measurementState.lengthMeters),
       areaSqMeters: Math.round(measurementState.areaSqMeters),
+      rasterOverlays: rasterOverlayState().map(({ id, label, visible, loaded, opacity }) => ({ id, label, visible, loaded, opacity })),
     };
   }
 
@@ -3832,17 +4512,43 @@
   }
 
   function weatherLayerState() {
-    return WEATHER_LAYERS.map((layer) => ({ id: layer.id, label: layer.label, visible: layerVisibility.get(layer.id) !== false }));
+    const counts = Object.fromEntries(WEATHER_LAYERS.map((layer) => [layer.id, 0]));
+    for (const feature of displayedGeoJson.features || []) {
+      const geometryType = feature?.geometry?.type;
+      const layer = WEATHER_LAYERS.find((candidate) => candidate.geometry.has(geometryType));
+      if (layer) counts[layer.id] = (counts[layer.id] || 0) + 1;
+    }
+    const vectorLayers = WEATHER_LAYERS.map((layer) => ({
+      id: layer.id,
+      label: layer.label,
+      visible: layerVisibility.get(layer.id) !== false,
+      count: counts[layer.id] || 0,
+      summary: `${counts[layer.id] || 0}`,
+      kind: "geojson",
+    }));
+    const rasterLayers = rasterOverlayState().map((overlay) => ({
+      id: overlay.layerId,
+      typeId: overlay.id,
+      label: overlay.label,
+      visible: overlay.visible,
+      loaded: overlay.loaded,
+      mode: overlay.mode,
+      opacity: overlay.opacity,
+      error: overlay.error,
+      summary: overlay.loaded ? "已加载" : "未加载",
+      kind: "raster",
+    }));
+    return [...vectorLayers, ...rasterLayers];
   }
 
   function elementTypeState() {
     const counts = {};
     currentGeoJson.features.forEach((feature) => {
-      const type = feature.properties?.weather_type || inferWeatherType(feature);
+      const type = weatherTypeId(feature);
       counts[type] = (counts[type] || 0) + 1;
     });
     const ids = new Set([...WEATHER_ELEMENT_TYPES.map((type) => type.id), ...Object.keys(counts)]);
-    return [...ids].map((id) => {
+    return [...ids].sort(weatherTypeSort).map((id) => {
       const type = elementTypeById(id) || { id, label: id, color: "#8ef6ff" };
       return { id, label: type.label || id, color: type.color || "#8ef6ff", visible: elementTypeVisibility.get(id) !== false, count: counts[id] || 0 };
     });
@@ -3863,6 +4569,12 @@
   }
 
   function setWeatherLayerVisibility(id, visible) {
+    const rasterType = rasterOverlayLayerIdToType(id);
+    if (rasterType) {
+      const overlay = setRasterOverlayVisibility(rasterType, visible);
+      emitWeatherEarthEvent("layerchange", { layers: weatherLayerState() });
+      return weatherLayerState().find((layer) => layer.id === overlay?.layerId);
+    }
     layerVisibility.set(id, Boolean(visible));
     renderWeather();
     emitWeatherEarthEvent("layerchange", { layers: weatherLayerState() });
@@ -3871,7 +4583,45 @@
 
   function applyProjectLayerState(layers = []) {
     for (const layer of layers || []) {
+      const rasterType = rasterOverlayLayerIdToType(layer?.id);
+      if (rasterType) {
+        rasterOverlayStates[rasterType].visible = layer.visible !== false;
+        if (rasterOverlayStates[rasterType].layer) rasterOverlayStates[rasterType].layer.show = layer.visible !== false;
+        continue;
+      }
       if (layer?.id) layerVisibility.set(layer.id, layer.visible !== false);
+    }
+  }
+
+  async function applyProjectRasterOverlayState(view = {}) {
+    const overlays = Array.isArray(view.rasterOverlays) ? view.rasterOverlays : [];
+    if (!overlays.length) return;
+    for (const overlay of overlays) {
+      const typeId = overlay?.id || rasterOverlayLayerIdToType(overlay?.layerId);
+      if (!typeId || !RASTER_OVERLAY_TYPES[typeId]) continue;
+      if (!overlay.url || overlay.loaded === false) {
+        clearRasterOverlay(typeId, { silent: true });
+        rasterOverlayStates[typeId].visible = overlay.visible !== false;
+        continue;
+      }
+      try {
+        await setRasterOverlay(typeId, {
+          url: overlay.url,
+          mode: overlay.mode,
+          layers: overlay.layers,
+          parameters: overlay.parameters,
+          bounds: overlay.bounds,
+          opacity: overlay.opacity,
+          visible: overlay.visible !== false,
+          maximumLevel: overlay.maximumLevel,
+          source: overlay.source,
+          sourceLabel: overlay.sourceLabel,
+          validTime: overlay.validTime,
+          silent: true,
+        });
+      } catch {
+        // Keep project loading resilient even if an external raster source is unavailable.
+      }
     }
   }
 
@@ -3956,11 +4706,19 @@
     selectFeature(id, options = {}) { selectFeatureById(id, { fit: options.fit === true }); const selected = selectedFeature(); if (!selected) throw new Error(`Weather feature not found: ${id || ""}`); return { selected, state: this.getState() }; },
     getFeatures(options = {}) { return cloneJson(weatherFeatureList(options)); },
     getLayers() { return cloneJson(weatherLayerState()); },
+    getRasterOverlays() { return cloneJson(rasterOverlayState()); },
     getElementTypes() { return cloneJson(elementTypeState()); },
     getElementTypeState() { return cloneJson(elementTypeState()); },
+    getWeatherSystem() { return cloneJson({ ...WEATHER_SYSTEM, elementTypes: WEATHER_ELEMENT_TYPES }); },
+    getWeatherRecap() { return cloneJson(currentWeatherRecap()); },
+    flyToWeatherCaseView(id) { return cloneJson(flyToWeatherCaseView(id)); },
     setElementTypeVisibility(id, visible) { const type = setElementTypeVisibility(id, visible); return { type: cloneJson(type), state: this.getState() }; },
     setAllElementTypeVisibility(visible) { const types = setAllElementTypeVisibility(visible); return { types: cloneJson(types), state: this.getState() }; },
     setLayerVisibility(id, visible) { const layer = setWeatherLayerVisibility(id, visible); return { layer: cloneJson(layer), state: this.getState() }; },
+    async setRasterOverlay(type, input = {}) { const overlay = await setRasterOverlay(type, input); return { overlay: cloneJson(overlay), state: this.getState() }; },
+    clearRasterOverlay(type) { const overlay = clearRasterOverlay(type); return { overlay: cloneJson(overlay), state: this.getState() }; },
+    setRasterOverlayOpacity(type, value) { const overlay = setRasterOverlayOpacity(type, value); return { overlay: cloneJson(overlay), state: this.getState() }; },
+    setRasterOverlayVisibility(type, visible) { const overlay = setRasterOverlayVisibility(type, visible); return { overlay: cloneJson(overlay), state: this.getState() }; },
     setWeatherOpacity(value) { const opacity = setWeatherOpacity(value); return { opacity, state: this.getState() }; },
     setMapDetails(enabled) { const mapDetails = setMapDetailsEnabled(enabled); return { mapDetails, state: this.getState() }; },
     setTerrain(enabled) { const terrain = setTerrainEnabled(enabled); return { terrain, state: this.getState() }; },
@@ -4022,6 +4780,7 @@
       case "select-feature": return weatherEarthApi.selectFeature(message.id || message.featureId, options);
       case "get-features": return weatherEarthApi.getFeatures(options);
       case "get-layers": return weatherEarthApi.getLayers();
+      case "get-raster-overlays": return weatherEarthApi.getRasterOverlays();
       case "get-quality-profile": return weatherEarthApi.getQualityProfile();
       case "set-quality-profile": return weatherEarthApi.setQualityProfile(message.profile || message.qualityProfile || message.value);
       case "capture-metrics": return weatherEarthApi.captureMetrics(options);
@@ -4029,9 +4788,16 @@
       case "get-benchmark-paths": return weatherEarthApi.getBenchmarkPaths();
       case "get-element-types": return weatherEarthApi.getElementTypes();
       case "get-element-type-state": return weatherEarthApi.getElementTypeState();
+      case "get-weather-system": return weatherEarthApi.getWeatherSystem();
+      case "get-weather-recap": return weatherEarthApi.getWeatherRecap();
+      case "fly-to-weather-case": return weatherEarthApi.flyToWeatherCaseView(message.id || message.caseId || message.value);
       case "set-element-type-visibility": return weatherEarthApi.setElementTypeVisibility(message.id || message.typeId || message.weatherType, message.visible);
       case "set-all-element-type-visibility": return weatherEarthApi.setAllElementTypeVisibility(message.visible);
       case "set-layer-visibility": return weatherEarthApi.setLayerVisibility(message.id || message.layerId, message.visible);
+      case "set-raster-overlay": return weatherEarthApi.setRasterOverlay(message.id || message.typeId || message.overlayType || message.kind, message.overlay || message.payload || message, options);
+      case "clear-raster-overlay": return weatherEarthApi.clearRasterOverlay(message.id || message.typeId || message.overlayType || message.kind);
+      case "set-raster-overlay-opacity": return weatherEarthApi.setRasterOverlayOpacity(message.id || message.typeId || message.overlayType || message.kind, message.value ?? message.opacity);
+      case "set-raster-overlay-visibility": return weatherEarthApi.setRasterOverlayVisibility(message.id || message.typeId || message.overlayType || message.kind, message.visible ?? message.enabled);
       case "set-weather-opacity": return weatherEarthApi.setWeatherOpacity(message.value ?? message.opacity);
       case "set-map-details": return weatherEarthApi.setMapDetails(message.enabled ?? message.value);
       case "set-terrain": return weatherEarthApi.setTerrain(message.enabled ?? message.value);
@@ -4234,18 +5000,99 @@
     return feature?.properties?.name || feature?.properties?.label || feature?.properties?.title || feature?.properties?.weather_type || "";
   }
 
+  function weatherTypeId(feature) {
+    const raw = feature?.properties?.weather_type || inferWeatherType(feature);
+    return String(raw || "unknown").trim() || "unknown";
+  }
+
+  function weatherTypeSort(a, b) {
+    const typeA = elementTypeById(a);
+    const typeB = elementTypeById(b);
+    const orderA = Number(typeA?.order ?? WEATHER_SYSTEM.unknownOrder);
+    const orderB = Number(typeB?.order ?? WEATHER_SYSTEM.unknownOrder);
+    return orderA - orderB || String(a).localeCompare(String(b));
+  }
+
+  function weatherSeverityKey(feature) {
+    const props = feature?.properties || {};
+    const raw = props.level ?? props.intensity ?? props.warning_level ?? props.warningLevel ?? props.wind_level ?? props.windLevel;
+    if (raw !== undefined && raw !== "") return normalizeSeverityKey(raw);
+    const observed = Number(props.observed_value ?? props.wind_speed ?? props.wind ?? props.value);
+    if (Number.isFinite(observed)) {
+      if (observed >= 20.8) return "level_8";
+      if (observed >= 17.2) return "level_7";
+      if (observed >= 13.9) return "level_6";
+    }
+    return "";
+  }
+
+  function normalizeSeverityKey(value) {
+    const text = String(value || "").trim().toLowerCase();
+    if (!text) return "";
+    if (WEATHER_SYSTEM.levelStyles[text]) return text;
+    const number = text.match(/(\d+)/);
+    if (number && Number(number[1]) >= 8) return "level_8";
+    if (number && Number(number[1]) === 7) return "level_7";
+    if (number && Number(number[1]) === 6) return "level_6";
+    if (text.includes("red") || text.includes("红")) return "red";
+    if (text.includes("orange") || text.includes("橙")) return "orange";
+    if (text.includes("heavy") || text.includes("暴雨") || text.includes("强")) return "heavy";
+    return text;
+  }
+
+  function weatherSeverityStyle(feature) {
+    const key = weatherSeverityKey(feature);
+    return WEATHER_SYSTEM.levelStyles[key] || null;
+  }
+
+  function weatherSeverityLabel(key) {
+    return WEATHER_SYSTEM.levelStyles[key]?.label || key || "";
+  }
+
+  function weatherSeverityOrder(key) {
+    return Number(WEATHER_SYSTEM.levelStyles[key]?.order ?? 0);
+  }
+
   function featureColor(feature) {
-    return cssColor(feature?.properties?.["marker-color"] || feature?.properties?.color || feature?.properties?.stroke || elementTypeById(feature?.properties?.weather_type)?.color || "#00d6f2");
+    const type = elementTypeById(weatherTypeId(feature));
+    const severity = weatherSeverityStyle(feature);
+    const explicit = feature?.properties?.["marker-color"] || feature?.properties?.color || feature?.properties?.stroke;
+    const useSeverityColor = severity?.color && (!explicit || !type?.color || String(explicit).toLowerCase() === String(type.color).toLowerCase());
+    return cssColor(useSeverityColor ? severity.color : (explicit || type?.color || "#00d6f2"));
+  }
+
+  function featureOpacity(feature, fallback = currentWeatherOpacity) {
+    const explicit = Number(feature?.properties?.opacity ?? feature?.properties?.fill_opacity ?? feature?.properties?.["fill-opacity"]);
+    if (Number.isFinite(explicit)) return clamp(explicit, 0.08, 0.95);
+    const severity = weatherSeverityStyle(feature);
+    const type = elementTypeById(weatherTypeId(feature));
+    return clamp(Number(severity?.opacity ?? type?.opacity ?? fallback), 0.08, 0.95);
   }
 
   function featureVolumeHeight(feature) {
     const props = feature.properties || {};
     const explicit = Number(props.height ?? props.volume_height ?? props.altitude);
     if (Number.isFinite(explicit) && explicit > 0) return explicit * weatherVolumeScale;
+    const severity = weatherSeverityStyle(feature);
+    if (severity?.height) return severity.height * weatherVolumeScale;
+    const typeHeight = Number(elementTypeById(weatherTypeId(feature))?.height);
+    if (Number.isFinite(typeHeight) && typeHeight > 0) return typeHeight * weatherVolumeScale;
     const level = String(props.level || props.wind_level || "");
     const match = level.match(/(\d+)/);
     const base = match ? Number(match[1]) * 450 : 2400;
     return Math.max(800, base * weatherVolumeScale);
+  }
+
+  function featureBeaconHeight(feature) {
+    const props = feature.properties || {};
+    const explicit = Number(props.beacon_height ?? props.height);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit * weather3dScale;
+    const observed = Number(props.observed_value ?? props.wind_speed ?? props.wind ?? props.value);
+    if (Number.isFinite(observed) && observed > 0) return clamp(observed * 190, 1200, 6200) * weather3dScale;
+    const severity = weatherSeverityStyle(feature);
+    if (severity?.height) return severity.height * weather3dScale;
+    const typeHeight = Number(elementTypeById(weatherTypeId(feature))?.height);
+    return (Number.isFinite(typeHeight) && typeHeight > 0 ? typeHeight : 900) * weather3dScale;
   }
 
   function inferWeatherType(feature) {

@@ -13,6 +13,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
+from .adapters import (
+    build_gfs_gust_url,
+    gfs_gust_adapter,
+    gpm_imerg_adapter,
+    load_json,
+    open_meteo_point_adapter,
+)
 from .exif import extract_gps
 from .geojson import regions_to_geojson
 from .georef import (
@@ -440,6 +447,44 @@ def _handle_calibration_report(args: argparse.Namespace) -> None:
     _write_json(georef.calibration_report(), args.output)
 
 
+def _handle_gfs_gust_url(args: argparse.Namespace) -> None:
+    payload = {
+        "adapter": "gfs_gust_adapter",
+        "source": "NOAA GFS / NOMADS",
+        "url": build_gfs_gust_url(
+            cycle=args.cycle,
+            forecast_hour=args.forecast_hour,
+            bbox=args.bbox,
+            resolution=args.resolution,
+            base_url=args.base_url,
+        ),
+    }
+    _write_json(payload, args.output)
+
+
+def _handle_gfs_gust_adapter(args: argparse.Namespace) -> None:
+    _write_json(gfs_gust_adapter(load_json(args.grid_json)), args.output)
+
+
+def _handle_gpm_imerg_adapter(args: argparse.Namespace) -> None:
+    _write_json(gpm_imerg_adapter(load_json(args.grid_json)), args.output)
+
+
+def _handle_open_meteo_point_adapter(args: argparse.Namespace) -> None:
+    _write_json(
+        open_meteo_point_adapter(
+            latitude=args.lat,
+            longitude=args.lon,
+            start=args.start,
+            end=args.end,
+            name=args.name,
+            timezone=args.timezone,
+            endpoint=args.endpoint,
+        ),
+        args.output,
+    )
+
+
 def _write_http_json(handler: SimpleHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     handler.send_response(status)
@@ -703,6 +748,54 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--image", help="Optional image path for current image dimensions.")
     report_parser.add_argument("--output", "-o", help="Optional JSON output path.")
     report_parser.set_defaults(func=_handle_calibration_report)
+
+    gfs_url_parser = subparsers.add_parser(
+        "gfs-gust-url",
+        help="Build an open NOAA NOMADS URL for GFS surface gust GRIB2 data.",
+    )
+    gfs_url_parser.add_argument("--cycle", required=True, help="UTC GFS cycle, e.g. 2026061000.")
+    gfs_url_parser.add_argument("--forecast-hour", type=int, required=True, help="Forecast hour, e.g. 18.")
+    gfs_url_parser.add_argument(
+        "--bbox",
+        nargs=4,
+        type=float,
+        metavar=("MIN_LON", "MIN_LAT", "MAX_LON", "MAX_LAT"),
+        help="Optional subregion bbox.",
+    )
+    gfs_url_parser.add_argument("--resolution", default="0p25", help="GFS resolution token, default 0p25.")
+    gfs_url_parser.add_argument("--base-url", default="https://nomads.ncep.noaa.gov/cgi-bin")
+    gfs_url_parser.add_argument("--output", "-o", help="Optional JSON output path.")
+    gfs_url_parser.set_defaults(func=_handle_gfs_gust_url)
+
+    gfs_adapter_parser = subparsers.add_parser(
+        "gfs-gust-adapter",
+        help="Convert decoded GFS gust grid JSON into Weather Earth wind-region GeoJSON.",
+    )
+    gfs_adapter_parser.add_argument("--grid-json", required=True, help="Decoded grid JSON with lons, lats and values/gust.")
+    gfs_adapter_parser.add_argument("--output", "-o", help="Optional GeoJSON output path.")
+    gfs_adapter_parser.set_defaults(func=_handle_gfs_gust_adapter)
+
+    gpm_adapter_parser = subparsers.add_parser(
+        "gpm-imerg-adapter",
+        help="Convert decoded GPM IMERG precipitation grid JSON into Weather Earth rain-region GeoJSON.",
+    )
+    gpm_adapter_parser.add_argument("--grid-json", required=True, help="Decoded grid JSON with lons, lats and precipitation values.")
+    gpm_adapter_parser.add_argument("--output", "-o", help="Optional GeoJSON output path.")
+    gpm_adapter_parser.set_defaults(func=_handle_gpm_imerg_adapter)
+
+    open_meteo_parser = subparsers.add_parser(
+        "open-meteo-point-adapter",
+        help="Fetch Open-Meteo hourly point data and export Weather Earth station GeoJSON.",
+    )
+    open_meteo_parser.add_argument("--lat", type=float, required=True, help="Latitude.")
+    open_meteo_parser.add_argument("--lon", type=float, required=True, help="Longitude.")
+    open_meteo_parser.add_argument("--start", required=True, help="Start time, e.g. 2026-06-10T18:00.")
+    open_meteo_parser.add_argument("--end", required=True, help="End time, e.g. 2026-06-10T22:00.")
+    open_meteo_parser.add_argument("--name", default="Open-Meteo point", help="Feature name.")
+    open_meteo_parser.add_argument("--timezone", default="Asia/Shanghai")
+    open_meteo_parser.add_argument("--endpoint", default="https://api.open-meteo.com/v1/forecast")
+    open_meteo_parser.add_argument("--output", "-o", help="Optional GeoJSON output path.")
+    open_meteo_parser.set_defaults(func=_handle_open_meteo_point_adapter)
 
     serve_parser = subparsers.add_parser("serve-map", help="Serve the local Leaflet map viewer.")
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")

@@ -6,7 +6,7 @@
     <title>天气 GeoJSON 地球</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23020910'/%3E%3Cpath d='M6 18c4-8 11-10 20-6-1 10-8 15-18 12l5-5z' fill='%232dd4e8'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Widgets/widgets.css" />
-    <link rel="stylesheet" href="./earth.css?v=20260614-floating-controls-v3" />
+    <link rel="stylesheet" href="./earth.css?v=20260615-raster-overlays-v1" />
   </head>
   <body>
     <div class="earth-shell is-immersive">
@@ -29,7 +29,7 @@
           </div>
           <div id="scenePresetInfo" class="editor-meta">真实卫星地表优先，天气作为轻量叠加层，适合接近 Google Earth 的地球浏览。</div>
           <div class="button-grid">
-            <button id="loadDefaultWeather" type="button">加载默认风区</button>
+            <button id="loadDefaultWeather" type="button">加载开放数据</button>
             <button id="fitWeather" class="secondary" type="button">缩放到天气</button>
           </div>
           <div class="form-grid">
@@ -181,6 +181,79 @@
           <div id="weatherVolumeInfo" class="editor-meta">面状风区会以半透明体块突出显示。</div>
         </section>
 
+        <section class="earth-section raster-overlay-section">
+          <div class="section-title">
+            <strong>云图 / 雷达图</strong>
+          </div>
+          <div class="raster-overlay-card">
+            <div class="raster-overlay-header">
+              <strong>云图</strong>
+              <span id="cloudOverlayOpacityValue">58%</span>
+            </div>
+            <label class="field">
+              <span>地址</span>
+              <input id="cloudOverlayUrl" type="url" placeholder="NASA GIBS 或其他真实云图 {z}/{x}/{y}.jpg" />
+            </label>
+            <div class="form-grid">
+              <label class="field">
+                <span>模式</span>
+                <select id="cloudOverlayMode">
+                  <option value="single">单张图片</option>
+                  <option value="template">瓦片模板</option>
+                  <option value="wms">WMS</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>范围</span>
+                <input id="cloudOverlayBounds" type="text" value="-180,-85,180,85" />
+              </label>
+            </div>
+            <label class="range-field">
+              <span>透明度</span>
+              <input id="cloudOverlayOpacity" type="range" min="0" max="1" value="0.58" step="0.01" />
+            </label>
+            <div class="raster-overlay-actions">
+              <button id="loadCloudOverlayLive" type="button">实时云图</button>
+              <button id="loadCloudOverlay" class="secondary" type="button">加载 URL</button>
+              <button id="clearCloudOverlay" class="secondary" type="button">清除</button>
+            </div>
+          </div>
+          <div class="raster-overlay-card">
+            <div class="raster-overlay-header">
+              <strong>雷达图</strong>
+              <span id="radarOverlayOpacityValue">68%</span>
+            </div>
+            <label class="field">
+              <span>地址</span>
+              <input id="radarOverlayUrl" type="url" placeholder="RainViewer 或其他真实雷达 {z}/{x}/{y}.png" />
+            </label>
+            <div class="form-grid">
+              <label class="field">
+                <span>模式</span>
+                <select id="radarOverlayMode">
+                  <option value="single">单张图片</option>
+                  <option value="template">瓦片模板</option>
+                  <option value="wms">WMS</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>范围</span>
+                <input id="radarOverlayBounds" type="text" value="-180,-85,180,85" />
+              </label>
+            </div>
+            <label class="range-field">
+              <span>透明度</span>
+              <input id="radarOverlayOpacity" type="range" min="0" max="1" value="0.68" step="0.01" />
+            </label>
+            <div class="raster-overlay-actions">
+              <button id="loadRadarOverlayLive" type="button">实时雷达</button>
+              <button id="loadRadarOverlay" class="secondary" type="button">加载 URL</button>
+              <button id="clearRadarOverlay" class="secondary" type="button">清除</button>
+            </div>
+          </div>
+          <div id="rasterOverlayStatus" class="editor-meta">未加载云图或雷达图。</div>
+        </section>
+
         <section class="earth-section draw-section">
           <div class="section-title">
             <strong>绘制天气元素</strong>
@@ -306,6 +379,22 @@
           <div id="timeFilterSummary" class="editor-meta">等待含时次的 GeoJSON。</div>
         </section>
 
+        <section class="earth-section recap-section">
+          <div class="section-title">
+            <strong>过程复盘</strong>
+            <div class="tiny-actions">
+              <button id="weatherCaseOverview" class="tiny-button" type="button" disabled>全国</button>
+              <button id="weatherCaseCore" class="tiny-button" type="button" disabled>核心区</button>
+              <button id="weatherCaseCity" class="tiny-button" type="button" disabled>城市</button>
+              <button id="weatherCaseEvidence" class="tiny-button" type="button" disabled>证据</button>
+            </div>
+          </div>
+          <div id="weatherRecapSummary" class="process-summary">加载强对流/大风样例或过程清单后显示复盘摘要。</div>
+          <div id="weatherRecapFocus" class="recap-grid"></div>
+          <div id="weatherRecapEvidence" class="quality-issues">等待可复盘的天气要素。</div>
+          <div id="weatherRecapLegend" class="element-type-list recap-legend"></div>
+        </section>
+
         <section class="earth-section element-type-section">
           <div class="section-title">
             <strong>天气元素类型</strong>
@@ -348,7 +437,7 @@
           </div>
           <label class="field">
             <span>Manifest URL</span>
-            <input id="manifestUrlInput" type="url" placeholder="../outputs/nmc-wind/manifest.json" />
+            <input id="manifestUrlInput" type="url" placeholder="../examples/open-data-weather-manifest.json" />
           </label>
           <button id="loadManifestUrl" type="button">加载过程</button>
           <div id="processSummary" class="process-summary">等待过程清单。</div>
@@ -491,7 +580,7 @@
           <button id="earthMenuTopDown" type="button" role="menuitem">俯视</button>
           <button id="earthMenuOblique" type="button" role="menuitem">倾斜视角</button>
         </div>
-        <label class="earth-angle-control" title="拖动调整地面夹角；Shift 或 Option/Alt + 滚动也可调整" aria-label="调整地面夹角">
+        <label class="earth-angle-control" title="拖动调整地面夹角；Shift、Option/Alt、Ctrl 或 Command + 滚动也可调整" aria-label="调整地面夹角">
           <span aria-hidden="true">∠</span>
           <input id="cameraPitchSlider" type="range" min="0" max="85" value="0" step="1" />
         </label>
@@ -558,6 +647,6 @@
     </div>
 
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Cesium.js"></script>
-    <script src="./earth.js?v=20260614-visible-filter-fix-v1"></script>
+    <script src="./earth.js?v=20260615-live-raster-v1"></script>
   </body>
 </html>

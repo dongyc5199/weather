@@ -1,33 +1,97 @@
 {
   "type": "FeatureCollection",
-  "name": "weather-elements-demo",
+  "name": "severe-convection-gale-replay-demo",
   "metadata": {
     "schema": "weather-earth-geojson-v1",
     "projection": "WGS84 lon/lat",
-    "source": "manual-demo"
+    "weather_system": "severe-convection-gale-replay",
+    "source": "manual-demo",
+    "description": "强对流/大风过程复盘样例，覆盖风区、锋面、站点、预警、气压中心和移动路径。"
   },
   "features": [
     {
       "type": "Feature",
       "properties": {
         "weather_type": "wind-region",
-        "name": "force 6 wind region",
-        "level": "level_6",
+        "name": "陇东-关中 6级风区",
         "time": "06/10 18:00",
-        "fill": "#00d6f2",
-        "stroke": "#8ef6ff",
-        "stroke-width": 2
+        "valid_time": "2026-06-10T18:00:00+08:00",
+        "level": "level_6",
+        "intensity": "gale",
+        "source": "NMC wind-region demo",
+        "confidence": 0.72,
+        "city_impact": ["平凉", "咸阳", "西安"],
+        "narrative": "傍晚冷空气前缘进入陇东，关中北部开始出现成片 6 级以上阵风。"
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
-            [104.8, 33.8],
-            [108.4, 34.2],
-            [109.0, 36.3],
-            [106.5, 37.2],
-            [104.2, 35.4],
-            [104.8, 33.8]
+            [104.7, 34.0],
+            [107.8, 34.1],
+            [109.4, 35.6],
+            [108.4, 37.0],
+            [105.6, 37.2],
+            [103.9, 35.4],
+            [104.7, 34.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "关中-晋南 7级风区",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
+        "level": "level_7",
+        "intensity": "strong-gale",
+        "source": "NMC wind-region demo",
+        "confidence": 0.78,
+        "city_impact": ["西安", "渭南", "运城"],
+        "narrative": "风区东移并增强，关中东部和晋南一带出现 7 级阵风核心。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.9, 33.9],
+            [110.0, 34.0],
+            [111.4, 35.2],
+            [110.6, 36.8],
+            [107.5, 36.9],
+            [106.0, 35.5],
+            [106.9, 33.9]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "渭南-运城 8级核心风区",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "level_8",
+        "intensity": "severe-gale",
+        "source": "NMC wind-region demo",
+        "confidence": 0.82,
+        "city_impact": ["渭南", "运城", "三门峡"],
+        "narrative": "夜间前锋附近动量下传增强，渭南到运城形成 8 级以上阵风核心。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [108.5, 34.1],
+            [111.2, 34.4],
+            [112.0, 35.5],
+            [110.8, 36.2],
+            [108.9, 35.8],
+            [107.9, 34.9],
+            [108.5, 34.1]
           ]
         ]
       }
@@ -36,44 +100,25 @@
       "type": "Feature",
       "properties": {
         "weather_type": "front",
-        "name": "cold front demo",
-        "front_type": "cold-front",
-        "time": "06/10 21:00",
-        "stroke": "#f5f7ff",
-        "stroke-width": 3
+        "name": "冷锋/切变线",
+        "front_type": "shear-line",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
+        "level": "trigger-line",
+        "intensity": "moderate",
+        "source": "manual synoptic analysis",
+        "confidence": 0.68,
+        "city_impact": ["兰州", "平凉", "西安"],
+        "narrative": "触发线自西北向东南压入关中，风区沿线增强。"
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [101.8, 41.2],
-          [105.4, 39.8],
-          [109.8, 38.4],
-          [114.1, 37.6]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "weather_type": "rain-region",
-        "name": "heavy rain region",
-        "intensity": "heavy",
-        "time": "06/10 21:00",
-        "fill": "#2f80ff",
-        "stroke": "#8fc5ff",
-        "stroke-width": 2
-      },
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [
-            [111.4, 29.8],
-            [115.6, 30.4],
-            [116.2, 32.2],
-            [113.2, 33.0],
-            [110.7, 31.4],
-            [111.4, 29.8]
-          ]
+          [101.2, 39.2],
+          [104.5, 37.5],
+          [107.2, 35.9],
+          [110.2, 34.8],
+          [113.3, 34.2]
         ]
       }
     },
@@ -81,36 +126,93 @@
       "type": "Feature",
       "properties": {
         "weather_type": "track",
-        "name": "track demo",
-        "time": "06/10 20:00",
-        "stroke": "#ffbd59",
-        "stroke-width": 4
+        "name": "大风核心移动轴",
+        "time": "06/10 18:00",
+        "valid_time": "2026-06-10T18:00:00+08:00",
+        "level": "process-track",
+        "intensity": "eastward",
+        "source": "manual replay analysis",
+        "confidence": 0.7,
+        "city_impact": ["平凉", "西安", "渭南", "运城"],
+        "narrative": "核心影响区沿关中平原向东北方向移动。"
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [119.9, 20.2],
-          [119.0, 22.1],
-          [117.8, 24.0],
-          [116.4, 25.8]
+          [105.2, 35.7],
+          [107.2, 35.1],
+          [109.2, 34.9],
+          [111.1, 35.2]
         ]
       }
     },
     {
       "type": "Feature",
       "properties": {
-        "weather_type": "track",
-        "name": "track demo",
-        "label": "latest",
-        "time": "06/11 14:00",
-        "strength": "typhoon",
-        "wind": 35,
-        "marker-color": "#ff4d4d",
-        "marker-size": "large"
+        "weather_type": "station",
+        "station_id": "57036",
+        "name": "西安站极大风",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
+        "level": "level_7",
+        "intensity": "observed-gale",
+        "observed_value": 18.6,
+        "unit": "m/s",
+        "source": "station demo",
+        "confidence": 0.9,
+        "city_impact": ["西安"],
+        "evidence_url": "https://example.local/station/57036",
+        "narrative": "西安站记录 18.6 m/s 极大风，支持 7 级风区判断。"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [116.4, 25.8]
+        "coordinates": [108.94, 34.34]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "station",
+        "station_id": "57045",
+        "name": "渭南站极大风",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "level_8",
+        "intensity": "observed-severe-gale",
+        "observed_value": 22.4,
+        "unit": "m/s",
+        "source": "station demo",
+        "confidence": 0.92,
+        "city_impact": ["渭南"],
+        "evidence_url": "https://example.local/station/57045",
+        "narrative": "渭南站 22.4 m/s 观测对应 8 级以上阵风核心。"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [109.51, 34.50]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "station",
+        "station_id": "57068",
+        "name": "运城站极大风",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "level_8",
+        "intensity": "observed-severe-gale",
+        "observed_value": 21.1,
+        "unit": "m/s",
+        "source": "station demo",
+        "confidence": 0.88,
+        "city_impact": ["运城"],
+        "evidence_url": "https://example.local/station/57068",
+        "narrative": "运城站观测补充了风区东移后的证据链。"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [111.00, 35.02]
       }
     },
     {
@@ -118,34 +220,41 @@
       "properties": {
         "weather_type": "warning",
         "warning_type": "gale-warning",
-        "name": "warning demo",
-        "label": "gale",
+        "name": "西安大风橙色预警",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
         "level": "orange",
-        "time": "06/11 14:00",
-        "marker-color": "#ff8f3d",
-        "marker-size": "large"
+        "intensity": "warning",
+        "source": "warning demo",
+        "confidence": 0.84,
+        "city_impact": ["西安", "咸阳"],
+        "evidence_url": "https://example.local/warning/xian-gale-orange",
+        "narrative": "预警点标注城市尺度风险和复盘入口。"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [107.2, 35.1]
+        "coordinates": [108.94, 34.26]
       }
     },
     {
       "type": "Feature",
       "properties": {
-        "weather_type": "station",
-        "station_id": "54511",
-        "name": "station demo",
-        "label": "18m/s",
-        "value": "18",
-        "unit": "m/s",
-        "time": "06/11 14:00",
-        "marker-color": "#31d7ff",
-        "marker-size": "medium"
+        "weather_type": "warning",
+        "warning_type": "gale-warning",
+        "name": "运城大风红色预警",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "red",
+        "intensity": "warning",
+        "source": "warning demo",
+        "confidence": 0.86,
+        "city_impact": ["运城"],
+        "evidence_url": "https://example.local/warning/yuncheng-gale-red",
+        "narrative": "红色预警与 8 级核心风区和站点极值互相印证。"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [116.4, 39.9]
+        "coordinates": [111.02, 35.03]
       }
     },
     {
@@ -153,16 +262,48 @@
       "properties": {
         "weather_type": "pressure-center",
         "pressure_type": "low",
-        "name": "pressure center demo",
-        "label": "L",
-        "pressure_hpa": "996",
-        "time": "06/11 14:00",
-        "marker-color": "#b28cff",
-        "marker-size": "large"
+        "name": "河套低压中心",
+        "time": "06/10 18:00",
+        "valid_time": "2026-06-10T18:00:00+08:00",
+        "level": "low-pressure",
+        "intensity": "996 hPa",
+        "pressure_hpa": 996,
+        "source": "manual synoptic analysis",
+        "confidence": 0.66,
+        "city_impact": ["鄂尔多斯", "榆林"],
+        "narrative": "低压中心提供背景场线索，帮助解释冷锋后部大风增强。"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [112.8, 42.3]
+        "coordinates": [109.4, 39.8]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "rain-region",
+        "name": "陕南短时强降水区",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "heavy",
+        "intensity": "heavy-rain",
+        "source": "rain-region demo",
+        "confidence": 0.64,
+        "city_impact": ["汉中", "安康"],
+        "narrative": "降水区作为 P1 图层预留，用于后续把大风过程与强降水过程关联。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.5, 32.3],
+            [109.8, 32.2],
+            [110.6, 33.4],
+            [108.7, 34.0],
+            [106.2, 33.4],
+            [106.5, 32.3]
+          ]
+        ]
       }
     }
   ]

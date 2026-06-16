@@ -107,6 +107,59 @@ OpenCV 的 HSV 取值范围为：
 pytest
 ```
 
+## 开放数据 Adapter
+
+第一版开放数据主线不依赖 NMC/CMA。`gfs_gust_adapter`、`gpm_imerg_adapter`、`open_meteo_point_adapter` 会统一输出 Weather Earth GeoJSON，可直接加载到 `viewer/earth.html`。
+
+### GFS 阵风
+
+构造 NOAA NOMADS GFS 地表阵风 GRIB2 下载地址：
+
+```bash
+weather-geo gfs-gust-url \
+  --cycle 2026061000 \
+  --forecast-hour 18 \
+  --bbox 70 15 140 55
+```
+
+当前 adapter 消费已解码的轻量网格 JSON，生成 `wind-region`：
+
+```bash
+weather-geo gfs-gust-adapter \
+  --grid-json examples/gfs-gust-grid.example.json \
+  --output outputs/open-data/gfs-gust.geojson
+```
+
+网格 JSON 需要包含 `lons`、`lats` 和 `values`，单位建议用 `m/s`。阈值按 6/7/8 级阵风生成风区。
+
+### GPM IMERG 降水
+
+把已解码的 IMERG 降水率网格转为 `rain-region`：
+
+```bash
+weather-geo gpm-imerg-adapter \
+  --grid-json examples/gpm-imerg-grid.example.json \
+  --output outputs/open-data/gpm-imerg-rain.geojson
+```
+
+网格 JSON 需要包含 `lons`、`lats` 和 `precipitation`，单位建议用 `mm/h`。
+
+### Open-Meteo 点位
+
+直接获取 Open-Meteo 小时级点位数据，生成 `station` 证据点：
+
+```bash
+weather-geo open-meteo-point-adapter \
+  --lat 34.34 \
+  --lon 108.94 \
+  --start 2026-06-10T18:00 \
+  --end 2026-06-10T22:00 \
+  --name 西安 \
+  --output outputs/open-data/open-meteo-xian.geojson
+```
+
+该命令会请求 `wind_speed_unit=ms`，使阵风阈值和地球页的 6/7/8 级规则一致。
+
 ## 本次 NMC 风速图示例
 
 ```bash
@@ -283,11 +336,11 @@ Google 3D Maps 对比页需要 Google Maps JavaScript API key。可以在本地 
 
 地球本体启用低噪声星空 skyBox、天空大气和地表大气参数，首屏会保留太空背景和贴合球体边缘的蓝色空气辉光。默认展示模式使用无硬昼夜分界的浏览光照，避免亚洲首屏被太阳终止线切开；需要真实太阳时间时仍可通过 `sunlight=1`、工作台开关或 `setSunlight(true)` 启用。这些都是底座视觉处理，不会写入业务 GeoJSON，也不会影响天气图层透明度。
 
-右上角地球控制区支持沉浸模式，开启后侧栏和业务浮层退出布局，地图画布占满视口，更接近 Google Earth 的浏览状态。当前沉浸模式只保留右上角指南针、相机控制按钮和 `☰` 地球菜单；搜索、天气、过程、图层、HUD、概览、夹角滑杆和底部状态面板都会隐藏，移动端也保持右侧竖向控件而不是铺满顶部。`☰` 会先打开轻量菜单，用户可从菜单进入完整工作台、重置视角、切换俯视或倾斜视角；进入工作台后，同一按钮可返回沉浸地球。默认首屏使用响应式完整地球构图，桌面宽屏会把 Cesium 画布向左扩展，让地球主体略偏左并给右侧操作区留出空间；窄屏保持居中并自动拉远以避免地球左右被裁切。这只是画布构图，不会改变业务经纬度或分享链接里的相机状态。无显式 `map/project/data/manifest` 的默认首屏会在窗口尺寸变化后继续重算完整地球镜头，用户一旦操作相机则不再自动覆盖。页面启动时的默认风区只作为业务叠加层加载，不会抢占完整地球首屏；分享链接里的 `map` 会在异步数据加载完成后继续保持，需要贴近业务范围时再点击 `缩放到天气` 或调用 `fitWeather()`。分享链接可用 `immersive=1` 恢复；项目文档会保存 `view.immersive`，外部系统可调用 `setImmersiveMode(true | false)` 控制。沉浸模式只影响工作台布局，不会修改业务 GeoJSON。
+右上角地球控制区支持沉浸模式，开启后侧栏和业务浮层退出布局，地图画布占满视口，更接近 Google Earth 的浏览状态。当前沉浸模式只保留右上角指南针、相机控制按钮和 `☰` 地球菜单；搜索、天气、过程、图层、HUD、概览、夹角滑杆和底部状态面板都会隐藏，移动端也保持右侧竖向控件而不是铺满顶部。`☰` 会先打开轻量菜单，用户可从菜单进入完整工作台、重置视角、切换俯视或倾斜视角；进入工作台后，同一按钮可返回沉浸地球。默认首屏使用响应式完整地球构图，桌面宽屏会把 Cesium 画布向左扩展，让地球主体略偏左并给右侧操作区留出空间；窄屏保持居中并自动拉远以避免地球左右被裁切。这只是画布构图，不会改变业务经纬度或分享链接里的相机状态。无显式 `map/project/data/manifest` 的默认首屏会在窗口尺寸变化后继续重算完整地球镜头，用户一旦操作相机则不再自动覆盖。页面启动时的默认风区只作为业务叠加层加载，不会抢占完整地球首屏；分享链接里的 `map` 会在异步数据加载完成后继续保持，需要贴近业务范围时再点击 `缩放到天气` 或调用 `fitWeather()`。分享链接可用 `immersive=1` 恢复；项目文档会保存 `view.immersive`，外部系统可调用 `setImmersiveMode(true | false)` 控制。沉浸模式只影响工作台布局，不会修改业务 GeoJSON。旧分享参数 `basemap=terrain`、`basemap=world-terrain` 和 `basemap=cesium` 会兼容映射到 `cesium-world-terrain`，用于恢复真实 3D 地形底座。
 
 非沉浸/面板模式提供镜头动作：`聚焦` 会把当前画面中心设为地球聚焦点，`环绕` 会围绕聚焦点自动观察，`书签` 会保存当前镜头，`巡航` 会播放保存的镜头序列。这些状态保存到项目文档的 `view.focusTarget`、`view.focusOrbit` 和 `view.cameraTour`，不会写入业务 GeoJSON。
 
-地球交互按 Google Earth 方向做了独立控制：右侧提供放大、缩小、左右旋转、俯仰、重置视角、地球菜单和回正朝北；沉浸模式下只保留这组地图导航控件。沉浸模式双击地球会放大并飞向点击位置，单击空白地表不会生成业务探针或聚焦标记；普通滚轮或触控板缩放会优先朝鼠标所在的地表位置推进，指向太空背景时保持当前中心。鼠标右键拖拽可横向调整航向、纵向调整地面夹角；触控板可按住 `Shift` / `Option` / `Alt` 后左键拖拽完成同样的航向和俯仰调整，也可以按住这些修饰键纵向滚动连续调整倾角。页面允许缩放到完整地球球体视角，非沉浸布局下左下角镜头 HUD 会实时显示中心经纬度、估算视距、航向、倾角和层级。
+地球交互按 Google Earth 方向做了独立控制：右侧提供放大、缩小、左右旋转、俯仰、重置视角、地球菜单和回正朝北；沉浸模式下只保留这组地图导航控件。沉浸模式双击地球会放大并飞向点击位置，单击空白地表不会生成业务探针或聚焦标记；普通滚轮或触控板缩放会优先朝鼠标所在的地表位置推进，指向太空背景时保持当前中心。鼠标右键拖拽可横向调整航向、纵向调整地面夹角；触控板可按住 `Shift` / `Option` / `Alt` / `Ctrl` / `Command` 后左键拖拽完成同样的航向和俯仰调整，也可以按住这些修饰键纵向滚动连续调整倾角。页面允许缩放到完整地球球体视角，非沉浸布局下左下角镜头 HUD 会实时显示中心经纬度、估算视距、航向、倾角和层级。
 
 地球页支持 Google Earth 式连续键盘飞行控制，方便沉浸模式下浏览：按住方向键会按当前高度和航向平滑平移视角，按住 `Shift + 左/右` 连续旋转航向，按住 `Shift + 上/下` 连续调整俯仰，按住 `+` / `-` 或 `PageUp` / `PageDown` 连续缩放，`N` 回正朝北，`R` / `H` 重置到完整地球首屏，`U` 回到俯视，`O` 在俯视和倾斜视角之间切换，`Esc` 关闭地球菜单；加载 manifest 天气过程后，空格可播放/暂停过程，`[` / `]` 可切换前后时次。输入框、下拉框、按钮和文本编辑区获得焦点时会自动跳过这些快捷控制，避免影响数据编辑。
 
@@ -506,7 +559,7 @@ Feature 级 API 会返回内部稳定 `id` 和清理后的业务 `feature`。这
 
 天气元素类型由内置目录统一维护，`getElementTypes()` 会返回类型 ID、中文标签、默认几何、默认属性、渲染分组和推荐颜色。外部项目可以先读取这个目录，再按 `weather_type` 生成风区、降水区、锋面、站点、预警点等天气元素。页面侧栏的 `天气元素类型` 图例会显示每类要素的全量/当前显示数量，并支持按类型显示或隐藏；`getElementTypeState()`、`setElementTypeVisibility(id, visible)`、`setAllElementTypeVisibility(visible)` 可供 iframe 集成同步外部 UI。类型显隐会影响地图、要素列表、`下载当前显示` 和 `getVisibleGeoJson()`，但不会修改原始业务 GeoJSON。
 
-图层控制使用业务图层 ID：`wind-regions`、`track-example`、`warning-points`、`city-impact`。`getLayers()` 会返回图层显示状态、要素数和摘要；`setLayerVisibility(id, visible)` 只控制展示，不修改 GeoJSON；`setWeatherOpacity(value)` 当前控制面状天气区填充透明度，取值会限制在 `0.15-0.9`。这类展示变更会触发 `layerchange`，适合外部 UI 同步开关状态。
+图层控制使用业务图层 ID：`weather-regions`、`weather-lines`、`weather-points`，云图和雷达图使用 `raster-cloud`、`raster-radar`。`getLayers()` 会返回图层显示状态、要素数和摘要；`setLayerVisibility(id, visible)` 只控制展示，不修改 GeoJSON；`setWeatherOpacity(value)` 当前控制面状天气区填充透明度，取值会限制在 `0.15-0.9`。云图默认接 NASA GIBS 近实时 VIIRS 卫星瓦片，雷达默认接 RainViewer 最新雷达瓦片，可用 `viewer/earth.html?weather=0&raster=live` 直接加载真实云图和真实雷达。外部系统也可调用 `setRasterOverlay("cloud", { url, mode: "template", bounds: [-180, -85, 180, 85], maximumLevel: 9 })` 或 `setRasterOverlay("radar", { url, mode: "template", maximumLevel: 7 })` 加载其他真实瓦片源；`mode: "single"` 仍支持带经纬度范围的单张真实图片。这类展示变更会触发 `layerchange` 或 `rasteroverlaychange`，适合外部 UI 同步开关状态。
 
 底层协议仍然是 `postMessage`：
 
