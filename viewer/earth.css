@@ -1101,6 +1101,49 @@ button:disabled {
   display: none;
 }
 
+.earth-quick-overlay {
+  position: absolute;
+  top: 300px;
+  left: 20px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(180, 224, 234, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 9, 13, 0.68);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(16px);
+}
+
+.earth-quick-overlay button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 12px;
+  color: rgba(220, 240, 248, 0.86);
+  border: 1px solid rgba(180, 224, 234, 0.16);
+  border-radius: 6px;
+  background: rgba(11, 22, 30, 0.72);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.earth-quick-overlay button:hover:not(:disabled) {
+  border-color: rgba(142, 246, 255, 0.52);
+  background: rgba(17, 38, 47, 0.86);
+}
+
+.earth-quick-overlay button[aria-pressed="true"] {
+  color: #02080c;
+  border-color: var(--accent);
+  background: rgba(45, 212, 232, 0.82);
+}
+
+.earth-quick-overlay button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .earth-quick-actions {
   position: absolute;
   top: 344px;

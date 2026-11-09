@@ -6,7 +6,7 @@
     <title>天气 GeoJSON 地球</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23020910'/%3E%3Cpath d='M6 18c4-8 11-10 20-6-1 10-8 15-18 12l5-5z' fill='%232dd4e8'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Widgets/widgets.css" />
-    <link rel="stylesheet" href="./earth.css?v=20260615-raster-overlays-v1" />
+    <link rel="stylesheet" href="./earth.css?v=20260626-overlay-v2" />
   </head>
   <body>
     <div class="earth-shell is-immersive">
@@ -30,7 +30,12 @@
           <div id="scenePresetInfo" class="editor-meta">真实卫星地表优先，天气作为轻量叠加层，适合接近 Google Earth 的地球浏览。</div>
           <div class="button-grid">
             <button id="loadDefaultWeather" type="button">加载开放数据</button>
+            <button id="loadEra5Profile" class="secondary" type="button">ERA5 垂直剖面</button>
             <button id="fitWeather" class="secondary" type="button">缩放到天气</button>
+          </div>
+          <div class="button-grid">
+            <button id="loadFusion" class="secondary" type="button">多源融合(P1)</button>
+            <button id="loadOceanCoupling" class="secondary" type="button">海气耦合(P1)</button>
           </div>
           <div class="form-grid">
             <label class="field">
@@ -192,7 +197,7 @@
             </div>
             <label class="field">
               <span>地址</span>
-              <input id="cloudOverlayUrl" type="url" placeholder="NASA GIBS 或其他真实云图 {z}/{x}/{y}.jpg" />
+              <input id="cloudOverlayUrl" type="url" placeholder="Google/NASA 云图瓦片 {z}/{x}/{y}.png" />
             </label>
             <div class="form-grid">
               <label class="field">
@@ -214,6 +219,7 @@
             </label>
             <div class="raster-overlay-actions">
               <button id="loadCloudOverlayLive" type="button">实时云图</button>
+              <button id="toggleCloudInfrared" class="secondary" type="button" aria-pressed="false" title="红外云图昼夜可见云团">红外</button>
               <button id="loadCloudOverlay" class="secondary" type="button">加载 URL</button>
               <button id="clearCloudOverlay" class="secondary" type="button">清除</button>
             </div>
@@ -225,7 +231,7 @@
             </div>
             <label class="field">
               <span>地址</span>
-              <input id="radarOverlayUrl" type="url" placeholder="RainViewer 或其他真实雷达 {z}/{x}/{y}.png" />
+              <input id="radarOverlayUrl" type="url" placeholder="Google/RainViewer 雷达瓦片 {z}/{x}/{y}.png" />
             </label>
             <div class="form-grid">
               <label class="field">
@@ -542,6 +548,11 @@
             <span>建筑</span>
           </label>
         </div>
+        <div class="earth-quick-overlay" aria-label="沉浸云图雷达">
+          <button id="immersiveCloudToggle" type="button" aria-pressed="false">云图</button>
+          <button id="immersiveCloudIr" type="button" aria-pressed="false" disabled title="切换红外云图(昼夜可见)">红外</button>
+          <button id="immersiveRadarToggle" type="button" aria-pressed="false">雷达</button>
+        </div>
         <div class="earth-quick-actions" aria-label="沉浸镜头动作">
           <button id="immersiveFocusCenter" type="button">聚焦</button>
           <button id="immersiveFocusOrbit" type="button" aria-pressed="false">环绕</button>
@@ -647,6 +658,6 @@
     </div>
 
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Cesium.js"></script>
-    <script src="./earth.js?v=20260615-live-raster-v1"></script>
+    <script src="./earth.js?v=20260630-clean-default-v1"></script>
   </body>
 </html>

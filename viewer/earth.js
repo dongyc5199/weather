@@ -28,6 +28,17 @@
       supportsBuildings: false,
       detail: "ArcGIS 世界影像球面底图，无 Google 依赖；地形用 Cesium 椭球。",
     },
+    "google-satellite": {
+      id: "google-satellite",
+      label: "Google Satellite",
+      shortLabel: "Google Satellite",
+      provider: "Google Maps Tile API / CesiumJS",
+      mode: "imagery-globe",
+      requiresGoogleMapsApiKey: true,
+      supportsTerrain: false,
+      supportsBuildings: false,
+      detail: "Google 官方 2D 卫星影像瓦片，需要启用 Map Tiles API 的 Google Maps API key。",
+    },
     "openstreetmap-imagery": {
       id: "openstreetmap-imagery",
       label: "OpenStreetMap",
@@ -80,7 +91,8 @@
   const DEFAULT_WEATHER_3D_SCALE = 0.86;
   const DEFAULT_WEATHER_VOLUME_SCALE = 0.55;
   const DEFAULT_RASTER_OVERLAY_OPACITY = 0.62;
-  const NASA_GIBS_CLOUD_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor";
+  const NASA_GIBS_CLOUD_LAYER = "Himawari_AHI_Band3_Red_Visible_1km";
+  const NASA_GIBS_IR_LAYER = "Himawari_AHI_Band13_Clean_Infrared";
   const RAINVIEWER_WEATHER_MAPS_URL = "https://api.rainviewer.com/public/weather-maps.json";
   const DEFAULT_AUTO_ROTATE = false;
   const DEFAULT_IMMERSIVE = true;
@@ -136,11 +148,11 @@
   const EARTH_VISUAL_TREATMENT = {
     id: "google-earth-p1",
     label: "Google Earth P1",
-    exposure: 0.96,
+    exposure: 1.08,
     skyBox: true,
-    skyAtmosphere: { hueShift: 0, saturationShift: -0.04, brightnessShift: 0.08 },
-    groundAtmosphere: { hueShift: -0.02, saturationShift: 0.04, brightnessShift: 0.06, lightIntensity: 5.6 },
-    fog: { enabled: true, density: 0.00016, minimumBrightness: 0.08, screenSpaceErrorFactor: 2.4 },
+    skyAtmosphere: { hueShift: 0.0, saturationShift: -0.02, brightnessShift: 0.14 },
+    groundAtmosphere: { hueShift: -0.01, saturationShift: 0.06, brightnessShift: 0.1, lightIntensity: 9.0 },
+    fog: { enabled: true, density: 0.00012, minimumBrightness: 0.12, screenSpaceErrorFactor: 2.0 },
   };
   const CAMERA_UI_UPDATE_INTERVAL_MS = 150;
   const URL_UPDATE_DEBOUNCE_MS = 500;
@@ -148,17 +160,17 @@
   const CAMERA_INTERACTION_IDLE_MS = 260;
   const VIEWPORT_HOME_RESIZE_DEBOUNCE_MS = 160;
   const CAMERA_INTERACTION_QUALITY = {
-    maximumScreenSpaceError: 10,
-    dynamicScreenSpaceErrorDensity: 0.0038,
-    dynamicScreenSpaceErrorFactor: 5,
+    maximumScreenSpaceError: 9,
+    dynamicScreenSpaceErrorDensity: 0.0034,
+    dynamicScreenSpaceErrorFactor: 4,
     globeMaximumScreenSpaceError: 6,
-    resolutionScale: 0.82,
+    resolutionScale: 0.85,
     msaaSamples: 1,
   };
   const CAMERA_CONTROL_INERTIA = {
-    spin: 0.86,
-    translate: 0.88,
-    zoom: 0.72,
+    spin: 0.91,
+    translate: 0.9,
+    zoom: 0.83,
   };
   const CAMERA_PITCH_MIN = 0;
   const CAMERA_PITCH_MAX = 85;
@@ -178,13 +190,13 @@
   const KEYBOARD_DECELERATION_PER_SECOND = 5;
   const KEYBOARD_NAVIGATION_EPSILON = 0.006;
   const IMMERSIVE_DOUBLE_CLICK_ZOOM_DELTA = 1.35;
-  const IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL = 0.0028;
-  const IMMERSIVE_WHEEL_ZOOM_MAX_DELTA = 0.95;
+  const IMMERSIVE_WHEEL_ZOOM_LEVELS_PER_PIXEL = 0.0042;
+  const IMMERSIVE_WHEEL_ZOOM_MAX_DELTA = 1.6;
   const KEYBOARD_OBLIQUE_PITCH = 55;
 
   const ELEMENT_IDS = [
     "earthMap", "projectionGlobe", "projectionMap", "scenePresetShowcase", "scenePresetAudit", "scenePresetCity",
-    "scenePresetInfo", "loadDefaultWeather", "fitWeather", "placePreset", "flyToPlace", "locationSearchInput",
+    "scenePresetInfo", "loadDefaultWeather", "loadEra5Profile", "loadFusion", "loadOceanCoupling", "fitWeather", "placePreset", "flyToPlace", "locationSearchInput",
     "locationSearchButton", "locationSearchInfo", "focusCurrentView", "clearFocusTarget", "autoRotateGlobe",
     "focusOrbitEnabled", "baseMapStyle", "immersiveBaseMapStyle", "mapDetailsEnabled", "immersiveMapDetailsEnabled",
     "mapDetailsInfo", "terrainEnabled", "immersiveTerrainEnabled", "terrainExaggeration", "terrainInfo",
@@ -196,9 +208,10 @@
     "copyProjectShareUrl", "clearWeather", "shareUrlText", "weatherOpacity", "immersiveWeatherOpacity",
     "immersiveWeatherOpacityValue", "weather3dEnabled", "weather3dScale", "weather3dInfo", "weatherVolumeEnabled",
     "weatherVolumeScale", "weatherVolumeInfo", "cloudOverlayUrl", "cloudOverlayMode", "cloudOverlayBounds",
-    "cloudOverlayOpacity", "cloudOverlayOpacityValue", "loadCloudOverlay", "loadCloudOverlayLive", "clearCloudOverlay",
+    "cloudOverlayOpacity", "cloudOverlayOpacityValue", "loadCloudOverlay", "loadCloudOverlayLive", "clearCloudOverlay", "toggleCloudInfrared",
     "radarOverlayUrl", "radarOverlayMode", "radarOverlayBounds", "radarOverlayOpacity", "radarOverlayOpacityValue",
     "loadRadarOverlay", "loadRadarOverlayLive", "clearRadarOverlay", "rasterOverlayStatus",
+    "immersiveCloudToggle", "immersiveCloudIr", "immersiveRadarToggle",
     "drawPoint", "drawLine", "drawPolygon", "drawWeatherType",
     "drawColor", "drawName", "finishDraw", "undoDrawPoint", "cancelDraw", "drawStatus", "measureDistance",
     "measureArea", "finishMeasure", "undoMeasurePoint", "clearMeasure", "measureStatus", "clearFeatureSelection",
@@ -343,12 +356,13 @@
   ];
 
   const RASTER_OVERLAY_TYPES = {
-    cloud: { id: "cloud", layerId: "raster-cloud", label: "云图", defaultOpacity: 0.58, defaultBounds: [-180, -85, 180, 85], defaultMaximumLevel: 9 },
+    cloud: { id: "cloud", layerId: "raster-cloud", label: "云图", defaultOpacity: 0.62, defaultBounds: [-180, -85, 180, 85], defaultMaximumLevel: 12 },
     radar: { id: "radar", layerId: "raster-radar", label: "雷达图", defaultOpacity: 0.68, defaultBounds: [-180, -85, 180, 85], defaultMaximumLevel: 7 },
   };
 
   let viewer = null;
   let googleTileset = null;
+  let googleRasterOverlayPresentationActive = false;
   let activeImageryLayer = null;
   let activeTerrainProvider = null;
   let tilesetStatus = "not-loaded";
@@ -385,6 +399,7 @@
   let weather3dScale = DEFAULT_WEATHER_3D_SCALE;
   let weatherVolumeEnabled = false;
   let weatherVolumeScale = DEFAULT_WEATHER_VOLUME_SCALE;
+  let cloudInfraredEnabled = false;
   let autoRotateEnabled = DEFAULT_AUTO_ROTATE;
   let focusOrbitEnabled = false;
   let immersiveEnabled = DEFAULT_IMMERSIVE;
@@ -451,6 +466,8 @@
   let replaceUrlQueuedDuringInteraction = false;
   let replaceUrlTimer = 0;
   let renderMetrics = { frameCount: 0, fps: 0, frameLatencyMs: 0, lastFrameAt: 0, sampleStartedAt: 0, sampleFrameCount: 0 };
+  // 平滑滚轮缩放状态机：累积目标值并在每帧插值逼近，消除跳变
+  let smoothZoom = { active: false, targetZoom: null, currentZoom: null, lastWheelAt: 0, idleTimer: 0 };
 
   async function init() {
     bootstrapControls();
@@ -716,9 +733,65 @@
     );
     if (Math.abs(zoomDelta) < 0.01) return;
     beginCameraInteraction("wheel-zoom");
-    zoomCameraRange(zoomDelta);
-    endCameraInteractionSoon();
+    pushSmoothZoomTarget(zoomDelta);
     if (!event.defaultPrevented) stopCameraGestureEvent(event);
+  }
+
+  function pushSmoothZoomTarget(zoomDelta) {
+    const camera = currentCameraState();
+    const baseZoom = smoothZoom.active && smoothZoom.targetZoom != null
+      ? smoothZoom.targetZoom
+      : camera.zoom;
+    const nextTarget = clamp(baseZoom + Number(zoomDelta || 0), 0.4, 19);
+    smoothZoom.targetZoom = nextTarget;
+    smoothZoom.currentZoom = smoothZoom.currentZoom ?? camera.zoom;
+    smoothZoom.active = true;
+    smoothZoom.lastWheelAt = performance.now();
+    window.clearTimeout(smoothZoom.idleTimer);
+    smoothZoom.idleTimer = window.setTimeout(finishSmoothZoom, 180);
+  }
+
+  function finishSmoothZoom() {
+    window.clearTimeout(smoothZoom.idleTimer);
+    smoothZoom.active = false;
+    smoothZoom.currentZoom = null;
+    smoothZoom.targetZoom = null;
+    endCameraInteractionSoon();
+  }
+
+  function tickSmoothZoom(seconds) {
+    if (!smoothZoom.active || smoothZoom.targetZoom == null) return false;
+    const current = smoothZoom.currentZoom ?? currentCameraState().zoom;
+    // 指数趋近：每帧逼近目标值的 18%，约 200ms 完成过渡，兼顾顺滑与跟手
+    const speed = 1 - Math.pow(0.0016, seconds);
+    const next = current + (smoothZoom.targetZoom - current) * Math.min(speed, 0.35);
+    smoothZoom.currentZoom = next;
+    applySmoothZoom(next);
+    if (Math.abs(smoothZoom.targetZoom - next) < 0.003) {
+      applySmoothZoom(smoothZoom.targetZoom);
+      finishSmoothZoom();
+    }
+    return true;
+  }
+
+  function applySmoothZoom(zoom) {
+    if (!viewer || !Cesium) return;
+    const camera = currentCameraState();
+    const nextRange = zoomToHeight(zoom);
+    const currentRange = zoomToHeight(camera.zoom);
+    const moveMeters = currentRange - nextRange;
+    if (Math.abs(moveMeters) < 0.01) return;
+    const direction = Cesium.Cartesian3.normalize(viewer.camera.directionWC, new Cesium.Cartesian3());
+    const up = Cesium.Cartesian3.normalize(viewer.camera.upWC, new Cesium.Cartesian3());
+    const destination = Cesium.Cartesian3.add(
+      viewer.camera.positionWC,
+      Cesium.Cartesian3.multiplyByScalar(direction, moveMeters, new Cesium.Cartesian3()),
+      new Cesium.Cartesian3()
+    );
+    viewer.camera.setView({ destination, orientation: { direction, up } });
+    scheduleCameraUiUpdate();
+    scheduleReplaceUrlState();
+    viewer.scene.requestRender?.();
   }
 
   function normalizeWheelDeltaY(event) {
@@ -834,12 +907,16 @@
     try {
       await loadImageryGlobeProvider(FALLBACK_TILESET_MODE);
       await restoreRasterOverlays();
-      tilesetStatus = provider.requiresIonToken && !configuredIonToken() ? "missing-token" : "fallback";
+      const missingIonToken = provider.requiresIonToken && !configuredIonToken();
+      const missingGoogleMapsApiKey = provider.requiresGoogleMapsApiKey && !configuredGoogleMapsApiKey();
+      tilesetStatus = missingIonToken || missingGoogleMapsApiKey ? "missing-token" : "fallback";
       tilesetError = reason || "";
-      const message = provider.requiresIonToken && !configuredIonToken()
+      const message = missingIonToken
         ? `${provider.label} 需要 Cesium ion token，已使用 OpenStreetMap 兜底。`
+        : missingGoogleMapsApiKey
+          ? `${provider.label} 需要 Google Maps API key，已使用 OpenStreetMap 兜底。`
         : `${provider.label} 加载失败，已使用 OpenStreetMap 兜底。`;
-      if (provider.requiresIonToken && !configuredIonToken()) showTokenPanel(message, provider.id);
+      if (missingIonToken) showTokenPanel(message, provider.id);
       setStatus("已切换到开放底座。", message);
     } catch (fallbackError) {
       tilesetStatus = "error";
@@ -877,9 +954,24 @@
     }
     if (viewer.scene.globe) viewer.scene.globe.show = false;
     googleTileset = await Cesium.createGooglePhotorealistic3DTileset();
+    // Google Earth 流畅度关键参数
     googleTileset.show = true;
+    googleTileset.preloadWhenHidden = false;
+    googleTileset.preloadFlightDestinations = true;
+    googleTileset.skipLevelOfDetail = true;
+    googleTileset.baseScreenSpaceError = 1024;
+    googleTileset.skipScreenSpaceErrorFactor = 16;
+    googleTileset.skipLevels = 1;
+    googleTileset.immediatelyLoadDesiredLevelOfDetail = false;
+    googleTileset.loadSiblings = false;
+    googleTileset.progressiveResolutionHeightFraction = 0.3;
+    googleTileset.foveatedScreenSpaceError = true;
+    googleTileset.foveatedConeSize = 0.3;
+    googleTileset.foveatedMinimumScreenSpaceErrorRelaxation = 0.0;
+    googleTileset.dynamicScreenSpaceError = false;
     applyQualityProfileToTileset();
     viewer.scene.primitives.add(googleTileset);
+    syncGoogleRasterOverlayPresentation();
   }
 
   async function loadWorldTerrainProvider(token = configuredIonToken()) {
@@ -938,6 +1030,7 @@
     if (key === "esri-world-imagery" && Cesium.ArcGisMapServerImageryProvider?.fromUrl) {
       return Cesium.ArcGisMapServerImageryProvider.fromUrl("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
     }
+    if (key === "google-satellite") return createGoogleSatelliteImageryProvider();
     if (key === "natural-earth") return createNaturalEarthImageryProvider();
     if (Cesium.OpenStreetMapImageryProvider) {
       return new Cesium.OpenStreetMapImageryProvider({
@@ -949,6 +1042,26 @@
       url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       maximumLevel: 19,
       credit: "© OpenStreetMap contributors",
+    });
+  }
+
+  async function createGoogleSatelliteImageryProvider() {
+    const key = configuredGoogleMapsApiKey();
+    if (!key) throw new Error("需要 Google Maps API key 才能加载 Google Satellite。");
+    const response = await fetch(`https://tile.googleapis.com/v1/createSession?key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mapType: "satellite", language: "zh-CN", region: "CN" }),
+    });
+    if (!response.ok) throw new Error(`Google Satellite 会话创建失败：HTTP ${response.status}`);
+    const session = await response.json();
+    if (!session?.session) throw new Error("Google Satellite 会话缺少 session token。");
+    return new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=${encodeURIComponent(session.session)}&key=${encodeURIComponent(key)}`,
+      tileWidth: session.tileWidth || 256,
+      tileHeight: session.tileHeight || 256,
+      maximumLevel: 22,
+      credit: "Map data: Google",
     });
   }
 
@@ -1046,19 +1159,25 @@
   async function setRasterOverlay(typeId, input = {}) {
     const base = rasterOverlayStates[typeId];
     if (!viewer || !Cesium || !base) throw new Error(`Unknown raster overlay: ${typeId}`);
+    const overlayInput = normalizeRasterOverlayInput(typeId, input);
     const next = {
       ...base,
-      mode: normalizeRasterOverlayMode(input.mode ?? base.mode),
-      url: String((input.url ?? base.url) || "").trim(),
-      layers: String((input.layers ?? base.layers) || "").trim(),
-      parameters: input.parameters && typeof input.parameters === "object" ? cloneJson(input.parameters) : cloneJson(base.parameters || {}),
-      bounds: normalizeRasterOverlayBounds(input.bounds ?? base.bounds ?? base.defaultBounds),
-      opacity: clamp(Number(input.opacity ?? base.opacity ?? base.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY), 0, 1),
-      maximumLevel: normalizeRasterMaximumLevel(input.maximumLevel ?? base.maximumLevel ?? base.defaultMaximumLevel),
-      visible: input.visible !== false,
-      source: String((input.source ?? base.source) || "").trim(),
-      sourceLabel: String((input.sourceLabel ?? base.sourceLabel) || "").trim(),
-      validTime: String((input.validTime ?? base.validTime) || "").trim(),
+      mode: normalizeRasterOverlayMode(overlayInput.mode ?? base.mode),
+      url: String((overlayInput.url ?? base.url) || "").trim(),
+      layers: String((overlayInput.layers ?? base.layers) || "").trim(),
+      parameters: overlayInput.parameters && typeof overlayInput.parameters === "object" ? cloneJson(overlayInput.parameters) : cloneJson(base.parameters || {}),
+      bounds: normalizeRasterOverlayBounds(overlayInput.bounds ?? base.bounds ?? base.defaultBounds),
+      opacity: clamp(Number(overlayInput.opacity ?? base.opacity ?? base.defaultOpacity ?? DEFAULT_RASTER_OVERLAY_OPACITY), 0, 1),
+      maximumLevel: normalizeRasterMaximumLevel(overlayInput.maximumLevel ?? base.maximumLevel ?? base.defaultMaximumLevel),
+      minimumLevel: normalizeRasterMinimumLevel(overlayInput.minimumLevel ?? base.minimumLevel),
+      tileWidth: normalizeRasterTileSize(overlayInput.tileWidth ?? base.tileWidth),
+      tileHeight: normalizeRasterTileSize(overlayInput.tileHeight ?? base.tileHeight),
+      subdomains: normalizeRasterSubdomains(overlayInput.subdomains ?? base.subdomains),
+      providerUrl: String((overlayInput.providerUrl ?? base.providerUrl) || "").trim(),
+      visible: overlayInput.visible !== false,
+      source: String((overlayInput.source ?? base.source) || "").trim(),
+      sourceLabel: String((overlayInput.sourceLabel ?? base.sourceLabel) || "").trim(),
+      validTime: String((overlayInput.validTime ?? base.validTime) || "").trim(),
       error: "",
       layer: null,
     };
@@ -1071,26 +1190,29 @@
       next.layer.show = next.visible;
       next.loaded = true;
       rasterOverlayStates[typeId] = next;
+      syncGoogleRasterOverlayPresentation();
       updateRasterOverlayUi();
       updateAllUi();
       viewer.scene.requestRender?.();
-      if (!input.silent) setStatus(`${base.label}已加载。`, `${next.sourceLabel || next.source || next.url}${next.validTime ? ` / ${next.validTime}` : ""}`);
-      if (!input.silent) emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
+      if (!overlayInput.silent) setStatus(`${base.label}已加载。`, `${next.sourceLabel || next.source || next.url}${next.validTime ? ` / ${next.validTime}` : ""}`);
+      if (!overlayInput.silent) emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
       return rasterOverlayPublicState(next);
     } catch (error) {
       next.loaded = false;
       next.error = error?.message || String(error);
       rasterOverlayStates[typeId] = next;
+      syncGoogleRasterOverlayPresentation();
       updateRasterOverlayUi();
-      if (!input.silent) setStatus(`${base.label}加载失败。`, next.error);
+      if (!overlayInput.silent) setStatus(`${base.label}加载失败。`, next.error);
       throw error;
     }
   }
 
   async function createRasterOverlayProvider(config) {
+    const providerUrl = config.providerUrl || config.url;
     if (config.mode === "wms") {
       return new Cesium.WebMapServiceImageryProvider({
-        url: config.url,
+        url: providerUrl,
         layers: config.layers,
         parameters: {
           transparent: true,
@@ -1104,20 +1226,22 @@
     }
     if (config.mode === "template") {
       return new Cesium.UrlTemplateImageryProvider({
-        url: config.url,
+        url: providerUrl,
         rectangle: boundsToRectangle(config.bounds),
         credit: `${config.label} raster overlay`,
+        minimumLevel: config.minimumLevel,
         maximumLevel: config.maximumLevel ?? config.defaultMaximumLevel ?? 12,
-        tileWidth: config.source === "RainViewer" ? 512 : 256,
-        tileHeight: config.source === "RainViewer" ? 512 : 256,
+        subdomains: config.subdomains,
+        tileWidth: config.tileWidth || 256,
+        tileHeight: config.tileHeight || 256,
       });
     }
     const options = {
       rectangle: boundsToRectangle(config.bounds),
       credit: `${config.label} raster overlay`,
     };
-    if (Cesium.SingleTileImageryProvider?.fromUrl) return Cesium.SingleTileImageryProvider.fromUrl(config.url, options);
-    return new Cesium.SingleTileImageryProvider({ url: config.url, ...options });
+    if (Cesium.SingleTileImageryProvider?.fromUrl) return Cesium.SingleTileImageryProvider.fromUrl(providerUrl, options);
+    return new Cesium.SingleTileImageryProvider({ url: providerUrl, ...options });
   }
 
   async function restoreRasterOverlays() {
@@ -1141,6 +1265,7 @@
       // Cesium can throw if the layer was already removed by a basemap reset.
     }
     state.layer = null;
+    syncGoogleRasterOverlayPresentation();
   }
 
   function clearRasterOverlay(typeId, options = {}) {
@@ -1161,9 +1286,11 @@
       source: "",
       sourceLabel: "",
       validTime: "",
+      providerUrl: "",
       layer: null,
       error: "",
     };
+    syncGoogleRasterOverlayPresentation();
     updateRasterOverlayUi();
     updateAllUi();
     viewer?.scene.requestRender?.();
@@ -1187,6 +1314,7 @@
     if (!state) return null;
     state.visible = Boolean(visible);
     if (state.layer) state.layer.show = state.visible;
+    syncGoogleRasterOverlayPresentation();
     updateAllUi();
     viewer?.scene.requestRender?.();
     emitWeatherEarthEvent("rasteroverlaychange", { overlays: rasterOverlayState() });
@@ -1222,6 +1350,29 @@
     }
   }
 
+  async function toggleLiveRasterFromImmersive(typeId) {
+    const state = rasterOverlayStates[typeId];
+    const label = RASTER_OVERLAY_TYPES[typeId]?.label || "图层";
+    if (state?.loaded) {
+      clearRasterOverlay(typeId);
+      setStatus(`${label}已清除。`, "");
+    } else {
+      setStatus(`${label}加载中…`, "正在获取实时数据。");
+      await loadLiveRasterOverlay(typeId);
+    }
+  }
+
+  async function toggleCloudInfrared() {
+    cloudInfraredEnabled = !cloudInfraredEnabled;
+    setPressed(elements.toggleCloudInfrared, cloudInfraredEnabled);
+    setPressed(elements.immersiveCloudIr, cloudInfraredEnabled);
+    if (elements.toggleCloudInfrared) elements.toggleCloudInfrared.textContent = cloudInfraredEnabled ? "可见光" : "红外";
+    // 若云图已加载则重新加载以切换图层
+    if (rasterOverlayStates.cloud?.loaded) {
+      await loadLiveRasterOverlay("cloud");
+    }
+  }
+
   function rasterOverlayControls(typeId) {
     if (typeId === "cloud") {
       return { url: elements.cloudOverlayUrl, mode: elements.cloudOverlayMode, bounds: elements.cloudOverlayBounds, opacity: elements.cloudOverlayOpacity, value: elements.cloudOverlayOpacityValue, load: elements.loadCloudOverlay, live: elements.loadCloudOverlayLive, clear: elements.clearCloudOverlay };
@@ -1249,6 +1400,12 @@
         ? loaded.map((overlay) => `${overlay.label} ${overlay.sourceLabel || "已加载"} ${Math.round(overlay.opacity * 100)}%`).join(" / ")
         : "未加载云图或雷达图。";
     }
+    setPressed(elements.immersiveCloudToggle, Boolean(rasterOverlayStates.cloud?.loaded));
+    setPressed(elements.immersiveRadarToggle, Boolean(rasterOverlayStates.radar?.loaded));
+    setDisabled(elements.immersiveCloudIr, !rasterOverlayStates.cloud?.loaded);
+    setPressed(elements.immersiveCloudIr, cloudInfraredEnabled);
+    setPressed(elements.toggleCloudInfrared, cloudInfraredEnabled);
+    if (elements.toggleCloudInfrared) elements.toggleCloudInfrared.textContent = cloudInfraredEnabled ? "可见光" : "红外";
   }
 
   async function resolveLiveRasterOverlay(typeId) {
@@ -1258,27 +1415,34 @@
   }
 
   function resolveLiveCloudOverlay() {
+    const useInfrared = cloudInfraredEnabled;
+    const configured = configuredWeatherTileOverlay(useInfrared ? "infrared" : "cloud");
+    if (configured) return configured;
     const date = recentGibsDate();
+    const layer = useInfrared ? NASA_GIBS_IR_LAYER : NASA_GIBS_CLOUD_LAYER;
     return {
-      url: "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi",
+      url: "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
       mode: "wms",
-      layers: NASA_GIBS_CLOUD_LAYER,
+      layers: layer,
       parameters: {
         time: date,
         format: "image/png",
         transparent: true,
+        opacity: 0.85,
       },
       bounds: RASTER_OVERLAY_TYPES.cloud.defaultBounds,
       opacity: RASTER_OVERLAY_TYPES.cloud.defaultOpacity,
       maximumLevel: RASTER_OVERLAY_TYPES.cloud.defaultMaximumLevel,
       visible: true,
       source: "NASA GIBS",
-      sourceLabel: "NASA GIBS 近实时卫星",
+      sourceLabel: useInfrared ? "Himawari AHI 红外云图" : "Himawari AHI 可见光云图",
       validTime: date,
     };
   }
 
   async function resolveLiveRadarOverlay() {
+    const configured = configuredWeatherTileOverlay("radar") || configuredGoogleWeatherMapOverlay("radar");
+    if (configured) return configured;
     const response = await fetch(RAINVIEWER_WEATHER_MAPS_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`RainViewer ${response.status} ${response.statusText}`);
     const payload = await response.json();
@@ -1287,21 +1451,24 @@
     if (!frame) throw new Error("RainViewer 暂无可用雷达帧。");
     const host = String(payload.host || "https://tilecache.rainviewer.com").replace(/\/$/, "");
     return {
-      url: `${host}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`,
+      url: `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
       mode: "template",
       bounds: RASTER_OVERLAY_TYPES.radar.defaultBounds,
       opacity: RASTER_OVERLAY_TYPES.radar.defaultOpacity,
       maximumLevel: RASTER_OVERLAY_TYPES.radar.defaultMaximumLevel,
       visible: true,
       source: "RainViewer",
-      sourceLabel: "RainViewer 最新雷达",
+      sourceLabel: "RainViewer 最新雷达（空白区无回波或无覆盖）",
       validTime: frame.time ? new Date(frame.time * 1000).toISOString() : "",
     };
   }
 
   function recentGibsDate() {
+    // GIBS 数据有数小时延迟，取今天 UTC 早上 6 点前则用昨天，否则用今天
     const date = new Date();
-    date.setUTCDate(date.getUTCDate() - 1);
+    if (date.getUTCHours() < 6) {
+      date.setUTCDate(date.getUTCDate() - 1);
+    }
     return date.toISOString().slice(0, 10);
   }
 
@@ -1311,15 +1478,131 @@
     return mode === "template" || mode === "tile" || mode === "tiles" ? "template" : "single";
   }
 
+  function normalizeRasterOverlayInput(typeId, input = {}) {
+    const next = { ...input };
+    if (next.url) next.url = normalizeRasterTileUrlTemplate(next.url);
+    if (next.source === "Google Weather" || String(next.url || "").includes("weather.googleapis.com")) {
+      next.url = stripGoogleWeatherApiKey(next.url);
+      next.providerUrl = appendGoogleWeatherApiKey(next.url);
+      if (next.maximumLevel == null) next.maximumLevel = 16;
+      if (next.mode == null) next.mode = "template";
+    }
+    return next;
+  }
+
+  function configuredWeatherTileOverlay(kind) {
+    const config = globalThis.WEATHER_EARTH_CONFIG || {};
+    const tiles = config.weatherTiles || config.rasterTiles || {};
+    const params = new URLSearchParams(window.location.search);
+    const aliases = kind === "infrared" ? ["infrared", "ir", "cloudInfrared"] : [kind];
+    const raw = firstPresent(
+      ...aliases.map((name) => params.get(`${name}TileUrl`) || params.get(`${name}Tiles`)),
+      ...aliases.map((name) => tiles[name] || config[`${name}TileUrl`])
+    );
+    if (!raw) return null;
+    const tile = typeof raw === "string" ? { url: raw } : raw;
+    if (!tile?.url) return null;
+    const typeId = kind === "radar" ? "radar" : "cloud";
+    const type = RASTER_OVERLAY_TYPES[typeId];
+    return {
+      mode: "template",
+      bounds: type.defaultBounds,
+      opacity: type.defaultOpacity,
+      maximumLevel: 16,
+      source: "Google Tiles",
+      sourceLabel: `Google ${kind === "infrared" ? "红外" : type.label}瓦片`,
+      ...tile,
+    };
+  }
+
+  function configuredGoogleWeatherMapOverlay(kind) {
+    const config = globalThis.WEATHER_EARTH_CONFIG || {};
+    const params = new URLSearchParams(window.location.search);
+    const mapTypes = config.googleWeatherMapTypes || {};
+    const mapType = String(params.get(`${kind}GoogleMapType`) || mapTypes[kind] || config.googleWeatherMapType || "").trim();
+    const key = configuredGoogleWeatherApiKey();
+    if (!mapType || !key) return null;
+    const type = RASTER_OVERLAY_TYPES[kind === "radar" ? "radar" : "cloud"];
+    return {
+      url: `https://weather.googleapis.com/v1/mapTypes/${encodeURIComponent(mapType)}/mapTiles/{z}/{x}/{y}`,
+      mode: "template",
+      bounds: type.defaultBounds,
+      opacity: type.defaultOpacity,
+      maximumLevel: 16,
+      source: "Google Weather",
+      sourceLabel: `Google Weather ${mapType}`,
+    };
+  }
+
+  function configuredGoogleWeatherApiKey() {
+    const params = new URLSearchParams(window.location.search);
+    const config = globalThis.WEATHER_EARTH_CONFIG || {};
+    return String(params.get("googleWeatherApiKey") || params.get("weatherApiKey") || config.googleWeatherApiKey || config.weatherApiKey || "").trim();
+  }
+
+  function appendGoogleWeatherApiKey(url) {
+    const key = configuredGoogleWeatherApiKey();
+    if (!key || !url || /[?&]key=/.test(url)) return url;
+    return `${url}${url.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
+  }
+
+  function stripGoogleWeatherApiKey(url) {
+    const raw = String(url || "");
+    if (!raw.includes("weather.googleapis.com")) return raw;
+    return raw.replace(/([?&])key=[^&]*&?/, "$1").replace(/[?&]$/, "");
+  }
+
+  function normalizeRasterTileUrlTemplate(url) {
+    return String(url || "")
+      .trim()
+      .replace(/\{zoom\}/g, "{z}")
+      .replace(/\{coord\.x\}/g, "{x}")
+      .replace(/\{coord\.y\}/g, "{y}");
+  }
+
+  function firstPresent(...values) {
+    return values.find((value) => value != null && value !== "");
+  }
+
   function normalizeRasterOverlayBounds(value) {
     if (Array.isArray(value)) return validateRasterOverlayBounds(value);
     const parts = String(value || "").split(/[,\s]+/).map(Number).filter(Number.isFinite);
     return validateRasterOverlayBounds(parts);
   }
 
+  function normalizeRasterMinimumLevel(value) {
+    const level = Number(value);
+    return Number.isFinite(level) ? clamp(Math.round(level), 0, 18) : undefined;
+  }
+
   function normalizeRasterMaximumLevel(value) {
     const level = Number(value);
     return Number.isFinite(level) ? clamp(Math.round(level), 0, 18) : undefined;
+  }
+
+  function normalizeRasterTileSize(value) {
+    const size = Number(value);
+    return Number.isFinite(size) && size > 0 ? Math.round(size) : undefined;
+  }
+
+  function normalizeRasterSubdomains(value) {
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === "string") return value.split(/[,\s]+/).filter(Boolean);
+    return undefined;
+  }
+
+  function syncGoogleRasterOverlayPresentation() {
+    if (!viewer?.scene?.globe) return;
+    const hasRasterOverlay = Object.values(rasterOverlayStates).some((state) => state.layer && state.visible);
+    const googleBaseActive = currentBaseMapKey === GOOGLE_TILESET_MODE && !activeBaseMapFallback && Boolean(googleTileset);
+    viewer.scene.globe.show = googleBaseActive ? hasRasterOverlay : true;
+    const active = googleBaseActive && hasRasterOverlay;
+    if (!googleTileset || googleRasterOverlayPresentationActive === active) return;
+    googleRasterOverlayPresentationActive = active;
+    // ponytail: raster weather still lives on the Cesium globe; true 3D-tile draping can replace this if visual precision matters.
+    googleTileset.style = active && Cesium.Cesium3DTileStyle
+      ? new Cesium.Cesium3DTileStyle({ color: "color('white', 0.82)" })
+      : undefined;
   }
 
   function validateRasterOverlayBounds(values) {
@@ -1460,6 +1743,10 @@
       if ("atmosphereSaturationShift" in scene.globe) scene.globe.atmosphereSaturationShift = treatment.groundAtmosphere.saturationShift;
       if ("atmosphereBrightnessShift" in scene.globe) scene.globe.atmosphereBrightnessShift = treatment.groundAtmosphere.brightnessShift;
       if ("atmosphereLightIntensity" in scene.globe) scene.globe.atmosphereLightIntensity = treatment.groundAtmosphere.lightIntensity;
+      if ("showWaterMask" in scene.globe) scene.globe.showWaterMask = true;
+      if ("lightingFadeOutDistance" in scene.globe) scene.globe.lightingFadeOutDistance = 9.5e6;
+      if ("lightingFadeInDistance" in scene.globe) scene.globe.lightingFadeInDistance = 18e6;
+      if ("nightTextureAlpha" in scene.globe) scene.globe.nightTextureAlpha = 1.0;
     }
     if (scene.fog) {
       scene.fog.enabled = treatment.fog.enabled;
@@ -1484,24 +1771,102 @@
 
   function starFieldDataUrl(seed) {
     const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 2048;
     const ctx = canvas.getContext("2d");
     if (!ctx) return "";
-    ctx.fillStyle = "#000207";
+    ctx.fillStyle = "#01040a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     let state = seed >>> 0;
     const next = () => {
       state = (state * 1664525 + 1013904223) >>> 0;
       return state / 4294967296;
     };
-    for (let i = 0; i < 160; i += 1) {
+    // 银河带：一条柔和的星云条带，营造深空层次感
+    const bandAngle = -0.35;
+    const cosA = Math.cos(bandAngle);
+    const sinA = Math.sin(bandAngle);
+    for (let i = 0; i < 7; i += 1) {
+      const cx = canvas.width * (0.3 + next() * 0.4);
+      const cy = canvas.height * (0.3 + next() * 0.4);
+      const rx = 260 + next() * 320;
+      const ry = 70 + next() * 90;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+      const tint = next();
+      const hueR = Math.round(180 + tint * 50);
+      const hueG = Math.round(190 + tint * 40);
+      const hueB = Math.round(220 + tint * 30);
+      grad.addColorStop(0, `rgba(${hueR},${hueG},${hueB},0.05)`);
+      grad.addColorStop(0.5, `rgba(${hueR - 20},${hueG - 10},${hueB},0.025)`);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(bandAngle + (next() - 0.5) * 0.4);
+      ctx.scale(rx / ry, 1);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, ry, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    // 微光星：数量最多，营造星空密度
+    for (let i = 0; i < 420; i += 1) {
       const x = next() * canvas.width;
       const y = next() * canvas.height;
-      const radius = 0.25 + next() * 0.55;
-      const alpha = 0.1 + next() * 0.32;
+      const radius = 0.3 + next() * 0.5;
+      const alpha = 0.08 + next() * 0.22;
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(225, 238, 255, ${alpha.toFixed(3)})`;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 中等星：亮度适中
+    for (let i = 0; i < 180; i += 1) {
+      const x = next() * canvas.width;
+      const y = next() * canvas.height;
+      const radius = 0.6 + next() * 0.9;
+      const alpha = 0.3 + next() * 0.4;
       ctx.beginPath();
       ctx.fillStyle = `rgba(235, 246, 255, ${alpha.toFixed(3)})`;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 亮星：带光晕，少量点缀
+    for (let i = 0; i < 36; i += 1) {
+      const x = next() * canvas.width;
+      const y = next() * canvas.height;
+      const radius = 1.1 + next() * 1.4;
+      const tint = next();
+      const r = Math.round(230 + tint * 25);
+      const g = Math.round(235 + tint * 20);
+      const b = 255;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 4);
+      glow.addColorStop(0, `rgba(${r},${g},${b},0.85)`);
+      glow.addColorStop(0.4, `rgba(${r},${g},${b},0.3)`);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 255, 255, 0.95)`;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 彩色星点：少量暖白/冷蓝星，丰富色彩层次
+    const starColors = [
+      [255, 214, 170],
+      [180, 210, 255],
+      [255, 240, 200],
+    ];
+    for (let i = 0; i < 24; i += 1) {
+      const x = next() * canvas.width;
+      const y = next() * canvas.height;
+      const radius = 0.8 + next() * 1.0;
+      const alpha = 0.4 + next() * 0.4;
+      const c = starColors[Math.floor(next() * starColors.length)];
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha.toFixed(3)})`;
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
@@ -1534,6 +1899,12 @@
       sessionStorage.getItem(TOKEN_STORAGE_KEY) ||
       ""
     ).trim();
+  }
+
+  function configuredGoogleMapsApiKey() {
+    const params = new URLSearchParams(window.location.search);
+    const config = globalThis.WEATHER_EARTH_CONFIG || {};
+    return String(params.get("googleMapsApiKey") || params.get("mapsApiKey") || params.get("key") || config.googleMapsApiKey || config.mapsApiKey || "").trim();
   }
 
   function showTokenPanel(message, providerId = currentBaseMapKey) {
@@ -1592,6 +1963,9 @@
     on(elements.scenePresetAudit, "click", () => applyScenePreset("audit"));
     on(elements.scenePresetCity, "click", () => applyScenePreset("city"));
     on(elements.loadDefaultWeather, "click", () => loadDefaultWeather());
+    on(elements.loadEra5Profile, "click", () => loadEra5VerticalProfile());
+    on(elements.loadFusion, "click", () => loadFusionData());
+    on(elements.loadOceanCoupling, "click", () => loadOceanCouplingData());
     on(elements.fitWeather, "click", () => fitCurrentGeoJson());
     on(elements.flyToPlace, "click", () => flyToPlace(elements.placePreset?.value || "china"));
     on(elements.locationSearchButton, "click", () => flyToSearch(elements.locationSearchInput?.value || ""));
@@ -1645,10 +2019,14 @@
     on(elements.loadCloudOverlayLive, "click", () => loadLiveRasterOverlay("cloud"));
     on(elements.clearCloudOverlay, "click", () => clearRasterOverlay("cloud"));
     on(elements.cloudOverlayOpacity, "input", () => setRasterOverlayOpacity("cloud", elements.cloudOverlayOpacity.value));
+    on(elements.toggleCloudInfrared, "click", () => toggleCloudInfrared());
     on(elements.loadRadarOverlay, "click", () => loadRasterOverlayFromControls("radar"));
     on(elements.loadRadarOverlayLive, "click", () => loadLiveRasterOverlay("radar"));
     on(elements.clearRadarOverlay, "click", () => clearRasterOverlay("radar"));
     on(elements.radarOverlayOpacity, "input", () => setRasterOverlayOpacity("radar", elements.radarOverlayOpacity.value));
+    on(elements.immersiveCloudToggle, "click", () => toggleLiveRasterFromImmersive("cloud"));
+    on(elements.immersiveCloudIr, "click", () => toggleCloudInfrared());
+    on(elements.immersiveRadarToggle, "click", () => toggleLiveRasterFromImmersive("radar"));
     on(elements.drawPoint, "click", () => startDrawMode("Point"));
     on(elements.drawLine, "click", () => startDrawMode("LineString"));
     on(elements.drawPolygon, "click", () => startDrawMode("Polygon"));
@@ -1723,11 +2101,14 @@
   function initializeFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const map = parseMapParam(params.get("map"));
+    const basemapOnly = wantsBasemapOnly(params);
     const preserveUrlCamera = Boolean(map);
-    responsiveHomeCamera = !map && !params.get("project") && !params.get("manifest") && !params.get("data");
+    responsiveHomeCamera = !map && (basemapOnly || (!params.get("project") && !params.get("manifest") && !params.get("data")));
     let initialLoad = null;
     applyInitialFlags(params);
-    if (params.get("project")) {
+    if (basemapOnly) {
+      setStatus("纯底图视图。", "未加载业务 GeoJSON、云图、雷达或项目叠加层。");
+    } else if (params.get("project")) {
       initialLoad = loadProjectFromParam(params.get("project"), { fit: !preserveUrlCamera });
     } else if (params.get("manifest")) {
       initialLoad = loadManifestFromUrl(params.get("manifest"), { fit: !preserveUrlCamera });
@@ -1735,16 +2116,25 @@
       initialLoad = loadGeoJsonFromUrl(params.get("data"), "", { shareType: "data", shareValue: params.get("data"), fit: !preserveUrlCamera });
     } else if (params.get("weather") === "0" || params.get("weather") === "false") {
       setStatus("纯 Cesium 地球视图。", "未加载默认天气 GeoJSON。");
-    } else {
+    } else if (params.get("weather") === "default" || params.get("weather") === "1") {
       initialLoad = loadDefaultWeather({ silentNotFound: true, fit: false });
+    } else {
+      setStatus("纯 Cesium 地球视图。", "未加载开放数据示例。");
     }
     if (map) flyToCamera(map, { duration: 0 });
     if (map && initialLoad?.then) {
       initialLoad.then(() => flyToCamera(map, { duration: 0 })).catch(() => {});
     }
-    const liveRaster = params.get("raster") === "live" || params.get("rasterOverlays") === "live";
-    if (liveRaster || params.get("cloud") === "live") loadLiveRasterOverlay("cloud");
-    if (liveRaster || params.get("radar") === "live") loadLiveRasterOverlay("radar");
+    const liveRaster = !basemapOnly && (params.get("raster") === "live" || params.get("rasterOverlays") === "live");
+    if (!basemapOnly && (liveRaster || params.get("cloud") === "live")) loadLiveRasterOverlay("cloud");
+    if (!basemapOnly && (liveRaster || params.get("radar") === "live")) loadLiveRasterOverlay("radar");
+  }
+
+  function wantsBasemapOnly(params) {
+    return params.get("basemapOnly") === "1" ||
+      params.get("basemapOnly") === "true" ||
+      params.get("weather") === "0" ||
+      params.get("weather") === "false";
   }
 
   function initialBaseMapKeyFromUrl() {
@@ -1785,6 +2175,33 @@
       await loadGeoJsonFromUrl(DEFAULT_GEOJSON_URL, "默认开放数据", { shareType: "", shareValue: "", silentNotFound: options.silentNotFound, fit: options.fit !== false });
     } catch (error) {
       if (!options.silentNotFound) setStatus("默认开放数据加载失败。", error.message || String(error));
+    }
+  }
+
+  async function loadEra5VerticalProfile() {
+    setStatus("ERA5 垂直剖面加载中…", "正在加载 ERA5 多层垂直叠加示例数据。");
+    try {
+      await loadGeoJsonFromUrl("../examples/era5-temp-vertical-profile.example.json", "ERA5 垂直剖面", { shareType: "", shareValue: "", fit: true });
+    } catch (error) {
+      setStatus("ERA5 垂直剖面加载失败。", error.message || String(error));
+    }
+  }
+
+  async function loadFusionData() {
+    setStatus("多源融合数据加载中…", "正在加载 ERA5+MERRA-2+JRA-55 加权融合 850hPa 温度场。");
+    try {
+      await loadGeoJsonFromUrl("../examples/fusion-t850.example.json", "多源融合", { shareType: "", shareValue: "", fit: true });
+    } catch (error) {
+      setStatus("多源融合数据加载失败。", error.message || String(error));
+    }
+  }
+
+  async function loadOceanCouplingData() {
+    setStatus("海气耦合数据加载中…", "正在加载 ERA5 大气 + CFSR 海洋海气耦合诊断。");
+    try {
+      await loadGeoJsonFromUrl("../examples/ocean-coupling.example.json", "海气耦合", { shareType: "", shareValue: "", fit: true });
+    } catch (error) {
+      setStatus("海气耦合数据加载失败。", error.message || String(error));
     }
   }
 
@@ -2217,6 +2634,7 @@
     const normalized = String(key || "").trim().toLowerCase();
     if (BASEMAP_PROVIDERS[normalized]) return normalized;
     if (normalized === "google" || normalized === "google-3d" || normalized === "photorealistic") return GOOGLE_TILESET_MODE;
+    if (normalized === "google-sat" || normalized === "google-satellite" || normalized === "google-imagery") return "google-satellite";
     if (normalized === "world-terrain" || normalized === "terrain" || normalized === "cesium") return "cesium-world-terrain";
     if (normalized === "osm" || normalized === "openstreetmap") return "openstreetmap-imagery";
     if (normalized === "esri" || normalized === "arcgis" || normalized === "satellite") return "esri-world-imagery";
@@ -2324,15 +2742,29 @@
     viewer.scene.sun.show = sunlightEnabled;
     viewer.scene.moon.show = sunlightEnabled;
     viewer.scene.skyAtmosphere.show = true;
-    if (viewer.scene.globe) viewer.scene.globe.enableLighting = sunlightEnabled;
+    if (viewer.scene.globe) {
+      viewer.scene.globe.enableLighting = sunlightEnabled;
+      // 昼夜分界线柔化：限制最大光照对比，避免夜侧纯黑
+      if ("lightingFadeOutDistance" in viewer.scene.globe) viewer.scene.globe.lightingFadeOutDistance = 9.5e6;
+      if ("lightingFadeInDistance" in viewer.scene.globe) viewer.scene.globe.lightingFadeInDistance = 18e6;
+    }
     try {
       viewer.scene.light = new Cesium.SunLight({
         intensity: sunlightEnabled
           ? SUNLIGHT_BASE_INTENSITY + sunlightIntensity * SUNLIGHT_RANGE_INTENSITY
-          : SUNLIGHT_DISABLED_INTENSITY
+          : SUNLIGHT_DISABLED_INTENSITY,
       });
     } catch {
       // Older Cesium builds may not expose SunLight constructor.
+    }
+    // 环境光填充：避免夜侧完全漆黑，保留微弱城市灯光感
+    try {
+      viewer.scene.ambientLight = new Cesium.AmbientLight({
+        color: new Cesium.Color(0.12, 0.14, 0.2, 1),
+        intensity: sunlightEnabled ? 0.18 : 0.32,
+      });
+    } catch {
+      // Older Cesium builds may not support AmbientLight.
     }
   }
 
@@ -2498,7 +2930,10 @@
       lastTime = now;
       if (viewer) {
         if (sunlightEnabled) syncSunlightClock();
-        if (updateKeyboardNavigation(seconds)) {
+        if (tickSmoothZoom(seconds)) {
+          scheduleCameraUiUpdate(now);
+          scheduleReplaceUrlState();
+        } else if (updateKeyboardNavigation(seconds)) {
           scheduleCameraUiUpdate(now);
           scheduleReplaceUrlState();
         } else if (cameraInteractionActive) {
