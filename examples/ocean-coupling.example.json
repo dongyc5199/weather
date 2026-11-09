@@ -1,0 +1,4333 @@
+{
+  "type": "FeatureCollection",
+  "name": "ocean-atmosphere-coupling",
+  "metadata": {
+    "adapter": "ocean_atmosphere_coupling_adapter",
+    "schema": "weather-earth-geojson-v1",
+    "projection": "WGS84 lon/lat",
+    "coupling": true,
+    "variable": "sst_air_coupling",
+    "atmosphere_source": "ERA5",
+    "ocean_source": "CFSR",
+    "atmosphere_variable": "t2m",
+    "ocean_variable": "sst",
+    "atmosphere_time": "2026-06-10T18:00:00Z",
+    "ocean_time": "2026-06-10T18:00:00Z",
+    "feature_count": 88,
+    "feature_strategy": "coupled-cell-per-feature"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 289.8,
+        "ocean_value": 297.877,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.077,
+        "heat_flux_proxy_wm2": 53.57,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=289.8) + CFSR海洋(sst=297.9)，ΔT=8.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              38.0
+            ],
+            [
+              121.0,
+              38.0
+            ],
+            [
+              121.0,
+              40.0
+            ],
+            [
+              119.0,
+              40.0
+            ],
+            [
+              119.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 290.1,
+        "ocean_value": 298.217,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.117,
+        "heat_flux_proxy_wm2": 53.84,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=290.1) + CFSR海洋(sst=298.2)，ΔT=8.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              38.0
+            ],
+            [
+              123.0,
+              38.0
+            ],
+            [
+              123.0,
+              40.0
+            ],
+            [
+              121.0,
+              40.0
+            ],
+            [
+              121.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 290.4,
+        "ocean_value": 298.526,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.126,
+        "heat_flux_proxy_wm2": 53.9,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=290.4) + CFSR海洋(sst=298.5)，ΔT=8.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              38.0
+            ],
+            [
+              125.0,
+              38.0
+            ],
+            [
+              125.0,
+              40.0
+            ],
+            [
+              123.0,
+              40.0
+            ],
+            [
+              123.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 290.7,
+        "ocean_value": 298.803,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.103,
+        "heat_flux_proxy_wm2": 53.75,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=290.7) + CFSR海洋(sst=298.8)，ΔT=8.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              38.0
+            ],
+            [
+              127.0,
+              38.0
+            ],
+            [
+              127.0,
+              40.0
+            ],
+            [
+              125.0,
+              40.0
+            ],
+            [
+              125.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.0,
+        "ocean_value": 298.994,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.994,
+        "heat_flux_proxy_wm2": 53.03,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.0) + CFSR海洋(sst=299.0)，ΔT=8.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              38.0
+            ],
+            [
+              129.0,
+              38.0
+            ],
+            [
+              129.0,
+              40.0
+            ],
+            [
+              127.0,
+              40.0
+            ],
+            [
+              127.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.3,
+        "ocean_value": 299.123,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.823,
+        "heat_flux_proxy_wm2": 51.89,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.3) + CFSR海洋(sst=299.1)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              38.0
+            ],
+            [
+              131.0,
+              38.0
+            ],
+            [
+              131.0,
+              40.0
+            ],
+            [
+              129.0,
+              40.0
+            ],
+            [
+              129.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.6,
+        "ocean_value": 299.19,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.59,
+        "heat_flux_proxy_wm2": 50.34,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.6) + CFSR海洋(sst=299.2)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              38.0
+            ],
+            [
+              133.0,
+              38.0
+            ],
+            [
+              133.0,
+              40.0
+            ],
+            [
+              131.0,
+              40.0
+            ],
+            [
+              131.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.9,
+        "ocean_value": 299.123,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.223,
+        "heat_flux_proxy_wm2": 47.91,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.9) + CFSR海洋(sst=299.1)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              38.0
+            ],
+            [
+              135.0,
+              38.0
+            ],
+            [
+              135.0,
+              40.0
+            ],
+            [
+              133.0,
+              40.0
+            ],
+            [
+              133.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.2,
+        "ocean_value": 298.994,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.794,
+        "heat_flux_proxy_wm2": 45.07,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.2) + CFSR海洋(sst=299.0)，ΔT=6.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              38.0
+            ],
+            [
+              137.0,
+              38.0
+            ],
+            [
+              137.0,
+              40.0
+            ],
+            [
+              135.0,
+              40.0
+            ],
+            [
+              135.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.5,
+        "ocean_value": 298.803,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.303,
+        "heat_flux_proxy_wm2": 41.81,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.5) + CFSR海洋(sst=298.8)，ΔT=6.3K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              38.0
+            ],
+            [
+              139.0,
+              38.0
+            ],
+            [
+              139.0,
+              40.0
+            ],
+            [
+              137.0,
+              40.0
+            ],
+            [
+              137.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 298.803,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.003,
+        "heat_flux_proxy_wm2": 39.82,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=298.8)，ΔT=6.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              38.0
+            ],
+            [
+              141.0,
+              38.0
+            ],
+            [
+              141.0,
+              40.0
+            ],
+            [
+              139.0,
+              40.0
+            ],
+            [
+              139.0,
+              38.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 290.4,
+        "ocean_value": 298.29,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.89,
+        "heat_flux_proxy_wm2": 52.33,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=290.4) + CFSR海洋(sst=298.3)，ΔT=7.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              36.0
+            ],
+            [
+              121.0,
+              36.0
+            ],
+            [
+              121.0,
+              38.0
+            ],
+            [
+              119.0,
+              38.0
+            ],
+            [
+              119.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 290.7,
+        "ocean_value": 298.67,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.97,
+        "heat_flux_proxy_wm2": 52.87,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=290.7) + CFSR海洋(sst=298.7)，ΔT=8.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              36.0
+            ],
+            [
+              123.0,
+              36.0
+            ],
+            [
+              123.0,
+              38.0
+            ],
+            [
+              121.0,
+              38.0
+            ],
+            [
+              121.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.0,
+        "ocean_value": 299.023,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.023,
+        "heat_flux_proxy_wm2": 53.22,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.0) + CFSR海洋(sst=299.0)，ΔT=8.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              36.0
+            ],
+            [
+              125.0,
+              36.0
+            ],
+            [
+              125.0,
+              38.0
+            ],
+            [
+              123.0,
+              38.0
+            ],
+            [
+              123.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.3,
+        "ocean_value": 299.35,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 8.05,
+        "heat_flux_proxy_wm2": 53.4,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.3) + CFSR海洋(sst=299.4)，ΔT=8.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              36.0
+            ],
+            [
+              127.0,
+              36.0
+            ],
+            [
+              127.0,
+              38.0
+            ],
+            [
+              125.0,
+              38.0
+            ],
+            [
+              125.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.6,
+        "ocean_value": 299.577,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.977,
+        "heat_flux_proxy_wm2": 52.91,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.6) + CFSR海洋(sst=299.6)，ΔT=8.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              36.0
+            ],
+            [
+              129.0,
+              36.0
+            ],
+            [
+              129.0,
+              38.0
+            ],
+            [
+              127.0,
+              38.0
+            ],
+            [
+              127.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.9,
+        "ocean_value": 299.73,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.83,
+        "heat_flux_proxy_wm2": 51.94,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.9) + CFSR海洋(sst=299.7)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              36.0
+            ],
+            [
+              131.0,
+              36.0
+            ],
+            [
+              131.0,
+              38.0
+            ],
+            [
+              129.0,
+              38.0
+            ],
+            [
+              129.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.2,
+        "ocean_value": 299.81,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.61,
+        "heat_flux_proxy_wm2": 50.48,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.2) + CFSR海洋(sst=299.8)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              36.0
+            ],
+            [
+              133.0,
+              36.0
+            ],
+            [
+              133.0,
+              38.0
+            ],
+            [
+              131.0,
+              38.0
+            ],
+            [
+              131.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.5,
+        "ocean_value": 299.73,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.23,
+        "heat_flux_proxy_wm2": 47.96,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.5) + CFSR海洋(sst=299.7)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              36.0
+            ],
+            [
+              135.0,
+              36.0
+            ],
+            [
+              135.0,
+              38.0
+            ],
+            [
+              133.0,
+              38.0
+            ],
+            [
+              133.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 299.577,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.777,
+        "heat_flux_proxy_wm2": 44.95,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=299.6)，ΔT=6.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              36.0
+            ],
+            [
+              137.0,
+              36.0
+            ],
+            [
+              137.0,
+              38.0
+            ],
+            [
+              135.0,
+              38.0
+            ],
+            [
+              135.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.1,
+        "ocean_value": 299.35,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.25,
+        "heat_flux_proxy_wm2": 41.46,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.1) + CFSR海洋(sst=299.4)，ΔT=6.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              36.0
+            ],
+            [
+              139.0,
+              36.0
+            ],
+            [
+              139.0,
+              38.0
+            ],
+            [
+              137.0,
+              38.0
+            ],
+            [
+              137.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 299.35,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.95,
+        "heat_flux_proxy_wm2": 39.47,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=299.4)，ΔT=6.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              36.0
+            ],
+            [
+              141.0,
+              36.0
+            ],
+            [
+              141.0,
+              38.0
+            ],
+            [
+              139.0,
+              38.0
+            ],
+            [
+              139.0,
+              36.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.0,
+        "ocean_value": 298.597,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.597,
+        "heat_flux_proxy_wm2": 50.39,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.0) + CFSR海洋(sst=298.6)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              34.0
+            ],
+            [
+              121.0,
+              34.0
+            ],
+            [
+              121.0,
+              36.0
+            ],
+            [
+              119.0,
+              36.0
+            ],
+            [
+              119.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.3,
+        "ocean_value": 299.026,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.726,
+        "heat_flux_proxy_wm2": 51.24,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.3) + CFSR海洋(sst=299.0)，ΔT=7.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              34.0
+            ],
+            [
+              123.0,
+              34.0
+            ],
+            [
+              123.0,
+              36.0
+            ],
+            [
+              121.0,
+              36.0
+            ],
+            [
+              121.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.6,
+        "ocean_value": 299.432,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.832,
+        "heat_flux_proxy_wm2": 51.95,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.6) + CFSR海洋(sst=299.4)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              34.0
+            ],
+            [
+              125.0,
+              34.0
+            ],
+            [
+              125.0,
+              36.0
+            ],
+            [
+              123.0,
+              36.0
+            ],
+            [
+              123.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.9,
+        "ocean_value": 299.817,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.917,
+        "heat_flux_proxy_wm2": 52.51,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.9) + CFSR海洋(sst=299.8)，ΔT=7.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              34.0
+            ],
+            [
+              127.0,
+              34.0
+            ],
+            [
+              127.0,
+              36.0
+            ],
+            [
+              125.0,
+              36.0
+            ],
+            [
+              125.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.2,
+        "ocean_value": 300.11,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.91,
+        "heat_flux_proxy_wm2": 52.47,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.2) + CFSR海洋(sst=300.1)，ΔT=7.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              34.0
+            ],
+            [
+              129.0,
+              34.0
+            ],
+            [
+              129.0,
+              36.0
+            ],
+            [
+              127.0,
+              36.0
+            ],
+            [
+              127.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.5,
+        "ocean_value": 300.317,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.817,
+        "heat_flux_proxy_wm2": 51.85,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.5) + CFSR海洋(sst=300.3)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              34.0
+            ],
+            [
+              131.0,
+              34.0
+            ],
+            [
+              131.0,
+              36.0
+            ],
+            [
+              129.0,
+              36.0
+            ],
+            [
+              129.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 300.437,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.637,
+        "heat_flux_proxy_wm2": 50.65,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=300.4)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              34.0
+            ],
+            [
+              133.0,
+              34.0
+            ],
+            [
+              133.0,
+              36.0
+            ],
+            [
+              131.0,
+              36.0
+            ],
+            [
+              131.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.1,
+        "ocean_value": 300.317,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.217,
+        "heat_flux_proxy_wm2": 47.87,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.1) + CFSR海洋(sst=300.3)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              34.0
+            ],
+            [
+              135.0,
+              34.0
+            ],
+            [
+              135.0,
+              36.0
+            ],
+            [
+              133.0,
+              36.0
+            ],
+            [
+              133.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 300.11,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.71,
+        "heat_flux_proxy_wm2": 44.51,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=300.1)，ΔT=6.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              34.0
+            ],
+            [
+              137.0,
+              34.0
+            ],
+            [
+              137.0,
+              36.0
+            ],
+            [
+              135.0,
+              36.0
+            ],
+            [
+              135.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.7,
+        "ocean_value": 299.817,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.117,
+        "heat_flux_proxy_wm2": 40.57,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.7) + CFSR海洋(sst=299.8)，ΔT=6.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              34.0
+            ],
+            [
+              139.0,
+              34.0
+            ],
+            [
+              139.0,
+              36.0
+            ],
+            [
+              137.0,
+              36.0
+            ],
+            [
+              137.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 299.817,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.817,
+        "heat_flux_proxy_wm2": 38.58,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=299.8)，ΔT=5.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              34.0
+            ],
+            [
+              141.0,
+              34.0
+            ],
+            [
+              141.0,
+              36.0
+            ],
+            [
+              139.0,
+              36.0
+            ],
+            [
+              139.0,
+              34.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.6,
+        "ocean_value": 298.827,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.227,
+        "heat_flux_proxy_wm2": 47.93,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.6) + CFSR海洋(sst=298.8)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              32.0
+            ],
+            [
+              121.0,
+              32.0
+            ],
+            [
+              121.0,
+              34.0
+            ],
+            [
+              119.0,
+              34.0
+            ],
+            [
+              119.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 291.9,
+        "ocean_value": 299.296,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.396,
+        "heat_flux_proxy_wm2": 49.05,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=291.9) + CFSR海洋(sst=299.3)，ΔT=7.4K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              32.0
+            ],
+            [
+              123.0,
+              32.0
+            ],
+            [
+              123.0,
+              34.0
+            ],
+            [
+              121.0,
+              34.0
+            ],
+            [
+              121.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.2,
+        "ocean_value": 299.75,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.55,
+        "heat_flux_proxy_wm2": 50.08,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.2) + CFSR海洋(sst=299.8)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              32.0
+            ],
+            [
+              125.0,
+              32.0
+            ],
+            [
+              125.0,
+              34.0
+            ],
+            [
+              123.0,
+              34.0
+            ],
+            [
+              123.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.5,
+        "ocean_value": 300.19,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.69,
+        "heat_flux_proxy_wm2": 51.01,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.5) + CFSR海洋(sst=300.2)，ΔT=7.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              32.0
+            ],
+            [
+              127.0,
+              32.0
+            ],
+            [
+              127.0,
+              34.0
+            ],
+            [
+              125.0,
+              34.0
+            ],
+            [
+              125.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 300.568,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.768,
+        "heat_flux_proxy_wm2": 51.52,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=300.6)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              32.0
+            ],
+            [
+              129.0,
+              32.0
+            ],
+            [
+              129.0,
+              34.0
+            ],
+            [
+              127.0,
+              34.0
+            ],
+            [
+              127.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.1,
+        "ocean_value": 300.859,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.759,
+        "heat_flux_proxy_wm2": 51.46,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.1) + CFSR海洋(sst=300.9)，ΔT=7.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              32.0
+            ],
+            [
+              131.0,
+              32.0
+            ],
+            [
+              131.0,
+              34.0
+            ],
+            [
+              129.0,
+              34.0
+            ],
+            [
+              129.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 301.063,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.663,
+        "heat_flux_proxy_wm2": 50.83,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=301.1)，ΔT=7.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              32.0
+            ],
+            [
+              133.0,
+              32.0
+            ],
+            [
+              133.0,
+              34.0
+            ],
+            [
+              131.0,
+              34.0
+            ],
+            [
+              131.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.7,
+        "ocean_value": 300.859,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.159,
+        "heat_flux_proxy_wm2": 47.48,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.7) + CFSR海洋(sst=300.9)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              32.0
+            ],
+            [
+              135.0,
+              32.0
+            ],
+            [
+              135.0,
+              34.0
+            ],
+            [
+              133.0,
+              34.0
+            ],
+            [
+              133.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 300.568,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.568,
+        "heat_flux_proxy_wm2": 43.56,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=300.6)，ΔT=6.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              32.0
+            ],
+            [
+              137.0,
+              32.0
+            ],
+            [
+              137.0,
+              34.0
+            ],
+            [
+              135.0,
+              34.0
+            ],
+            [
+              135.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.3,
+        "ocean_value": 300.19,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.89,
+        "heat_flux_proxy_wm2": 39.07,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.3) + CFSR海洋(sst=300.2)，ΔT=5.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              32.0
+            ],
+            [
+              139.0,
+              32.0
+            ],
+            [
+              139.0,
+              34.0
+            ],
+            [
+              137.0,
+              34.0
+            ],
+            [
+              137.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.6,
+        "ocean_value": 300.19,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.59,
+        "heat_flux_proxy_wm2": 37.08,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.6) + CFSR海洋(sst=300.2)，ΔT=5.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              32.0
+            ],
+            [
+              141.0,
+              32.0
+            ],
+            [
+              141.0,
+              34.0
+            ],
+            [
+              139.0,
+              34.0
+            ],
+            [
+              139.0,
+              32.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.2,
+        "ocean_value": 298.98,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.78,
+        "heat_flux_proxy_wm2": 44.97,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.2) + CFSR海洋(sst=299.0)，ΔT=6.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              30.0
+            ],
+            [
+              121.0,
+              30.0
+            ],
+            [
+              121.0,
+              32.0
+            ],
+            [
+              119.0,
+              32.0
+            ],
+            [
+              119.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.5,
+        "ocean_value": 299.48,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.98,
+        "heat_flux_proxy_wm2": 46.3,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.5) + CFSR海洋(sst=299.5)，ΔT=7.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              30.0
+            ],
+            [
+              123.0,
+              30.0
+            ],
+            [
+              123.0,
+              32.0
+            ],
+            [
+              121.0,
+              32.0
+            ],
+            [
+              121.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 299.977,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.177,
+        "heat_flux_proxy_wm2": 47.6,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=300.0)，ΔT=7.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              30.0
+            ],
+            [
+              125.0,
+              30.0
+            ],
+            [
+              125.0,
+              32.0
+            ],
+            [
+              123.0,
+              32.0
+            ],
+            [
+              123.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.1,
+        "ocean_value": 300.47,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.37,
+        "heat_flux_proxy_wm2": 48.89,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.1) + CFSR海洋(sst=300.5)，ΔT=7.4K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              30.0
+            ],
+            [
+              127.0,
+              30.0
+            ],
+            [
+              127.0,
+              32.0
+            ],
+            [
+              125.0,
+              32.0
+            ],
+            [
+              125.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 300.95,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.55,
+        "heat_flux_proxy_wm2": 50.08,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=300.9)，ΔT=7.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              30.0
+            ],
+            [
+              129.0,
+              30.0
+            ],
+            [
+              129.0,
+              32.0
+            ],
+            [
+              127.0,
+              32.0
+            ],
+            [
+              127.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.7,
+        "ocean_value": 301.357,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.657,
+        "heat_flux_proxy_wm2": 50.79,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.7) + CFSR海洋(sst=301.4)，ΔT=7.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              30.0
+            ],
+            [
+              131.0,
+              30.0
+            ],
+            [
+              131.0,
+              32.0
+            ],
+            [
+              129.0,
+              32.0
+            ],
+            [
+              129.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 301.69,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.69,
+        "heat_flux_proxy_wm2": 51.01,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=301.7)，ΔT=7.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              30.0
+            ],
+            [
+              133.0,
+              30.0
+            ],
+            [
+              133.0,
+              32.0
+            ],
+            [
+              131.0,
+              32.0
+            ],
+            [
+              131.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.3,
+        "ocean_value": 301.357,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 7.057,
+        "heat_flux_proxy_wm2": 46.81,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.3) + CFSR海洋(sst=301.4)，ΔT=7.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              30.0
+            ],
+            [
+              135.0,
+              30.0
+            ],
+            [
+              135.0,
+              32.0
+            ],
+            [
+              133.0,
+              32.0
+            ],
+            [
+              133.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.6,
+        "ocean_value": 300.95,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.35,
+        "heat_flux_proxy_wm2": 42.12,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.6) + CFSR海洋(sst=301.0)，ΔT=6.4K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              30.0
+            ],
+            [
+              137.0,
+              30.0
+            ],
+            [
+              137.0,
+              32.0
+            ],
+            [
+              135.0,
+              32.0
+            ],
+            [
+              135.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.9,
+        "ocean_value": 300.47,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.57,
+        "heat_flux_proxy_wm2": 36.95,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.9) + CFSR海洋(sst=300.5)，ΔT=5.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              30.0
+            ],
+            [
+              139.0,
+              30.0
+            ],
+            [
+              139.0,
+              32.0
+            ],
+            [
+              137.0,
+              32.0
+            ],
+            [
+              137.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.2,
+        "ocean_value": 300.47,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.27,
+        "heat_flux_proxy_wm2": 34.96,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.2) + CFSR海洋(sst=300.5)，ΔT=5.3K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              30.0
+            ],
+            [
+              141.0,
+              30.0
+            ],
+            [
+              141.0,
+              32.0
+            ],
+            [
+              139.0,
+              32.0
+            ],
+            [
+              139.0,
+              30.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 292.8,
+        "ocean_value": 298.953,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.153,
+        "heat_flux_proxy_wm2": 40.82,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=292.8) + CFSR海洋(sst=299.0)，ΔT=6.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              28.0
+            ],
+            [
+              121.0,
+              28.0
+            ],
+            [
+              121.0,
+              30.0
+            ],
+            [
+              119.0,
+              30.0
+            ],
+            [
+              119.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.1,
+        "ocean_value": 299.44,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.34,
+        "heat_flux_proxy_wm2": 42.05,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.1) + CFSR海洋(sst=299.4)，ΔT=6.3K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              28.0
+            ],
+            [
+              123.0,
+              28.0
+            ],
+            [
+              123.0,
+              30.0
+            ],
+            [
+              121.0,
+              30.0
+            ],
+            [
+              121.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 299.926,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.526,
+        "heat_flux_proxy_wm2": 43.28,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=299.9)，ΔT=6.5K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              28.0
+            ],
+            [
+              125.0,
+              28.0
+            ],
+            [
+              125.0,
+              30.0
+            ],
+            [
+              123.0,
+              30.0
+            ],
+            [
+              123.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.7,
+        "ocean_value": 300.41,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.71,
+        "heat_flux_proxy_wm2": 44.51,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.7) + CFSR海洋(sst=300.4)，ΔT=6.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              28.0
+            ],
+            [
+              127.0,
+              28.0
+            ],
+            [
+              127.0,
+              30.0
+            ],
+            [
+              125.0,
+              30.0
+            ],
+            [
+              125.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 300.854,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.854,
+        "heat_flux_proxy_wm2": 45.47,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=300.9)，ΔT=6.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              28.0
+            ],
+            [
+              129.0,
+              28.0
+            ],
+            [
+              129.0,
+              30.0
+            ],
+            [
+              127.0,
+              30.0
+            ],
+            [
+              127.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.3,
+        "ocean_value": 301.212,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.912,
+        "heat_flux_proxy_wm2": 45.85,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.3) + CFSR海洋(sst=301.2)，ΔT=6.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              28.0
+            ],
+            [
+              131.0,
+              28.0
+            ],
+            [
+              131.0,
+              30.0
+            ],
+            [
+              129.0,
+              30.0
+            ],
+            [
+              129.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.6,
+        "ocean_value": 301.483,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.883,
+        "heat_flux_proxy_wm2": 45.66,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.6) + CFSR海洋(sst=301.5)，ΔT=6.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              28.0
+            ],
+            [
+              133.0,
+              28.0
+            ],
+            [
+              133.0,
+              30.0
+            ],
+            [
+              131.0,
+              30.0
+            ],
+            [
+              131.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.9,
+        "ocean_value": 301.212,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 6.312,
+        "heat_flux_proxy_wm2": 41.87,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.9) + CFSR海洋(sst=301.2)，ΔT=6.3K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              28.0
+            ],
+            [
+              135.0,
+              28.0
+            ],
+            [
+              135.0,
+              30.0
+            ],
+            [
+              133.0,
+              30.0
+            ],
+            [
+              133.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.2,
+        "ocean_value": 300.854,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.654,
+        "heat_flux_proxy_wm2": 37.51,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.2) + CFSR海洋(sst=300.9)，ΔT=5.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              28.0
+            ],
+            [
+              137.0,
+              28.0
+            ],
+            [
+              137.0,
+              30.0
+            ],
+            [
+              135.0,
+              30.0
+            ],
+            [
+              135.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.5,
+        "ocean_value": 300.41,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.91,
+        "heat_flux_proxy_wm2": 32.57,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.5) + CFSR海洋(sst=300.4)，ΔT=4.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              28.0
+            ],
+            [
+              139.0,
+              28.0
+            ],
+            [
+              139.0,
+              30.0
+            ],
+            [
+              137.0,
+              30.0
+            ],
+            [
+              137.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.8,
+        "ocean_value": 300.41,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.61,
+        "heat_flux_proxy_wm2": 30.58,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.8) + CFSR海洋(sst=300.4)，ΔT=4.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              28.0
+            ],
+            [
+              141.0,
+              28.0
+            ],
+            [
+              141.0,
+              30.0
+            ],
+            [
+              139.0,
+              30.0
+            ],
+            [
+              139.0,
+              28.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.4,
+        "ocean_value": 298.833,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.433,
+        "heat_flux_proxy_wm2": 36.04,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.4) + CFSR海洋(sst=298.8)，ΔT=5.4K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              26.0
+            ],
+            [
+              121.0,
+              26.0
+            ],
+            [
+              121.0,
+              28.0
+            ],
+            [
+              119.0,
+              28.0
+            ],
+            [
+              119.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 293.7,
+        "ocean_value": 299.296,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.596,
+        "heat_flux_proxy_wm2": 37.12,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=293.7) + CFSR海洋(sst=299.3)，ΔT=5.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              26.0
+            ],
+            [
+              123.0,
+              26.0
+            ],
+            [
+              123.0,
+              28.0
+            ],
+            [
+              121.0,
+              28.0
+            ],
+            [
+              121.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 299.75,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.75,
+        "heat_flux_proxy_wm2": 38.14,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=299.8)，ΔT=5.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              26.0
+            ],
+            [
+              125.0,
+              26.0
+            ],
+            [
+              125.0,
+              28.0
+            ],
+            [
+              123.0,
+              28.0
+            ],
+            [
+              123.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.3,
+        "ocean_value": 300.197,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.897,
+        "heat_flux_proxy_wm2": 39.11,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.3) + CFSR海洋(sst=300.2)，ΔT=5.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              26.0
+            ],
+            [
+              127.0,
+              26.0
+            ],
+            [
+              127.0,
+              28.0
+            ],
+            [
+              125.0,
+              28.0
+            ],
+            [
+              125.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.6,
+        "ocean_value": 300.579,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.979,
+        "heat_flux_proxy_wm2": 39.66,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.6) + CFSR海洋(sst=300.6)，ΔT=6.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              26.0
+            ],
+            [
+              129.0,
+              26.0
+            ],
+            [
+              129.0,
+              28.0
+            ],
+            [
+              127.0,
+              28.0
+            ],
+            [
+              127.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.9,
+        "ocean_value": 300.869,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.969,
+        "heat_flux_proxy_wm2": 39.59,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.9) + CFSR海洋(sst=300.9)，ΔT=6.0K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              26.0
+            ],
+            [
+              131.0,
+              26.0
+            ],
+            [
+              131.0,
+              28.0
+            ],
+            [
+              129.0,
+              28.0
+            ],
+            [
+              129.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.2,
+        "ocean_value": 301.067,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.867,
+        "heat_flux_proxy_wm2": 38.91,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.2) + CFSR海洋(sst=301.1)，ΔT=5.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              26.0
+            ],
+            [
+              133.0,
+              26.0
+            ],
+            [
+              133.0,
+              28.0
+            ],
+            [
+              131.0,
+              28.0
+            ],
+            [
+              131.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.5,
+        "ocean_value": 300.869,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 5.369,
+        "heat_flux_proxy_wm2": 35.61,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.5) + CFSR海洋(sst=300.9)，ΔT=5.4K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              26.0
+            ],
+            [
+              135.0,
+              26.0
+            ],
+            [
+              135.0,
+              28.0
+            ],
+            [
+              133.0,
+              28.0
+            ],
+            [
+              133.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.8,
+        "ocean_value": 300.579,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.779,
+        "heat_flux_proxy_wm2": 31.7,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.8) + CFSR海洋(sst=300.6)，ΔT=4.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              26.0
+            ],
+            [
+              137.0,
+              26.0
+            ],
+            [
+              137.0,
+              28.0
+            ],
+            [
+              135.0,
+              28.0
+            ],
+            [
+              135.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 296.1,
+        "ocean_value": 300.197,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.097,
+        "heat_flux_proxy_wm2": 27.17,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=296.1) + CFSR海洋(sst=300.2)，ΔT=4.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              26.0
+            ],
+            [
+              139.0,
+              26.0
+            ],
+            [
+              139.0,
+              28.0
+            ],
+            [
+              137.0,
+              28.0
+            ],
+            [
+              137.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 296.4,
+        "ocean_value": 300.197,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 3.797,
+        "heat_flux_proxy_wm2": 25.18,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=296.4) + CFSR海洋(sst=300.2)，ΔT=3.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              26.0
+            ],
+            [
+              141.0,
+              26.0
+            ],
+            [
+              141.0,
+              28.0
+            ],
+            [
+              139.0,
+              28.0
+            ],
+            [
+              139.0,
+              26.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.0,
+        "ocean_value": 298.62,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.62,
+        "heat_flux_proxy_wm2": 30.64,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.0) + CFSR海洋(sst=298.6)，ΔT=4.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.0,
+              24.0
+            ],
+            [
+              121.0,
+              24.0
+            ],
+            [
+              121.0,
+              26.0
+            ],
+            [
+              119.0,
+              26.0
+            ],
+            [
+              119.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.3,
+        "ocean_value": 299.047,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.747,
+        "heat_flux_proxy_wm2": 31.48,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.3) + CFSR海洋(sst=299.0)，ΔT=4.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              24.0
+            ],
+            [
+              123.0,
+              24.0
+            ],
+            [
+              123.0,
+              26.0
+            ],
+            [
+              121.0,
+              26.0
+            ],
+            [
+              121.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.6,
+        "ocean_value": 299.45,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.85,
+        "heat_flux_proxy_wm2": 32.17,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.6) + CFSR海洋(sst=299.5)，ΔT=4.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              123.0,
+              24.0
+            ],
+            [
+              125.0,
+              24.0
+            ],
+            [
+              125.0,
+              26.0
+            ],
+            [
+              123.0,
+              26.0
+            ],
+            [
+              123.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 294.9,
+        "ocean_value": 299.83,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.93,
+        "heat_flux_proxy_wm2": 32.7,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=294.9) + CFSR海洋(sst=299.8)，ΔT=4.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.0,
+              24.0
+            ],
+            [
+              127.0,
+              24.0
+            ],
+            [
+              127.0,
+              26.0
+            ],
+            [
+              125.0,
+              26.0
+            ],
+            [
+              125.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.2,
+        "ocean_value": 300.123,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.923,
+        "heat_flux_proxy_wm2": 32.66,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.2) + CFSR海洋(sst=300.1)，ΔT=4.9K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              127.0,
+              24.0
+            ],
+            [
+              129.0,
+              24.0
+            ],
+            [
+              129.0,
+              26.0
+            ],
+            [
+              127.0,
+              26.0
+            ],
+            [
+              127.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.5,
+        "ocean_value": 300.327,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.827,
+        "heat_flux_proxy_wm2": 32.02,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.5) + CFSR海洋(sst=300.3)，ΔT=4.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.0,
+              24.0
+            ],
+            [
+              131.0,
+              24.0
+            ],
+            [
+              131.0,
+              26.0
+            ],
+            [
+              129.0,
+              26.0
+            ],
+            [
+              129.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 295.8,
+        "ocean_value": 300.44,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.64,
+        "heat_flux_proxy_wm2": 30.78,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=295.8) + CFSR海洋(sst=300.4)，ΔT=4.6K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              131.0,
+              24.0
+            ],
+            [
+              133.0,
+              24.0
+            ],
+            [
+              133.0,
+              26.0
+            ],
+            [
+              131.0,
+              26.0
+            ],
+            [
+              131.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 296.1,
+        "ocean_value": 300.327,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 4.227,
+        "heat_flux_proxy_wm2": 28.04,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=296.1) + CFSR海洋(sst=300.3)，ΔT=4.2K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              133.0,
+              24.0
+            ],
+            [
+              135.0,
+              24.0
+            ],
+            [
+              135.0,
+              26.0
+            ],
+            [
+              133.0,
+              26.0
+            ],
+            [
+              133.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 296.4,
+        "ocean_value": 300.123,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 3.723,
+        "heat_flux_proxy_wm2": 24.7,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=296.4) + CFSR海洋(sst=300.1)，ΔT=3.7K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              135.0,
+              24.0
+            ],
+            [
+              137.0,
+              24.0
+            ],
+            [
+              137.0,
+              26.0
+            ],
+            [
+              135.0,
+              26.0
+            ],
+            [
+              135.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 296.7,
+        "ocean_value": 299.83,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 3.13,
+        "heat_flux_proxy_wm2": 20.76,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=296.7) + CFSR海洋(sst=299.8)，ΔT=3.1K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.0,
+              24.0
+            ],
+            [
+              139.0,
+              24.0
+            ],
+            [
+              139.0,
+              26.0
+            ],
+            [
+              137.0,
+              26.0
+            ],
+            [
+              137.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "ocean-atmosphere-coupling",
+        "name": "海气耦合诊断",
+        "time": "2026-06-10T18:00:00Z",
+        "valid_time": "2026-06-10T18:00:00Z",
+        "atmosphere_source": "ERA5",
+        "ocean_source": "CFSR",
+        "atmosphere_variable": "t2m",
+        "ocean_variable": "sst",
+        "atmosphere_value": 297.0,
+        "ocean_value": 299.83,
+        "atmosphere_unit": "K",
+        "ocean_unit": "K",
+        "air_sea_delta": 2.83,
+        "heat_flux_proxy_wm2": 18.77,
+        "boundary_layer_stability": "unstable",
+        "confidence": 0.78,
+        "narrative": "ERA5大气(t2m=297.0) + CFSR海洋(sst=299.8)，ΔT=2.8K，unstable。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              139.0,
+              24.0
+            ],
+            [
+              141.0,
+              24.0
+            ],
+            [
+              141.0,
+              26.0
+            ],
+            [
+              139.0,
+              26.0
+            ],
+            [
+              139.0,
+              24.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

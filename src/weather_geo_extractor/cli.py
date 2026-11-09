@@ -20,6 +20,29 @@ from .adapters import (
     load_json,
     open_meteo_point_adapter,
 )
+from .era5 import (
+    ERA5_PRESSURE_VARIABLES,
+    STANDARD_PRESSURE_LEVELS,
+    build_era5_cds_request,
+    era5_example_grid,
+    era5_vertical_profile_adapter,
+    era5_wind_composite_adapter,
+    era5_wind_example_grid,
+)
+from .fusion import (
+    DATASET_METADATA,
+    multi_source_example_sources,
+    multi_source_fusion_adapter,
+    ocean_atmosphere_coupling_adapter,
+    ocean_atmosphere_example,
+)
+from .precipitation import (
+    AEROSOL_TYPES,
+    aerosol_energy_budget_adapter,
+    aerosol_energy_example_grid,
+    precipitation_ensemble_adapter,
+    precipitation_example_sources,
+)
 from .exif import extract_gps
 from .geojson import regions_to_geojson
 from .georef import (
@@ -485,6 +508,98 @@ def _handle_open_meteo_point_adapter(args: argparse.Namespace) -> None:
     )
 
 
+def _handle_era5_vertical_profile(args: argparse.Namespace) -> None:
+    if args.example:
+        levels_list = [int(lv) for lv in args.levels.split(",")] if args.levels else None
+        bbox_tuple = tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (100.0, 35.0, 120.0, 45.0)
+        if args.variable == "wind":
+            grid = era5_wind_example_grid(levels=levels_list, bbox=bbox_tuple, resolution=float(args.resolution), time_value=args.time)
+        else:
+            grid = era5_example_grid(variable=args.variable, levels=levels_list, bbox=bbox_tuple, resolution=float(args.resolution), time_value=args.time)
+    else:
+        grid = load_json(args.grid_json)
+    if args.variable == "wind":
+        payload = era5_wind_composite_adapter(grid, levels=[int(lv) for lv in grid.get("levels", [])] or None)
+    else:
+        payload = era5_vertical_profile_adapter(grid, variable=args.variable)
+    _write_json(payload, args.output)
+
+
+def _handle_era5_cds_request(args: argparse.Namespace) -> None:
+    levels = [int(lv) for lv in args.levels.split(",")] if args.levels else list(STANDARD_PRESSURE_LEVELS[:6])
+    payload = build_era5_cds_request(
+        variable=args.variable,
+        pressure_levels=levels,
+        year=int(args.date[:4]),
+        month=int(args.date[4:6]),
+        day=int(args.date[6:8]),
+        hour=int(args.hour),
+        bbox=tuple(float(v) for v in args.bbox.split(",")) if args.bbox else None,
+    )
+    _write_json(payload, args.output)
+
+
+def _handle_fusion(args: argparse.Namespace) -> None:
+    if args.example:
+        sources = multi_source_example_sources(
+            variable=args.variable,
+            level=int(args.level),
+            bbox=tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (100.0, 30.0, 125.0, 40.0),
+            time_value=args.time,
+        )
+    else:
+        raw = load_json(args.sources_json)
+        sources = raw.get("sources") or raw
+        if not isinstance(sources, list):
+            raise ValueError("sources JSON must contain a 'sources' array")
+    payload = multi_source_fusion_adapter(sources, variable=args.variable, level=int(args.level))
+    _write_json(payload, args.output)
+
+
+def _handle_ocean_coupling(args: argparse.Namespace) -> None:
+    if args.example:
+        atmosphere, ocean = ocean_atmosphere_example(
+            bbox=tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (120.0, 25.0, 140.0, 40.0),
+            resolution=float(args.resolution),
+            time_value=args.time,
+        )
+    else:
+        raw = load_json(args.sources_json)
+        atmosphere = raw.get("atmosphere") or {}
+        ocean = raw.get("ocean") or {}
+    payload = ocean_atmosphere_coupling_adapter(atmosphere=atmosphere, ocean=ocean)
+    _write_json(payload, args.output)
+
+
+def _handle_precipitation_ensemble(args: argparse.Namespace) -> None:
+    if args.example:
+        sources = precipitation_example_sources(
+            bbox=tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (100.0, 20.0, 125.0, 40.0),
+            time_value=args.time,
+        )
+    else:
+        raw = load_json(args.sources_json)
+        sources = raw.get("sources") or raw
+        if not isinstance(sources, list):
+            raise ValueError("sources JSON must contain a 'sources' array")
+    payload = precipitation_ensemble_adapter(sources, apply_bias_correction=not args.no_bias_correction, method=args.method)
+    _write_json(payload, args.output)
+
+
+def _handle_aerosol_energy(args: argparse.Namespace) -> None:
+    if args.example:
+        grid = aerosol_energy_example_grid(
+            aerosol_type=args.aerosol_type,
+            bbox=tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (70.0, 20.0, 140.0, 50.0),
+            resolution=float(args.resolution),
+            time_value=args.time,
+        )
+    else:
+        grid = load_json(args.grid_json)
+    payload = aerosol_energy_budget_adapter(grid, aerosol_type=args.aerosol_type)
+    _write_json(payload, args.output)
+
+
 def _write_http_json(handler: SimpleHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     handler.send_response(status)
@@ -796,6 +911,83 @@ def build_parser() -> argparse.ArgumentParser:
     open_meteo_parser.add_argument("--endpoint", default="https://api.open-meteo.com/v1/forecast")
     open_meteo_parser.add_argument("--output", "-o", help="Optional GeoJSON output path.")
     open_meteo_parser.set_defaults(func=_handle_open_meteo_point_adapter)
+
+    era5_parser = subparsers.add_parser(
+        "era5-vertical-profile",
+        help="Convert ERA5 pressure-level grid JSON into vertical-stacked Weather Earth GeoJSON (P0).",
+    )
+    era5_parser.add_argument("--variable", default="t", help="ERA5 variable: t, z, u, v, q, r, w, vo, d, or wind.")
+    era5_parser.add_argument("--grid-json", help="Decoded ERA5 grid JSON path (required unless --example).")
+    era5_parser.add_argument("--example", action="store_true", help="Generate synthetic ERA5-like example data.")
+    era5_parser.add_argument("--levels", help="Comma-separated pressure levels (hPa), e.g. 1000,850,500,200.")
+    era5_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat for example data.")
+    era5_parser.add_argument("--resolution", default="1.0", help="Grid resolution in degrees for example data.")
+    era5_parser.add_argument("--time", default="2026-06-10T18:00:00Z", help="ISO time for example data.")
+    era5_parser.add_argument("--output", "-o", default="outputs/era5-vertical-profile.geojson")
+    era5_parser.set_defaults(func=_handle_era5_vertical_profile)
+
+    era5_cds_parser = subparsers.add_parser(
+        "era5-cds-request",
+        help="Build a CDS API request payload for ERA5 pressure-level data.",
+    )
+    era5_cds_parser.add_argument("--variable", default="t", help="ERA5 variable short name: t, z, u, v, q, r, w, vo, d.")
+    era5_cds_parser.add_argument("--date", required=True, help="UTC date as YYYYMMDD.")
+    era5_cds_parser.add_argument("--hour", type=int, default=0, help="UTC hour 0-23.")
+    era5_cds_parser.add_argument("--levels", help="Comma-separated pressure levels (hPa).")
+    era5_cds_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat.")
+    era5_cds_parser.add_argument("--output", "-o", help="Optional JSON output path.")
+    era5_cds_parser.set_defaults(func=_handle_era5_cds_request)
+
+    fusion_parser = subparsers.add_parser(
+        "fusion",
+        help="Fuse multiple reanalysis datasets (ERA5+MERRA-2+JRA-55) into weighted-average GeoJSON (P1-A).",
+    )
+    fusion_parser.add_argument("--variable", default="t", help="Variable to fuse: t, z, u, v, etc.")
+    fusion_parser.add_argument("--level", type=int, default=850, help="Pressure level in hPa (default 850).")
+    fusion_parser.add_argument("--sources-json", help="JSON file with a 'sources' array (required unless --example).")
+    fusion_parser.add_argument("--example", action="store_true", help="Generate synthetic multi-source example data.")
+    fusion_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat for example data.")
+    fusion_parser.add_argument("--time", default="2026-06-10T18:00:00Z", help="ISO time for example data.")
+    fusion_parser.add_argument("--output", "-o", default="outputs/multi-source-fusion.geojson")
+    fusion_parser.set_defaults(func=_handle_fusion)
+
+    coupling_parser = subparsers.add_parser(
+        "ocean-coupling",
+        help="Couple ERA5 atmosphere with CFSR ocean for sea-air diagnostics (P1-B).",
+    )
+    coupling_parser.add_argument("--sources-json", help="JSON file with 'atmosphere' and 'ocean' grids.")
+    coupling_parser.add_argument("--example", action="store_true", help="Generate synthetic ERA5+CFSR example data.")
+    coupling_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat for example data.")
+    coupling_parser.add_argument("--resolution", default="2.0", help="Grid resolution in degrees for example data.")
+    coupling_parser.add_argument("--time", default="2026-06-10T18:00:00Z", help="ISO time for example data.")
+    coupling_parser.add_argument("--output", "-o", default="outputs/ocean-atmosphere-coupling.geojson")
+    coupling_parser.set_defaults(func=_handle_ocean_coupling)
+
+    precip_parser = subparsers.add_parser(
+        "precipitation-ensemble",
+        help="Integrate multi-source precipitation with bias correction and BMA (P2-A).",
+    )
+    precip_parser.add_argument("--sources-json", help="JSON file with a 'sources' array.")
+    precip_parser.add_argument("--example", action="store_true", help="Generate synthetic ERA5+JRA-55+CFSR+NCEP example data.")
+    precip_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat for example data.")
+    precip_parser.add_argument("--time", default="2026-06-10", help="Date for example data.")
+    precip_parser.add_argument("--method", default="bma", choices=["bma", "weighted"], help="Ensemble combination method.")
+    precip_parser.add_argument("--no-bias-correction", action="store_true", help="Skip bias correction step.")
+    precip_parser.add_argument("--output", "-o", default="outputs/precipitation-ensemble.geojson")
+    precip_parser.set_defaults(func=_handle_precipitation_ensemble)
+
+    aerosol_parser = subparsers.add_parser(
+        "aerosol-energy",
+        help="Convert MERRA-2 aerosol + radiation grid into energy budget GeoJSON (P2-B).",
+    )
+    aerosol_parser.add_argument("--aerosol-type", default="du", choices=list(AEROSOL_TYPES), help="Primary aerosol type.")
+    aerosol_parser.add_argument("--grid-json", help="Decoded MERRA-2 grid JSON (required unless --example).")
+    aerosol_parser.add_argument("--example", action="store_true", help="Generate synthetic MERRA-2-like example data.")
+    aerosol_parser.add_argument("--bbox", help="Comma-separated min_lon,min_lat,max_lon,max_lat for example data.")
+    aerosol_parser.add_argument("--resolution", default="2.5", help="Grid resolution in degrees for example data.")
+    aerosol_parser.add_argument("--time", default="2026-06-10T12:00:00Z", help="ISO time for example data.")
+    aerosol_parser.add_argument("--output", "-o", default="outputs/aerosol-energy-budget.geojson")
+    aerosol_parser.set_defaults(func=_handle_aerosol_energy)
 
     serve_parser = subparsers.add_parser("serve-map", help="Serve the local Leaflet map viewer.")
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")

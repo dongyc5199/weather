@@ -1,0 +1,43 @@
+{
+  "name": "open_data_weather_demo",
+  "title": "开放数据强对流/大风过程",
+  "timezone": "Asia/Shanghai",
+  "defaultIndex": 2,
+  "generatedBy": "weather-geo-open-data-adapters",
+  "summary": {
+    "startLabel": "06/10 18:00",
+    "endLabel": "06/10 20:00",
+    "hourCount": 3,
+    "peakRegionTime": "06/10 20:00",
+    "peakRegionCount": 5,
+    "peakSevereTime": "06/10 20:00",
+    "peakSevereCount": 2
+  },
+  "items": [
+    {
+      "id": "open-data-202606101800",
+      "label": "06/10 18:00",
+      "time": "06/10 18:00",
+      "geojsonUrl": "./open-data-weather-elements.geojson",
+      "downloadName": "open-data-weather-elements.geojson",
+      "source": "NOAA GFS / NASA GPM IMERG / Open-Meteo"
+    },
+    {
+      "id": "open-data-202606101900",
+      "label": "06/10 19:00",
+      "time": "06/10 19:00",
+      "geojsonUrl": "./open-data-weather-elements.geojson",
+      "downloadName": "open-data-weather-elements.geojson",
+      "source": "NOAA GFS / NASA GPM IMERG / Open-Meteo"
+    },
+    {
+      "id": "open-data-202606102000",
+      "label": "06/10 20:00",
+      "time": "06/10 20:00",
+      "geojsonUrl": "./open-data-weather-elements.geojson",
+      "downloadName": "open-data-weather-elements.geojson",
+      "source": "NOAA GFS / NASA GPM IMERG / Open-Meteo",
+      "peak": true
+    }
+  ]
+}

@@ -1,0 +1,220 @@
+{
+  "type": "FeatureCollection",
+  "name": "open-data-weather-elements-demo",
+  "metadata": {
+    "schema": "weather-earth-geojson-v1",
+    "projection": "WGS84 lon/lat",
+    "weather_system": "severe-convection-gale-replay",
+    "source": "open-data-adapter-demo",
+    "adapters": ["gfs_gust_adapter", "gpm_imerg_adapter", "open_meteo_point_adapter"],
+    "description": "开放数据 adapter 合并样例：GFS 阵风、GPM IMERG 降水和 Open-Meteo 点位证据。"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "GFS 6级风区",
+        "time": "06/10 18:00",
+        "valid_time": "2026-06-10T18:00:00+08:00",
+        "level": "level_6",
+        "intensity": "gale",
+        "observed_value": 14.2,
+        "unit": "m/s",
+        "source": "NOAA GFS",
+        "source_url": "https://nomads.ncep.noaa.gov/",
+        "confidence": 0.7,
+        "city_impact": ["平凉", "西安"],
+        "narrative": "GFS 开放阵风网格超过 6 级阈值。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.75, 35.25],
+            [107.25, 35.25],
+            [107.25, 35.75],
+            [106.75, 35.75],
+            [106.75, 35.25]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "GFS 7级风区",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
+        "level": "level_7",
+        "intensity": "strong-gale",
+        "observed_value": 18.4,
+        "unit": "m/s",
+        "source": "NOAA GFS",
+        "source_url": "https://nomads.ncep.noaa.gov/",
+        "confidence": 0.7,
+        "city_impact": ["西安", "渭南"],
+        "narrative": "GFS 开放阵风网格超过 7 级阈值。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.75, 34.75],
+            [107.25, 34.75],
+            [107.25, 35.25],
+            [106.75, 35.25],
+            [106.75, 34.75]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "wind-region",
+        "name": "GFS 8级及以上风区",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "level_8",
+        "intensity": "severe-gale",
+        "observed_value": 22.8,
+        "unit": "m/s",
+        "source": "NOAA GFS",
+        "source_url": "https://nomads.ncep.noaa.gov/",
+        "confidence": 0.7,
+        "city_impact": ["渭南", "运城"],
+        "narrative": "GFS 开放阵风网格超过 8 级阈值。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [107.25, 34.25],
+            [107.75, 34.25],
+            [107.75, 34.75],
+            [107.25, 34.75],
+            [107.25, 34.25]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "rain-region",
+        "name": "IMERG 强降水区",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "heavy",
+        "intensity": "heavy-rain",
+        "precipitation_rate": 22.1,
+        "unit": "mm/h",
+        "source": "NASA GPM IMERG",
+        "source_url": "https://gpm.nasa.gov/data/imerg",
+        "confidence": 0.7,
+        "city_impact": ["汉中", "安康"],
+        "narrative": "GPM IMERG 开放降水网格达到强降水阈值。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [108.25, 33.75],
+            [108.75, 33.75],
+            [108.75, 34.25],
+            [108.25, 34.25],
+            [108.25, 33.75]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "rain-region",
+        "name": "IMERG 极端降水区",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "extreme",
+        "intensity": "extreme-rain",
+        "precipitation_rate": 55.2,
+        "unit": "mm/h",
+        "source": "NASA GPM IMERG",
+        "source_url": "https://gpm.nasa.gov/data/imerg",
+        "confidence": 0.7,
+        "city_impact": ["安康"],
+        "narrative": "GPM IMERG 开放降水网格达到极端降水阈值。"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [108.75, 33.25],
+            [109.25, 33.25],
+            [109.25, 33.75],
+            [108.75, 33.75],
+            [108.75, 33.25]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "station",
+        "name": "Open-Meteo 西安点位",
+        "time": "06/10 19:00",
+        "valid_time": "2026-06-10T19:00:00+08:00",
+        "level": "level_7",
+        "intensity": "point-weather",
+        "observed_value": 18,
+        "unit": "m/s",
+        "wind_speed": 10,
+        "wind_speed_unit": "m/s",
+        "wind_direction": 290,
+        "wind_direction_unit": "degree",
+        "precipitation": 1.2,
+        "precipitation_unit": "mm",
+        "source": "Open-Meteo Forecast API",
+        "source_url": "https://open-meteo.com/",
+        "confidence": 0.66,
+        "city_impact": ["西安"],
+        "narrative": "Open-Meteo 开放点位数据提供城市观测证据。"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [108.94, 34.34]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "weather_type": "station",
+        "name": "Open-Meteo 西安点位",
+        "time": "06/10 20:00",
+        "valid_time": "2026-06-10T20:00:00+08:00",
+        "level": "level_8",
+        "intensity": "point-weather",
+        "observed_value": 22,
+        "unit": "m/s",
+        "wind_speed": 12,
+        "wind_speed_unit": "m/s",
+        "wind_direction": 300,
+        "wind_direction_unit": "degree",
+        "precipitation": 3.4,
+        "precipitation_unit": "mm",
+        "source": "Open-Meteo Forecast API",
+        "source_url": "https://open-meteo.com/",
+        "confidence": 0.66,
+        "city_impact": ["西安"],
+        "narrative": "Open-Meteo 开放点位阵风达到 8 级阈值。"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [108.94, 34.34]
+      }
+    }
+  ]
+}
