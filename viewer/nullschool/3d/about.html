@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>三维地球 · 数据说明</title>
+    <link rel="stylesheet" href="../styles/styles.css" />
+  </head>
+  <body>
+    <main class="earth-document">
+      <h1>三维地球 · 数据说明</h1>
+      <p><a href="./">返回三维地球</a> · <a href="../">经典气象模式</a></p>
+      <h2>地图和地形</h2>
+      <p>
+        Three.js 与 3D Tiles Renderer 共同绘制三维场景。默认“实景三维”使用
+        Google Maps Photorealistic 3D Tiles，模型包含真实屋顶、立面和地表纹理。
+        点击“大阪实景”可查看中之岛附近的城市近景。实景数据并非实时拍摄，细节和覆盖范围随地区变化。
+      </p>
+      <p>
+        切换到“卫星地形”后，真实高程使用 Cesium World Terrain，卫星底图使用 Esri
+        World Imagery；“珠峰地形”可查看山地近景，关闭“3D 地形”后显示椭球。
+        卫星底图是多时相影像拼接，细节会随视距更新。
+      </p>
+      <h2>城市三维建筑</h2>
+      <p>
+        实景三维已经包含城市模型，自带建筑纹理；“卫星地形”模式下的“3D 建筑”使用
+        <a
+          href="https://cesium.com/platform/cesium-ion/content/cesium-osm-buildings/"
+          >Cesium OSM Buildings</a
+        >。
+        建筑形状和高度来自源数据，覆盖与完整度随地区变化；未覆盖的地方继续显示卫星影像。
+        点击“建筑近景”可以查看西安示例，其他地区可通过移动、缩放查看。
+      </p>
+      <p>
+        OSM 建筑主要提供几何形状，不包含 Google 实景建筑的摄影纹理。 OSM
+        建筑只在城市尺度加载，关闭后释放资源；真实地形关闭时暂停建筑显示。
+        点选建筑显示模型表面的近似高程。页面保留供应商返回的数据归因与账户授权提示。
+      </p>
+      <h2>行政区划</h2>
+      <p>
+        国家边界来自 Natural Earth；中国省级、市级及省直辖行政单元边界来自阿里云
+        DataV。DataV 坐标经 GCJ-02 到 WGS84
+        数值转换后与地球叠加。数据用于可视化定位，不作为法定边界依据。
+      </p>
+      <p><a href="../data/geography/sources.json">数据来源与获取时间</a></p>
+      <h2>气象数据</h2>
+      <p>
+        地面和 1000、850、700、500、250、70、10 hPa 使用同批次、同有效时间的
+        NOAA GFS 风场与气温。原始网格为 0.25°，当前显示网格为
+        0.5°。起报时间和预报有效时间分别标示。
+      </p>
+      <p>
+        风线按同批次 GFS 位势高度显示在对应等压面上，地面风使用 GFS 地形以上 10
+        m。 位于地面以下的等压层不绘制风线。GFS
+        网格地形与高精度地形存在差异，部分地面风线会被山体遮挡。
+        “风层高度放大”默认
+        1×，可放大风层离地的显示距离以便比较；点位显示的位势高度始终为原始数据。
+        风线动画速度经过视觉缩放，当前没有垂直速度或连续三维风场。切换高度会清空旧风线。
+      </p>
+      <h2>云图</h2>
+      <p>
+        云图为 NASA GIBS 提供的 Himawari AHI
+        红外观测，覆盖东亚和西太平洋。开关显示的是二维卫星影像叠加，不是体积云。系统使用数据源公布的最新可用观测时刻，显示时间可能落后于当前时间。
+      </p>
+      <p>观测时间与 GFS 预报时间相互独立，均在界面明确显示。</p>
+      <h2>归因</h2>
+      <p>
+        <a href="https://developers.google.com/maps/documentation/tile/3d-tiles"
+          >Google Maps</a
+        >
+        · <a href="https://cesium.com/">Cesium</a> ·
+        <a href="https://www.arcgis.com/"
+          >Esri / Maxar / Earthstar Geographics</a
+        >
+        · <a href="https://www.naturalearthdata.com/">Natural Earth</a> ·
+        <a href="https://datav.aliyun.com/">DataV</a> ·
+        <a href="https://www.noaa.gov/">NOAA</a> ·
+        <a href="https://nasa-gibs.github.io/gibs-api-docs/">NASA GIBS / JMA</a>
+      </p>
+      <p>
+        We acknowledge the use of imagery provided by NASA's Global Imagery
+        Browse Services (GIBS), part of NASA's Earth Science Data and
+        Information System.
+      </p>
+    </main>
+  </body>
+</html>

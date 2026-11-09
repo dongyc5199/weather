@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html itemscope itemtype="http://schema.org/Map" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Weather · Nullschool Earth</title>
+    <meta itemprop="name"                                      content="earth"/>
+    <meta itemprop="description"     name="description"        content="an animated map of global wind and weather"/>
+    <meta itemprop="author"          name="author"             content="Cameron Beccario"/>
+
+    <meta property="og:type"        content="website"/>
+    <meta property="og:title"       content="earth"/>
+    <meta property="og:description" content="An animated map of global wind and weather. Visit the community at https://www.facebook.com/EarthWindMap"/>
+    <meta property="og:url"         content="http://earth.nullschool.net"/>
+    <meta property="og:image"       content="http://earth.nullschool.net/preview.jpg"/>
+
+    <link rel="shortcut icon" href="./favicon.ico"/>
+    <link rel="apple-touch-icon" sizes="120x120" href="./iphone-icon.png"/>
+    <link rel="apple-touch-icon" sizes="152x152" href="./ipad-icon.png"/>
+    <link rel="stylesheet" type="text/css" href="./styles/styles.css"/>
+
+</head>
+<body data-lang="en">
+
+    <!--[if lte IE 8]><p id="warn">This site requires IE9 or newer.</p><![endif]-->
+
+    <div id="display">
+        <svg id="map" class="fill-screen" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
+        <canvas id="animation" class="fill-screen"></canvas>
+        <canvas id="overlay" class="fill-screen"></canvas>
+        <svg id="foreground" class="fill-screen" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
+    </div>
+
+    <div id="sponsor">
+        <p id="data-status" role="status">Connecting to NOAA GFS…</p>
+        <p id="data-validity"></p>
+        <p id="data-update-status"></p>
+        <a href="about.html">Data sources</a>
+    </div>
+
+    <div id="details">
+        <p id="status"></p>
+        <div id="location">
+            <p>
+                <span id="location-coord"></span>
+                <button id="location-close" class="invisible text-button" type="button" aria-label="Clear selected location">×</button>
+            </p>
+            <p>
+                <span id="location-wind"></span>
+                <span id="location-wind-units" class="text-button"></span>
+            </p>
+            <p>
+                <span id="location-value"></span>
+                <span id="location-value-units" class="text-button"></span>
+            </p>
+        </div>
+
+        <div id="menu" class="invisible" aria-hidden="true">
+            <p>Date | <span
+                id="data-date" class="local"></span> <span
+                id="toggle-zone" class="text-button"></span>
+            </p>
+            <p>Run | <span id="data-run">Loading…</span></p>
+            <p>Data | <span id="data-layer"></span></p>
+            <p class="scale-row"><span id="scale-label">Scale | </span><canvas id="scale"></canvas></p>
+            <p>Source | <span id="data-center"></span></p>
+            <p>Control | <span class="text-button" id="nav-now" title="Check the newest available GFS forecast">Latest</span>
+                <span class="text-button" id="show-location" title="Current Position">〖◯〗</span>
+                <span class="text-button" id="option-show-grid" title="Toggle Grid">Grid</span>
+            </p>
+            <p>Mode | <span
+                class="text-button" id="wind-mode-enable">Air</span> – <span
+                class="text-button" id="ocean-mode-enable" title="Historical OSCAR sample from 2014">Ocean (sample)</span>
+            </p>
+            <p class="wind-mode" role="group" aria-label="Height and pressure level">Height |
+                <button class="surface text-button" id="surface-level" type="button" title="Surface: 10 m wind and 2 m temperature" aria-pressed="false">Sfc</button>
+                <button class="surface text-button disabled" id="isobaric-1000hPa" type="button" title="1000 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">1000</button>
+                <button class="surface text-button disabled" id="isobaric-850hPa" type="button" title="850 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">850</button>
+                <button class="surface text-button disabled" id="isobaric-700hPa" type="button" title="700 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">700</button>
+                <button class="surface text-button disabled" id="isobaric-500hPa" type="button" title="500 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">500</button>
+                <button class="surface text-button disabled" id="isobaric-250hPa" type="button" title="250 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">250</button>
+                <button class="surface text-button disabled" id="isobaric-70hPa" type="button" title="70 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">70</button>
+                <span class="control-with-unit"><button class="surface text-button disabled" id="isobaric-10hPa" type="button" title="10 hPa pressure level" disabled aria-disabled="true" aria-pressed="false">10</button> hPa</span>
+            </p>
+            <p class="wind-mode">Overlay | <span class="text-button" id="overlay-off">None</span> –
+                <span class="text-button" id="overlay-wind" title="Wind Speed">Wind</span>
+                – <span class="text-button disabled" id="overlay-temp" title="Temperature at 2 m" aria-disabled="true">Temp</span>
+            </p>
+            <p class="ocean-mode invisible">Animate | <span
+                class="text-button" id="animate-currents" title="Currents">Currents</span>
+            </p>
+            <p class="ocean-mode invisible">Overlay | <span
+                class="text-button" id="overlay-ocean-off">None</span> – <span
+                class="text-button" id="overlay-currents" title="Currents">Currents</span>
+            </p>
+            <p>Projection | <span
+                class="proj text-button" id="atlantis" title="Atlantis">A</span> – <span
+                class="proj text-button" id="azimuthal_equidistant" title="Azimuthal Equidistant">AE</span> – <span
+                class="proj text-button" id="conic_equidistant" title="Conic Equidistant">CE</span> – <span
+                class="proj text-button" id="equirectangular" title="Equirectangular">E</span> – <span
+                class="proj text-button" id="orthographic" title="Orthographic">O</span> – <span
+                class="proj text-button" id="stereographic" title="Stereographic">S</span> – <span
+                class="proj text-button" id="waterman" title="Waterman Butterfly">WB</span> – <span
+                class="proj text-button" id="winkel3" title="Winkel Tripel">W3</span>
+            </p>
+            <!--<p>免責事項 | 正確な情報を提供するためのものではありません</p>-->
+            <p>
+                <a href="about.html" class="internal-link">about</a>
+                <a href="3d/" class="internal-link">三维地球</a>
+                <a href="https://www.facebook.com/EarthWindMap" class="social-icon" title="Facebook">&#xe027;</a>
+                <a href="https://twitter.com/cambecc" class="social-icon" title="Twitter">&#xe086;</a>
+            </p>
+        </div>
+        <h1 id="earth">
+            <button id="show-menu" class="text-button" type="button" title="Show/hide menu" aria-controls="menu" aria-expanded="false">earth</button>
+            <span id="progress" class="invisible"></span>
+        </h1>
+    </div>
+
+
+    <script src="./libs/underscore.js/1.6.0/underscore.js" charset="utf-8"></script>
+    <script src="./libs/backbone.js/1.1.0/backbone.js" charset="utf-8"></script>
+    <script src="./libs/topojson/1.1.0/topojson.js" charset="utf-8"></script>
+    <script src="./libs/d3/3.3.10/d3.js" charset="utf-8"></script>
+
+    <script src="./libs/d3.geo/0.0.0/d3.geo.projection.v0.min.js" charset="utf-8"></script>
+    <script src="./libs/d3.geo/0.0.0/d3.geo.polyhedron.v0.min.js" charset="utf-8"></script>
+    <script src="./libs/when/2.6.0/when.js" charset="utf-8"></script>
+
+    <script src="./libs/earth/1.0.0/micro.js" charset="utf-8"></script>
+    <script src="./live-data.js" charset="utf-8"></script>
+    <script src="./libs/earth/1.0.0/globes.js" charset="utf-8"></script>
+    <script src="./libs/earth/1.0.0/products.js" charset="utf-8"></script>
+    <script src="./libs/earth/1.0.0/earth.js" charset="utf-8"></script>
+
+</body>
+</html>

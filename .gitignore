@@ -11,3 +11,12 @@ output/
 deliverables/
 .weather-geo-server.*
 viewer/earth.config.local.js
+
+# Versioned upstream fixtures required by the offline Nullschool viewer.
+!viewer/nullschool/data/
+!viewer/nullschool/data/**
+viewer/nullschool/data/live/
+viewer/nullschool/data/earth3d-cache/
+viewer/nullschool/3d/node_modules/
+.playwright-cli/
+logs/

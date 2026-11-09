@@ -7,6 +7,21 @@
 
 > 注意：天气图/截图是渲染后的图片，不是原始气象网格或 GIS 数据。本项目从图片色块推算出来的经纬度应标记为近似结果，适合快速分析、人工校对和生成第一版 GeoJSON，不适合作为权威边界。
 
+## Nullschool 风场地球
+
+三维预览入口：<http://127.0.0.1:8080/3d/>，默认使用带真实建筑贴图的 Google 实景三维，可直接查看[大阪实景](http://127.0.0.1:8080/3d/?view=osaka&basemap=google&level=850hPa)。菜单可切回 Cesium 地形、Esri 卫星影像和 OSM 建筑；行政区划、GFS 风温数据和带观测时间的东亚红外云图仍可叠加。三维地图沿用本地配置中的 Cesium ion 授权，经典风场页面不需要密钥。使用下面同一个本地服务启动，具体范围见 [三维预览说明](viewer/nullschool/3d/README.md)。
+
+已接入 `cambecc/earth` 开源引擎和 NOAA GFS 最新风场/气温，入口为 `viewer/nullschool/`。在项目虚拟环境中运行：
+
+```bash
+python -m pip install -e ".[weather]"
+weather-earth serve --port 8080
+```
+
+打开 <http://127.0.0.1:8080/>。服务启动时检查最新可用的 GFS 批次，此后每 30 分钟检查一次；页面 `Latest` 可手动检查。`Temp` 切换气温底色。菜单分别显示起报时间（Run）和预报有效时间（Date）。
+
+数据源为 NOAA 官方公开 GFS，支持地面（10 米风、2 米气温）和 **1000、850、700、500、250、70、10 hPa** 七个等压层，每层都有独立的风场与气温。所有层从同一批次、同一有效时间的 0.25° 网格抽取为 0.5° 显示网格。下载缓存位于被 Git 忽略的 `viewer/nullschool/data/live/`，更新失败会继续显示上次成功的数据并提示。洋流仍为 **2014 年历史样例**，菜单已明确标注。地图、字体和前端依赖均在本地，不需要 npm 或 API key。来源、离线使用和验证记录见 [Nullschool 接入说明](viewer/nullschool/README.md)。
+
 ## 安装
 
 ```bash
@@ -273,13 +288,21 @@ POST /api/process-nmc-wind
 
 ## 3D 地球天气元素
 
-新的地球页入口：
+默认丝滑地球页入口：
+
+```text
+http://127.0.0.1:8765/viewer/globe.html?map=6.69/35.13104/107.15353
+```
+
+`viewer/globe.html` 使用 MapLibre GL JS 的 globe projection，优先用于天气过程浏览、GeoJSON 展示、manifest 回放和云图/雷达瓦片叠加。它不承载真实 3D 地形、城市建筑、3D Tiles、天气光柱或风区体块，这些高级 3D 能力仍保留在 Cesium 页。
+
+高级 3D 地球页入口：
 
 ```text
 http://127.0.0.1:8765/viewer/earth.html?map=6.69/35.13104/107.15353
 ```
 
-页面使用 CesiumJS Globe 作为完整 3D 地球引擎，默认底座为非 Google 且无需 token 的 `esri-world-imagery` 真实影像路线；天气数据仍然是 WGS84 GeoJSON。可以通过 `data` 参数直接加载一个 GeoJSON URL：
+`viewer/earth.html` 使用 CesiumJS Globe 作为完整 3D 地球引擎，默认底座为非 Google 且无需 token 的 `esri-world-imagery` 真实影像路线；天气数据仍然是 WGS84 GeoJSON。MapLibre 和 Cesium 两个地球页都可以通过 `data` 参数直接加载一个 GeoJSON URL：
 
 ```text
 http://127.0.0.1:8765/viewer/earth.html?map=5/35/107&data=../examples/weather-elements.geojson
@@ -304,13 +327,16 @@ http://127.0.0.1:8765/viewer/earth.html?project=../examples/weather-earth-projec
 
 地球模式支持慢速自动旋转，适合天气态势展示；拖拽、缩放、旋转或俯仰地图时会短暂停顿，避免和手动操作冲突。关闭 `地球自动旋转` 后，分享链接会追加 `rotate=0` 来恢复同一状态。
 
-如果只需要检查地球本体效果，可在分享链接里追加 `weather=0`，页面会进入纯地球视图，不加载默认风区、城市影响点或其他业务天气图层。
+如果只需要检查或截图地球本体效果，可在分享链接里追加 `weather=0` 或 `basemapOnly=1`，页面会进入纯底图视图，不加载默认风区、城市影响点、项目 GeoJSON、云图、雷达或其他业务叠加层。
 
-`esri-world-imagery` 是默认真实影像底座，不需要 Cesium ion token。`cesium-world-terrain` 和可选的 `google-photorealistic-3d-tiles` 需要 Cesium ion token；复制 `viewer/earth.config.example.js` 为 `viewer/earth.config.local.js` 并填写 `cesiumIonToken` 即可启用这些增强底座。本地配置文件已被 `.gitignore` 忽略，不应提交。也可以临时使用 URL 参数 `ionToken=...` / `cesiumIonToken=...` 或页面内的临时 token 输入框，分享链接不会把 token 写回 URL。没有 token 或授权失败时，页面会自动使用 `openstreetmap-imagery` 或 `natural-earth` 继续启动，不再白屏。
+`esri-world-imagery` 是默认真实影像底座，不需要 Cesium ion token。`google-satellite` 使用 Google 官方 Map Tiles API 的 2D 卫星影像，需要在 `viewer/earth.config.local.js` 填写启用 Map Tiles API 的 `googleMapsApiKey`；也可以临时使用 URL 参数 `googleMapsApiKey=...` / `mapsApiKey=...`。`cesium-world-terrain` 和可选的 `google-photorealistic-3d-tiles` 需要 Cesium ion token；复制 `viewer/earth.config.example.js` 为 `viewer/earth.config.local.js` 并填写 `cesiumIonToken` 即可启用这些增强底座。本地配置文件已被 `.gitignore` 忽略，不应提交。也可以临时使用 URL 参数 `ionToken=...` / `cesiumIonToken=...` 或页面内的临时 token 输入框，分享链接不会把 token 写回 URL。没有 token 或授权失败时，页面会自动使用 `openstreetmap-imagery` 或 `natural-earth` 继续启动，不再白屏。
+
+云图、红外和雷达叠加层支持 Google/第三方瓦片模板。把 `viewer/earth.config.example.js` 复制为 `viewer/earth.config.local.js` 后，可在 `weatherTiles.cloud`、`weatherTiles.infrared`、`weatherTiles.radar` 填 `{z}/{x}/{y}` 或 Google 常见的 `{zoom}/{coord.x}/{coord.y}` 模板；也可用 URL 参数 `cloudTiles=...`、`infraredTiles=...`、`radarTiles=...` 临时测试。未配置时仍回退到 NASA GIBS 云图/红外和 RainViewer 雷达。Google Weather API 的 map tile 可用 `googleWeatherApiKey` + `googleWeatherMapTypes.radar` 接入；云图/红外如果 Google 未提供对应 mapType，就继续使用显式 `weatherTiles` 模板。
 
 地图底座和天气 GeoJSON 是两套独立数据：底座负责地球、地形、影像或可选摄影测量网格，天气 GeoJSON 只负责风区、路径、预警点等业务要素。页面支持 `basemap` 参数和底座下拉切换：
 
 - `esri-world-imagery`: 默认路线，ArcGIS World Imagery 球面影像底图，不依赖 Google Maps API 或 Cesium ion token。
+- `google-satellite`: Google 官方 2D 卫星影像球面底图，需要 `googleMapsApiKey` 和 Map Tiles API 授权，不会显示 3D Tiles 网格接缝。
 - `cesium-world-terrain`: Cesium World Terrain + 影像底图，不依赖 Google Maps API，但需要 Cesium ion token。
 - `openstreetmap-imagery`: OpenStreetMap 球面底图，适合无 token 开发兜底。
 - `natural-earth`: 页面本地生成的低分辨率地球纹理，外部地图服务不可用时兜底。

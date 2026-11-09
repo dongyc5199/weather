@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weather · 三维地球</title>
+    <link rel="icon" href="../favicon.ico" />
+    <link rel="stylesheet" href="../styles/styles.css" />
+  </head>
+  <body class="earth-three">
+    <main id="three-stage" aria-label="三维天气地球"></main>
+    <div id="sponsor">
+      <p id="three-source">Three.js · 三维地球</p>
+      <p id="three-valid">正在加载 GFS…</p>
+      <p id="three-map-status" role="status">正在加载地球…</p>
+      <p id="three-building-status" role="status"></p>
+      <button id="retry-buildings" class="text-button" hidden>重试建筑</button>
+      <button id="retry-map" class="text-button" hidden>重试地图</button>
+      <p id="three-cloud-time"></p>
+    </div>
+    <div id="details">
+      <div id="location" hidden>
+        <p>
+          <span id="location-coord"></span>
+          <button id="location-close" class="text-button" aria-label="关闭点位">
+            ×
+          </button>
+        </p>
+        <p id="three-place"></p>
+        <p id="three-point-wind"></p>
+        <p id="three-point-temp"></p>
+        <p id="three-point-layer"></p>
+        <p id="three-point-height"></p>
+      </div>
+      <section
+        id="menu"
+        class="invisible"
+        aria-hidden="true"
+        aria-label="三维图层设置"
+      >
+        <p>
+          视角 | <button class="text-button" data-view="world">全球</button>
+          <button class="text-button" data-view="china">中国</button>
+          <button class="text-button" data-view="everest">珠峰地形</button>
+          <button class="text-button" data-view="layers">风层侧视</button>
+          <button class="text-button" data-view="city">西安城区</button>
+          <button class="text-button" data-view="buildings">建筑近景</button>
+          <button class="text-button" data-view="osaka">大阪实景</button>
+        </p>
+        <p>
+          底图 |
+          <button
+            class="text-button"
+            data-basemap="google"
+            aria-pressed="false"
+          >
+            实景三维
+          </button>
+          <button
+            class="text-button"
+            data-basemap="terrain"
+            aria-pressed="false"
+          >
+            卫星地形
+          </button>
+        </p>
+        <p id="photo-note" class="earth-note" hidden>
+          Google Maps · 含真实纹理建筑，覆盖随地区变化
+        </p>
+        <p id="terrain-options">
+          地形 |
+          <label class="earth-toggle"
+            ><input id="satellite" type="checkbox" checked />卫星影像</label
+          >
+          <label class="earth-toggle"
+            ><input id="terrain" type="checkbox" checked />3D 地形</label
+          >
+        </p>
+        <p id="building-options">
+          建筑 |
+          <label class="earth-toggle"
+            ><input id="buildings" type="checkbox" checked />3D 建筑</label
+          >
+          <span class="earth-note">OSM · 覆盖随地区变化</span>
+        </p>
+        <p>
+          边界 |
+          <label class="earth-toggle"
+            ><input id="countries" type="checkbox" checked />国家</label
+          >
+          <label class="earth-toggle"
+            ><input id="provinces" type="checkbox" checked />省</label
+          >
+          <label class="earth-toggle"
+            ><input id="cities" type="checkbox" />市</label
+          ><span class="earth-note">（中国省市）</span>
+        </p>
+        <p>
+          云图 |
+          <label class="earth-toggle"
+            ><input id="cloud" type="checkbox" />东亚红外</label
+          >
+          <button id="refresh-cloud" class="text-button">更新影像</button>
+        </p>
+        <p>
+          天气 |
+          <label class="earth-toggle"
+            ><input id="wind" type="checkbox" checked />风线</label
+          >
+          <label class="earth-toggle"
+            ><input id="temperature" type="checkbox" />气温</label
+          >
+        </p>
+        <p class="earth-range-row">
+          <label for="weather-opacity">气温透明度 | </label
+          ><input
+            id="weather-opacity"
+            type="range"
+            min="0"
+            max="0.8"
+            step="0.05"
+            value="0.4"
+          /><output id="opacity-value">40%</output>
+        </p>
+        <p class="scale-row" id="three-scale-row" hidden>
+          <span>气温 | −80°C</span
+          ><canvas id="three-scale" class="earth-color-scale"></canvas
+          ><span>55°C</span>
+        </p>
+        <p role="group" aria-label="气压层">
+          高度 | <span id="three-heights"></span>
+        </p>
+        <p class="earth-range-row">
+          <label for="height-scale">风层高度放大 | </label>
+          <input
+            id="height-scale"
+            type="range"
+            min="1"
+            max="20"
+            step="1"
+            value="1"
+          />
+          <output id="height-scale-value">1×</output>
+        </p>
+        <p class="earth-note">
+          <span id="three-height-status">正在加载风层高度…</span>
+          <button id="retry-height" class="text-button" hidden>重试高度</button>
+        </p>
+        <p>预报 | <span id="three-date">加载中…</span></p>
+        <p>起报 | <span id="three-run">加载中…</span></p>
+        <p id="three-data-status" class="earth-note" role="status"></p>
+        <p class="earth-note">左键拖动 · 滚轮缩放 · 右键倾斜</p>
+        <p>
+          <a id="classic-link" class="internal-link" href="../">经典气象模式</a>
+          ·
+          <a class="internal-link" href="about.html" target="_blank"
+            >图层与数据说明</a
+          >
+        </p>
+      </section>
+      <h1 id="earth">
+        <button
+          id="show-menu"
+          class="text-button"
+          aria-controls="menu"
+          aria-expanded="false"
+        >
+          earth 3D
+        </button>
+      </h1>
+    </div>
+    <div class="earth-attribution">
+      <span id="base-credit"
+        >Cesium World Terrain · Esri / Maxar / Earthstar Geographics
+      </span>
+      <span id="provider-credit"></span><span id="tile-credit"></span> · Natural
+      Earth · DataV · NOAA GFS<span id="cloud-credit"></span
+      ><span id="building-credit"></span>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

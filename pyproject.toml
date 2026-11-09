@@ -18,9 +18,13 @@ dependencies = [
 dev = [
   "pytest>=8.0",
 ]
+weather = [
+  "eccodes>=2.43,<3",
+]
 
 [project.scripts]
 weather-geo = "weather_geo_extractor.cli:main"
+weather-earth = "weather_geo_extractor.earth_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

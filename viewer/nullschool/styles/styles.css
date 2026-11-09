@@ -1,0 +1,462 @@
+/**************************************************************************************************
+ * At-Rules
+ **************************************************************************************************/
+
+@font-face {
+    font-family: mplus-2p-light-sub;
+    src: url("./mplus-2p-light-sub.ttf?v6");
+}
+
+@font-face {
+    font-family: monosocialiconsfont-sub;
+    src: url("./monosocialiconsfont-sub.ttf?v1");
+}
+
+/**************************************************************************************************
+ * Styling Reset
+ **************************************************************************************************/
+
+:root {
+    /* Shared UI scale, matched to the compact Nullschool reference. */
+    --earth-ui-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --earth-ui-size: 1rem;
+    --earth-ui-leading: 1.5;
+    --earth-ui-inset: 1rem;
+    --earth-ui-gap: 0.5rem;
+    --earth-panel-width: 33rem;
+    --earth-panel-pad-x: 1rem;
+    --earth-panel-pad-y: 0.5rem;
+    --earth-panel-row-gap: 0.125rem;
+    --earth-panel-clearance: 12rem;
+    --earth-panel-radius: 0.5rem;
+    --earth-panel-background: rgba(5, 10, 25, 0.86);
+    --earth-panel-border: rgba(238, 238, 238, 0.72);
+    --earth-floating-background: rgba(0, 0, 5, 0.68);
+    --earth-text: #eeeeee;
+    --earth-muted: #a3a3a3;
+    --earth-disabled: #858585;
+    --earth-accent: #e2b42e;
+    --earth-active-background: rgba(238, 238, 238, 0.16);
+    --earth-control-radius: 0.1875rem;
+    --earth-control-gap: 0.375rem;
+    --earth-scale-height: 0.875rem;
+    --earth-brand-size: 1.125rem;
+    --earth-metadata-size: 1rem;
+    --earth-metadata-top: auto;
+    --earth-metadata-bottom: var(--earth-ui-inset);
+    --earth-menu-duration: 250ms;
+    --earth-scene-background: #000005;
+    --earth-globe-placeholder: #101c26;
+    --earth-globe-land: #34463e;
+    --earth-scene-light: #ffffff;
+    --earth-probe-color: #3aff3a;
+    --earth-country-line: #eef1f4;
+    --earth-province-line: #edf1f4;
+    --earth-city-line: #e4e9ee;
+    --earth-wind-color: #f2f2f2;
+    --earth-wind-opacity: 0.74;
+    --earth-building-tint: #d0d6db;
+    --earth-credit-logo-height: 1.25rem;
+}
+
+html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, button, svg, canvas {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+}
+
+html {
+    font: 100%/var(--earth-ui-leading) var(--earth-ui-font);
+}
+
+@media (max-width: 960px) {
+    :root {
+        --earth-metadata-size: 0.75rem;
+        --earth-metadata-top: var(--earth-ui-inset);
+        --earth-metadata-bottom: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    :root {
+        --earth-ui-size: 0.875rem;
+        --earth-ui-inset: 0.75rem;
+        --earth-panel-pad-x: 0.75rem;
+    }
+}
+
+/**************************************************************************************************
+ * Page Styling
+ **************************************************************************************************/
+
+a, .text-button {
+    color: var(--earth-muted);
+}
+
+.text-button {
+    display: inline-block;
+    padding-inline: 0.2em;
+    border-radius: var(--earth-control-radius);
+    background: transparent;
+    white-space: nowrap;
+}
+
+.control-with-unit {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Three-dimensional mode uses the same typography, surfaces and control tokens. */
+#three-stage { position: fixed; inset: 0; }
+#three-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.earth-three #sponsor { margin-bottom: 1.25rem; }
+.earth-three [hidden] { display: none !important; }
+.earth-toggle { display: inline-flex; align-items: center; gap: 0.25rem; margin-right: var(--earth-control-gap); white-space: nowrap; }
+.earth-toggle input { accent-color: var(--earth-accent); width: 1em; height: 1em; margin: 0; }
+.earth-note { font-size: 0.75rem; color: var(--earth-muted); }
+.earth-range-row { display: flex; gap: var(--earth-control-gap); align-items: center; }
+.earth-range-row input { flex: 1; min-width: 0; accent-color: var(--earth-accent); }
+.earth-attribution { position: fixed; right: var(--earth-ui-inset); bottom: 0.25rem; max-width: calc(100vw - 10rem); font-size: 0.6875rem; line-height: 1.4; color: var(--earth-muted); text-align: right; background: var(--earth-floating-background); padding: 0.125rem 0.25rem; pointer-events: none; }
+.earth-attribution a { pointer-events: auto; color: inherit; }
+.earth-credit-logo { height: var(--earth-credit-logo-height); width: auto; max-width: 12rem; vertical-align: middle; }
+.earth-document { max-width: 48rem; margin: 2rem auto; padding: var(--earth-panel-pad-x); }
+.earth-document h1 { font-size: 1.5rem; margin-bottom: var(--earth-ui-gap); }
+.earth-document h2 { font-size: 1.125rem; margin-top: 1.5rem; margin-bottom: var(--earth-ui-gap); }
+.earth-document p { margin-bottom: var(--earth-ui-gap); }
+
+.text-button.highlighted {
+    color: var(--earth-accent);
+    background: var(--earth-active-background);
+}
+
+.text-button.disabled {
+    color: var(--earth-disabled);
+    cursor: default;
+}
+
+a:hover, a:focus, .no-touch .text-button:hover, .no-touch .text-button:focus, .text-button:active {
+    color: #ffffff;
+    cursor: pointer;
+    transition: color 125ms ease-out;
+    -webkit-transition: color 125ms ease-out;
+}
+
+button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--earth-accent);
+    outline-offset: 2px;
+}
+
+p.invisible, span.invisible, button.invisible, #sponsor.invisible {
+    display: none;
+}
+
+svg {
+    overflow: hidden;  /* Do not let IE draw outside the bounds of the svg element. */
+}
+
+body {
+    color: var(--earth-text);
+    background: var(--earth-scene-background);
+}
+
+#warn {
+    font-size: 2.0em;
+    position: absolute;
+    top: 10%;
+    left: 2%;
+}
+
+#display {
+    cursor: default;
+}
+
+#map, #animation, #overlay, #foreground {
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
+}
+
+#sponsor {
+    position: absolute;
+    text-align: right;
+    top: var(--earth-metadata-top);
+    bottom: var(--earth-metadata-bottom);
+    right: var(--earth-ui-inset);
+    background-color: var(--earth-floating-background);
+    border-radius: var(--earth-panel-radius);
+    padding: 0.5rem 1rem 0.5rem 1rem;
+    font-size: var(--earth-metadata-size);
+}
+
+#sponsor:hover #sponsor-hide {
+    display: inline;
+}
+
+#sponsor a {
+    text-decoration: none;
+}
+
+#details {
+    position: fixed;
+    bottom: var(--earth-ui-inset);
+    left: var(--earth-ui-inset);
+    width: min(var(--earth-panel-width), calc(100vw - 2 * var(--earth-ui-inset)));
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: var(--earth-ui-size);
+    line-height: var(--earth-ui-leading);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;  /* This div is just a container--do not let it interfere with operation of the map. */
+}
+
+#earth {
+    font-size: var(--earth-brand-size);
+    padding-inline: var(--earth-panel-pad-x);
+    padding-block: 0.25rem;
+    pointer-events: all;
+}
+
+#status, #location, #menu {
+    font-size: var(--earth-ui-size);
+}
+
+#status, #location {
+    max-width: 100%;
+    background-color: var(--earth-floating-background);
+    border-radius: var(--earth-panel-radius);
+    margin-bottom: var(--earth-ui-gap);
+    padding: var(--earth-panel-pad-y) var(--earth-panel-pad-x);
+    pointer-events: all;
+}
+
+#status:empty, #location:has(#location-coord:empty) {
+    display: none;
+}
+
+#menu {
+    width: 100%;
+    background-color: var(--earth-panel-background);
+    border: 1px solid var(--earth-panel-border);
+    border-radius: var(--earth-panel-radius);
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+    pointer-events: all;
+    margin-bottom: calc(2 * var(--earth-ui-gap));
+    padding: var(--earth-panel-pad-y) var(--earth-panel-pad-x);
+    opacity: 1;
+    max-height: min(30rem, calc(100dvh - var(--earth-panel-clearance)));
+    transition: opacity var(--earth-menu-duration) ease, max-height var(--earth-menu-duration) ease;
+}
+
+#menu.invisible {
+    margin-bottom: 0;
+    padding-block: 0;
+    border-width: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#menu > p + p {
+    margin-top: var(--earth-panel-row-gap);
+}
+
+.scale-row {
+    display: flex;
+    align-items: center;
+    gap: var(--earth-control-gap);
+    min-height: 1.5em;
+}
+
+#scale-label {
+    flex: none;
+    white-space: nowrap;
+}
+
+#scale, .earth-color-scale {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    width: 0;
+    height: var(--earth-scale-height);
+}
+
+@media (pointer: coarse) {
+    :root {
+        --earth-panel-clearance: 16rem;
+    }
+    #details .text-button {
+        min-height: 44px;
+        line-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #menu {
+        transition: none;
+    }
+}
+
+#progress {
+    padding-left: var(--earth-ui-gap);
+}
+
+#nav-now {
+    margin-right: var(--earth-control-gap);
+}
+
+#nav-backward, #nav-backward-more, #nav-forward, #nav-forward-more, #option-show-grid {
+    padding-inline: var(--earth-control-gap);
+}
+
+#show-location {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+#lang {
+    font-size: 1.25rem;
+    float: right;
+    padding-top: 0.5rem;
+}
+
+.social-icon {
+    font-size: var(--earth-brand-size);
+    font-family: monosocialiconsfont-sub,sans-serif;
+    padding-left: 0.25rem;
+    text-decoration: none;
+    position: relative;
+    top: 0;
+}
+
+.internal-link {
+    text-decoration: none;
+}
+
+.sup {
+    position: relative;
+    bottom: 0.3em;
+    font-size: 0.6em;
+}
+
+.sub {
+    position: relative;
+    top: 0.3em;
+    font-size: 0.6em;
+}
+
+/**************************************************************************************************
+ * SVG Element Styling
+ **************************************************************************************************/
+
+.coastline, .lakes {
+    stroke: #ffffff;
+    stroke-width: 1.25;
+    fill: none;
+}
+
+.firefox .coastline, .firefox .lakes {
+    stroke-width: 1.0;
+}
+
+.graticule {
+    stroke: #505050;
+    stroke-width: 1.0;
+    fill: none;
+}
+
+.hemisphere {
+    stroke: #707070;
+    stroke-width: 1.25;
+    fill: none;
+}
+
+.background-sphere {
+    stroke: none;
+    fill: #303030;
+}
+
+.foreground-sphere {
+    stroke: #000005;
+    stroke-width: 4.0;
+    fill: none;
+    -moz-user-select: none;  /* Oddly, Win FF sometimes selects this SVG element. Disable. */
+    user-select: none;
+}
+
+.location-mark {
+    stroke: var(--earth-probe-color);
+    stroke-width: 2.5;
+    fill: none;
+}
+
+/**************************************************************************************************
+ * About Page
+ **************************************************************************************************/
+
+#about {
+    font-size: 1.5rem;
+}
+
+#about h1 {
+    font-size: 2.4rem;
+    text-align: center;
+    padding-top: 2rem;
+}
+
+#about div {
+    clear: both;
+}
+
+#about .blurb {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+#about .blurb img {
+    padding-top: 2rem;
+}
+
+#about img {
+    display: block;
+    margin: auto;
+}
+
+#about:first-child {
+    padding-top: 3rem;
+}
+
+#cover {
+    border: 1px solid #eeeeee;
+}
+
+#about .left {
+    width: 50%;
+    float: left;
+    text-align: right;
+}
+
+#about .right {
+    width: 50%;
+    float: right;
+}
+
+#about .center {
+    text-align: center;
+}
+
+#about .pad {
+    visibility: hidden;
+}
+
+#closing {
+    padding-bottom: 2.5rem;
+}
