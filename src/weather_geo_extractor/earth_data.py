@@ -61,6 +61,7 @@ HEIGHT_FIELDS = {
     **{f"{pressure}hPa-height": FieldSpec("HGT", f"{pressure} mb", 3, 5, "isobaricInhPa", pressure, f"{pressure}hPa")
        for pressure in PRESSURE_LEVELS},
 }
+SEA_LEVEL_PRESSURE = FieldSpec("PRMSL", "mean sea level", 3, 1, "meanSea", 0, "mean_sea_level")
 
 
 def field_key(layer: str, component: str) -> str:
@@ -185,7 +186,7 @@ def decode_field(payload: bytes, field: str, selection: Selection, resolution: f
         if spec.variable in {"UGRD", "VGRD"} and get("uvRelativeToGrid"):
             raise EarthDataError("Wind vectors must be relative to geographic east/north")
         # ecCodes labels GRIB 0/3/5 as "m" in some tables; NOAA calls it gpm.
-        expected_units = {"TMP": {"K"}, "HGT": {"gpm", "m"}, "PRES": {"Pa"}}.get(spec.variable, {"m s**-1", "m s-1", "m/s"})
+        expected_units = {"TMP": {"K"}, "HGT": {"gpm", "m"}, "PRES": {"Pa"}, "PRMSL": {"Pa"}}.get(spec.variable, {"m s**-1", "m s-1", "m/s"})
         if get("units") not in expected_units:
             raise EarthDataError(f"Unexpected units for {field}: {get('units')}")
 
@@ -217,14 +218,14 @@ def decode_field(payload: bytes, field: str, selection: Selection, resolution: f
             raise EarthDataError("Wind components exceed plausible m/s bounds")
         if spec.variable == "HGT" and not (-1500 <= finite_values.min() <= finite_values.max() < 65000):
             raise EarthDataError("Height values are outside plausible geopotential bounds")
-        if spec.variable == "PRES" and not (10000 <= finite_values.min() <= finite_values.max() < 120000):
-            raise EarthDataError("Surface pressure values are outside plausible Pa bounds")
+        if spec.variable in {"PRES", "PRMSL"} and not (10000 <= finite_values.min() <= finite_values.max() < 120000):
+            raise EarthDataError("Pressure values are outside plausible Pa bounds")
         out_ny, out_nx = values.shape
         is_pressure = spec.level_type == "isobaricInhPa"
         header = {
             "discipline": 0, "parameterCategory": spec.category, "parameterNumber": spec.number,
-            "parameterUnit": {"TMP": "K", "HGT": "gpm", "PRES": "Pa"}.get(spec.variable, "m.s-1"),
-            "surface1Type": 100 if is_pressure else 1 if spec.level_type == "surface" else 103,
+            "parameterUnit": {"TMP": "K", "HGT": "gpm", "PRES": "Pa", "PRMSL": "Pa"}.get(spec.variable, "m.s-1"),
+            "surface1Type": 100 if is_pressure else 101 if spec.level_type == "meanSea" else 1 if spec.level_type == "surface" else 103,
             # GRIB fixed-surface pressure values use Pa, while ecCodes 'level' uses hPa.
             "surface1Value": spec.level * 100 if is_pressure else spec.level, "center": 7,
             "levelType": spec.level_type, "layer": spec.layer,

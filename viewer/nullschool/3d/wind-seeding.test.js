@@ -38,6 +38,38 @@ function cameraFor({
   return camera;
 }
 
+test("Reborn particles sample the whole visible region instead of returning to a fixed cell", () => {
+  const camera = cameraFor({ top: true });
+  const seeder = new WindViewportSeeder(camera, () => 5500);
+  seeder.maxHeight = 5500;
+  seeder.prepare(1000, [-0.4, -0.4, 0.4, 0.4]);
+  let state = 31;
+  const random = () => (state = (state * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  const bins = Array(16).fill(0),
+    point = new THREE.Vector3();
+  for (let i = 0; i < 800; i++) {
+    const seed = seeder.seedRandom(random);
+    assert.ok(seed);
+    WGS84_ELLIPSOID.getCartographicToPosition(
+      seed.lat * RAD,
+      seed.lon * RAD,
+      seed.height,
+      point,
+    );
+    assert.equal(seeder.inView(point), true);
+    point.project(camera);
+    const x = Math.max(0, Math.min(3, Math.floor((point.x + 0.4) / 0.2)));
+    const y = Math.max(0, Math.min(3, Math.floor((point.y + 0.4) / 0.2)));
+    bins[y * 4 + x]++;
+  }
+  assert.ok(
+    bins.every((count) => count >= 25 && count <= 80),
+    JSON.stringify(bins),
+  );
+  seeder.prepare(0);
+  assert.equal(seeder.seedRandom(random), null);
+});
+
 for (const options of [
   { aspect: 16 / 9 },
   { aspect: 32 / 9 },

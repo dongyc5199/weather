@@ -126,6 +126,9 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
             elif match := re.fullmatch(r"/api/earth/3d/height/([^/]+)/([^/]+)", path):
                 from .earth_heights import height_profile
                 self.json_response(200, height_profile(Path(self.directory), *match.groups()))
+            elif match := re.fullmatch(r"/api/earth/3d/pressure/([^/]+)", path):
+                from .earth_pressure import pressure_profile
+                self.json_response(200, pressure_profile(Path(self.directory), match[1]))
             elif match := re.fullmatch(r"/api/earth/3d/grid/([^/]+)/([^/]+)/(temp|wind)/(\d+)/(\d+)/(\d+)\.png", path):
                 snapshot, layer, kind, z, x, y = match.groups()
                 body = weather_tile(Path(self.directory), snapshot, layer, kind, int(z), int(x), int(y))

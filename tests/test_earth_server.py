@@ -96,3 +96,17 @@ def test_photorealistic_metadata_is_not_http_cached(tmp_path, monkeypatch):
             assert response.headers["Cache-Control"] == "no-store"
             assert json.load(response)["available"]
     assert requests == [True]
+
+
+def test_pressure_route_passes_the_requested_snapshot(tmp_path, monkeypatch):
+    from weather_geo_extractor import earth_pressure
+    calls = []
+    def profile(viewer, snapshot):
+        calls.append(snapshot)
+        return {"snapshot": snapshot, "reference": "mean sea level"}
+    monkeypatch.setattr(earth_pressure, "pressure_profile", profile)
+    key = "20261109T00Z-f003-0p5-v2"
+    with local_server(tmp_path) as (url, _):
+        with urlopen(url + "/api/earth/3d/pressure/" + key) as response:
+            assert json.load(response)["reference"] == "mean sea level"
+    assert calls == [key]

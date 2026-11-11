@@ -1,5 +1,15 @@
 import { THREE, WGS84_ELLIPSOID } from "./vendor.js";
 import { WindViewportSeeder } from "./wind-seeding.js";
+import { StyledLineSegments } from "./styled-lines.js";
+import {
+  WIND_CAPACITY,
+  WIND_HISTORY_STEPS,
+  WIND_STEP_SECONDS,
+  WIND_VIEW_SETTLE_SECONDS,
+  windScreenBounds,
+  windPresentation,
+  windIntensity,
+} from "./wind-presentation.js";
 
 const R = 6371000;
 const RAD = Math.PI / 180;
@@ -67,9 +77,9 @@ export function gridSampler(wind, temp) {
   function interpolateAt(arr, lon, lat) {
     const x = ((((lon - h.lo1) % 360) + 360) % 360) / h.dx,
       y = (h.la1 - lat) / h.dy;
+    if (y < 0 || y > h.ny - 1) return null;
     const i = Math.floor(x),
-      j = Math.floor(y);
-    if (j < 0 || j >= h.ny - 1) return null;
+      j = Math.min(Math.floor(y), h.ny - 2);
     const f = x - i,
       g = y - j,
       a = j * h.nx + i,
@@ -133,6 +143,10 @@ export function gridSampler(wind, temp) {
         ? maximumGround + 10
         : maximumHeight * scale - minimumGround * (scale - 1);
     },
+    temperatureAt(lon, lat) {
+      const value = interpolateAt(t, lon, lat);
+      return Number.isFinite(value) ? value - 273.15 : NaN;
+    },
     heightAt(lon, lat) {
       if (!profile) return null;
       const groundH = interpolateAt(profile.orography.data, lon, lat);
@@ -171,78 +185,81 @@ export function gridSampler(wind, temp) {
 }
 
 export class WindLayer {
-  constructor(scene, camera) {
+  constructor(
+    scene,
+    camera,
+    style = null,
+    { capacity = WIND_CAPACITY, steps = WIND_HISTORY_STEPS } = {},
+  ) {
     this.camera = camera;
     this.enabled = true;
     this.moving = false;
     this.grid = null;
     this.heightScale = 1;
     this.lastHeights = null;
-    this.count = 1700;
-    this.steps = 18;
+    this.capacity = capacity;
+    this.count = Math.min(1700, capacity);
+    this.steps = steps;
+    this.viewport = null;
+    this.presentation = null;
+    this.presentationDirty = true;
+    this.lastPresentation = -Infinity;
+    this.lastCameraMatrix = new THREE.Matrix4();
+    this.lastProjectionMatrix = new THREE.Matrix4();
+    this.viewInitialized = false;
+    this.viewChanging = false;
+    this.viewQuietUntil = 0;
+    this.overview = false;
     this.cursor = 0;
     this.clock = 0;
     this.tick = 0;
-    this.positions = new Float32Array(this.count * this.steps * 6);
-    this.birth = new Float32Array(this.count * this.steps * 2).fill(-1000);
-    this.geometry = new THREE.BufferGeometry();
-    this.geometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(this.positions, 3).setUsage(
-        THREE.DynamicDrawUsage,
+    this.positions = new Float32Array(capacity * this.steps * 6);
+    this.birth = new Float32Array(capacity * this.steps * 2).fill(-1000);
+    this.intensity = new Float32Array(capacity * this.steps);
+    this.segmentLengths = new Float64Array(capacity * this.steps);
+    const defaults = style || {
+      color: getComputedStyle(document.documentElement)
+        .getPropertyValue("--earth-wind-color")
+        .trim(),
+      opacity: Number(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--earth-wind-opacity",
+        ),
       ),
-    );
-    this.geometry.setAttribute(
-      "birth",
-      new THREE.BufferAttribute(this.birth, 1).setUsage(THREE.DynamicDrawUsage),
-    );
-    this.material = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      uniforms: {
-        time: { value: 0 },
-        life: { value: 1.0 },
-        ink: {
-          value: new THREE.Color(
-            getComputedStyle(document.documentElement)
-              .getPropertyValue("--earth-wind-color")
-              .trim(),
+      width:
+        Number(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--earth-wind-width",
           ),
-        },
-        opacity: {
-          value: Number(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              "--earth-wind-opacity",
-            ),
-          ),
-        },
-      },
-      vertexShader: `attribute float birth; uniform float time; uniform float life; varying float alpha;
-      #include <common>
-      #include <logdepthbuf_pars_vertex>
-      void main(){alpha=clamp(1.0-(time-birth)/life,0.0,1.0);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
-      #include <logdepthbuf_vertex>
-      }`,
-      fragmentShader: `varying float alpha; uniform vec3 ink; uniform float opacity;
-      #include <logdepthbuf_pars_fragment>
-      void main(){if(alpha<0.01)discard;
-      #include <logdepthbuf_fragment>
-      gl_FragColor=vec4(ink,alpha*opacity);
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-      }`,
+        ) || 1.8,
+      pattern: "solid",
+    };
+    this.stroke = new StyledLineSegments(this.positions, defaults, {
+      birth: this.birth,
+      intensity: this.intensity,
+      segmentLengths: this.segmentLengths,
+      wind: true,
+      caps: false,
     });
-    this.lines = new THREE.LineSegments(this.geometry, this.material);
-    this.lines.frustumCulled = false;
+    this.particleGroups = Array.from({ length: capacity }, (_, i) => ({
+      start: i * this.steps,
+      count: this.steps,
+      ring: true,
+    }));
+    this.stroke.setGroups(this.particleGroups.slice(0, this.count));
+    this.geometry = this.stroke.geometry;
+    this.material = this.stroke.material;
+    this.lines = this.stroke.object;
+    this.geometry.instanceCount = this.count * this.steps;
     scene.add(this.lines);
-    this.particles = Array.from({ length: this.count }, () => ({
+    this.particles = Array.from({ length: capacity }, () => ({
       lon: 0,
       lat: 0,
       age: 999,
       height: 0,
       maxAge: 70,
       retryAt: 0,
+      fresh: true,
     }));
     this.a = new THREE.Vector3();
     this.b = new THREE.Vector3();
@@ -256,10 +273,14 @@ export class WindLayer {
   }
   clear() {
     this.birth.fill(-1000);
-    this.geometry.attributes.birth.needsUpdate = true;
+    this.geometry.attributes.instanceBirth.data.needsUpdate = true;
+    this.segmentLengths.fill(0);
+    this.tick = 0;
+    this.presentationDirty = true;
     this.particles.forEach((p) => {
       p.age = 999;
       p.retryAt = 0;
+      p.fresh = true;
     });
   }
   setGrid(grid) {
@@ -274,58 +295,182 @@ export class WindLayer {
   getState() {
     return {
       visible: this.lines.visible,
+      moving: this.moving,
+      viewChanging: this.viewChanging,
       heightScale: this.heightScale,
       heights: this.lastHeights,
+      style: { ...this.stroke.style },
+      particles: this.count,
+      overview: this.overview,
+      trailSeconds: this.material.uniforms.life.value,
+      timeScale: this.presentation?.timeScale || null,
+      footprint: this.presentation?.bounds || null,
     };
   }
-  setMoving(value) {
-    this.moving = value;
-    this.clear();
-    this.lines.visible = this.enabled && !value;
+  setLineStyle(style) {
+    this.stroke.setStyle(style);
   }
-  seedParticle(particle, index) {
+  updateLineViewport(height) {
+    if (!this.lines.visible) return;
+    const surface = this.lastHeights
+      ? (this.lastHeights.min + this.lastHeights.max) / 2
+      : 0;
+    this.stroke.updateViewport(this.camera, height, surface);
+  }
+  setViewport(width, height, mobile = false) {
+    this.viewport = { width, height, mobile };
+    this.presentationDirty = true;
+  }
+  updatePresentation() {
+    if (
+      !this.grid ||
+      !this.viewport ||
+      (!this.presentationDirty && this.clock - this.lastPresentation < 0.25)
+    )
+      return;
+    this.presentationDirty = false;
+    this.lastPresentation = this.clock;
+    const altitude = WGS84_ELLIPSOID.getPositionElevation(this.camera.position);
+    const bounds = windScreenBounds(
+      this.camera,
+      this.viewport.width,
+      this.viewport.height,
+      this.grid.maxDisplayHeight(this.heightScale),
+    );
+    this.presentation = windPresentation(
+      bounds,
+      this.viewport,
+      altitude,
+      this.capacity,
+    );
+    if (this.count !== this.presentation.count) {
+      this.count = this.presentation.count;
+      this.stroke.setGroups(this.particleGroups.slice(0, this.count));
+      this.geometry.instanceCount = this.count * this.steps;
+    }
+    this.material.uniforms.life.value = Math.min(
+      this.steps * WIND_STEP_SECONDS,
+      this.presentation.trailSeconds,
+    );
+    this.overview = altitude > (this.overview ? 600000 : 1000000);
+    this.material.depthTest = !this.overview;
+    this.material.uniforms.windOverview.value = Number(this.overview);
+  }
+  setMoving(value) {
+    if (this.moving !== Boolean(value)) this.presentationDirty = true;
+    this.moving = Boolean(value);
+    if (!this.moving && this.viewChanging)
+      this.viewQuietUntil = this.clock + WIND_VIEW_SETTLE_SECONDS;
+  }
+  viewMoved() {
+    const current = this.camera.matrixWorld.elements;
+    const previous = this.lastCameraMatrix.elements;
+    const angularTolerance =
+      (2 * Math.tan((this.camera.fov * Math.PI) / 360) * 0.02) /
+      Math.max(1, this.viewport?.height || 800);
+    const positionTolerance = Math.max(
+      0.01,
+      Math.abs(WGS84_ELLIPSOID.getPositionElevation(this.camera.position)) *
+        angularTolerance,
+    );
+    const translated =
+      Math.hypot(
+        current[12] - previous[12],
+        current[13] - previous[13],
+        current[14] - previous[14],
+      ) > positionTolerance;
+    const rotated = [0, 1, 2, 4, 5, 6, 8, 9, 10].some(
+      (i) => Math.abs(current[i] - previous[i]) > angularTolerance,
+    );
+    // Near/far planes change as terrain loads, without changing the visible
+    // viewpoint. Only focal length, aspect and projection offsets suspend wind.
+    const projected = [0, 5, 8, 9, 12, 13].some(
+      (i) =>
+        Math.abs(
+          this.camera.projectionMatrix.elements[i] -
+            this.lastProjectionMatrix.elements[i],
+        ) > 1e-8,
+    );
+    const moved = this.viewInitialized && (translated || rotated || projected);
+    this.lastCameraMatrix.copy(this.camera.matrixWorld);
+    this.lastProjectionMatrix.copy(this.camera.projectionMatrix);
+    this.viewInitialized = true;
+    return moved;
+  }
+  seedParticle(particle) {
     if (this.clock < particle.retryAt) return false;
-    const seed = this.seeder.seed(index);
+    const seed = this.seeder.seedRandom();
     if (!seed) {
       particle.age = 999;
       particle.retryAt = this.clock + 0.15 + Math.random() * 0.15;
       return false;
     }
     Object.assign(particle, seed, {
-      age: 0,
-      maxAge: 40 + Math.random() * 50,
+      age: particle.fresh ? Math.floor(Math.random() * 100) : 0,
+      maxAge: 100,
       retryAt: 0,
+      fresh: false,
     });
     return true;
   }
   update(dt) {
+    const enabled = this.enabled && !!this.grid && this.material.opacity > 0;
     this.clock += dt;
     this.material.uniforms.time.value = this.clock;
-    const altitude = WGS84_ELLIPSOID.getPositionElevation(this.camera.position);
-    this.lines.visible = this.enabled && !this.moving && !!this.grid;
+    if (this.viewMoved()) {
+      this.viewChanging = true;
+      this.viewQuietUntil = this.clock + WIND_VIEW_SETTLE_SECONDS;
+      this.presentationDirty = true;
+    }
+    this.lines.visible = enabled && !this.viewChanging;
+    this.updatePresentation();
+    if (this.viewChanging) {
+      // Pointer-down alone does not hide the layer. After actual camera motion,
+      // stay hidden through the drag, wheel bursts and their inertial movement.
+      if (!enabled || this.moving || this.clock < this.viewQuietUntil) return;
+      this.viewChanging = false;
+      this.clear();
+      this.updatePresentation();
+      // Show only the newly sampled view; a short warm-up makes the new heads
+      // visible immediately instead of flashing the old view's trail buffer.
+      for (let step = 2; step >= 0; step--)
+        this.evolve(WIND_STEP_SECONDS, this.clock - step * WIND_STEP_SECONDS);
+      this.lines.visible = true;
+      return;
+    }
     if (!this.lines.visible) return;
-    this.tick += dt;
-    if (this.tick < 0.035) return;
-    const delta = Math.min(this.tick, 0.08);
-    this.tick = 0;
-    if (this.seeder.prepare(this.count)) this.clear();
+    // Skip elapsed simulation time after a slow frame rather than accumulate a
+    // permanent backlog whose newly drawn segments are already expired.
+    this.tick = Math.min(this.tick + dt, 2 * WIND_STEP_SECONDS);
+    let steps = 0;
+    while (this.tick + 1e-8 >= WIND_STEP_SECONDS && steps++ < 2) {
+      const born = this.clock - this.tick + WIND_STEP_SECONDS;
+      this.tick -= WIND_STEP_SECONDS;
+      this.evolve(WIND_STEP_SECONDS, born);
+    }
+  }
+  evolve(delta, born) {
+    const altitude = WGS84_ELLIPSOID.getPositionElevation(this.camera.position);
+    this.seeder.prepare(this.count, this.presentation?.bounds.box);
     this.seeder.maxHeight = this.grid.maxDisplayHeight(this.heightScale);
     const seconds =
-      delta * 34000 * Math.min(1, Math.max(0.002, altitude / 4000000));
+      delta *
+      (this.presentation?.timeScale ||
+        34000 * Math.min(1, Math.max(0.002, altitude / 4000000)));
     let minimum = Infinity,
       maximum = -Infinity,
       count = 0;
     for (let i = 0; i < this.count; i++) {
       const p = this.particles[i];
-      if (p.age > p.maxAge && !this.seedParticle(p, i)) continue;
+      if (p.age >= p.maxAge && !this.seedParticle(p)) continue;
       WGS84_ELLIPSOID.getCartographicToPosition(
         p.lat * RAD,
         p.lon * RAD,
         p.height,
         this.a,
       );
-      if (!this.seeder.inCell(this.a, i)) {
-        if (!this.seedParticle(p, i)) continue;
+      if (!this.seeder.inView(this.a)) {
+        if (!this.seedParticle(p)) continue;
         WGS84_ELLIPSOID.getCartographicToPosition(
           p.lat * RAD,
           p.lon * RAD,
@@ -369,15 +514,16 @@ export class WindLayer {
       const slot = i * this.steps + this.cursor;
       this.a.toArray(this.positions, slot * 6);
       this.b.toArray(this.positions, slot * 6 + 3);
-      this.birth[slot * 2] = this.birth[slot * 2 + 1] = this.clock;
+      this.birth[slot * 2] = this.birth[slot * 2 + 1] = born;
+      this.intensity[slot] = windIntensity(w.speed);
+      this.segmentLengths[slot] = this.a.distanceTo(this.b);
       p.lon = nextLon;
       p.lat = nextLat;
       p.height = endHeight;
       p.age++;
     }
     this.cursor = (this.cursor + 1) % this.steps;
-    this.geometry.attributes.position.needsUpdate = true;
-    this.geometry.attributes.birth.needsUpdate = true;
+    this.stroke.positionsChanged(this.cursor, this.count * this.steps);
     this.lastHeights = count ? { min: minimum, max: maximum, count } : null;
   }
 }

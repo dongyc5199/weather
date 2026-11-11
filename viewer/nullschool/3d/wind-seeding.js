@@ -20,23 +20,35 @@ export class WindViewportSeeder {
     this.cells = [];
     this.aspect = 0;
     this.count = 0;
+    this.bounds = [-1, -1, 1, 1];
   }
 
-  prepare(count) {
+  prepare(count, bounds = [-1, -1, 1, 1]) {
     this.origin.setFromMatrixPosition(this.camera.matrixWorld);
-    if (this.count === count && this.aspect === this.camera.aspect)
+    if (
+      this.count === count &&
+      this.aspect === this.camera.aspect &&
+      bounds.every((v, i) => Math.abs(v - this.bounds[i]) < 0.001)
+    )
       return false;
     this.aspect = this.camera.aspect;
     this.count = count;
+    this.bounds = [...bounds];
+    const spanX = bounds[2] - bounds[0],
+      spanY = bounds[3] - bounds[1];
     // Every row spans the full width, including when count is not divisible by rows.
-    const rows = Math.max(1, Math.round(Math.sqrt(count / this.aspect)));
+    const areaAspect = spanY > 0 ? (this.aspect * spanX) / spanY : this.aspect;
+    const rows = Math.max(
+      1,
+      Math.round(Math.sqrt(count / Math.max(0.01, areaAspect))),
+    );
     this.cells = Array.from({ length: count }, (_, i) => {
       const row = Math.floor((i * rows) / count);
       const first = Math.ceil((row * count) / rows);
       const columns = Math.ceil(((row + 1) * count) / rows) - first;
-      const x = -1 + (2 * (i - first)) / columns;
-      const y = -1 + (2 * row) / rows;
-      return { x, y, width: 2 / columns, height: 2 / rows };
+      const x = bounds[0] + (spanX * (i - first)) / columns;
+      const y = bounds[1] + (spanY * row) / rows;
+      return { x, y, width: spanX / columns, height: spanY / rows };
     });
     return true;
   }
@@ -105,6 +117,19 @@ export class WindViewportSeeder {
     return null;
   }
 
+  seedRandom(random = Math.random) {
+    if (!this.count) return null;
+    const [left, bottom, right, top] = this.bounds;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const seed = this.atScreen(
+        left + random() * (right - left),
+        bottom + random() * (top - bottom),
+      );
+      if (seed) return seed;
+    }
+    return null;
+  }
+
   inCell(point, index, margin = 2) {
     this.screen.copy(point).project(this.camera);
     const c = this.cells[index],
@@ -118,6 +143,17 @@ export class WindViewportSeeder {
       p.x <= c.x + (1 + margin) * c.width &&
       p.y >= c.y - margin * c.height &&
       p.y <= c.y + (1 + margin) * c.height &&
+      !this.occluded(point)
+    );
+  }
+  inView(point) {
+    this.screen.copy(point).project(this.camera);
+    const p = this.screen;
+    return (
+      p.z >= -1 &&
+      p.z <= 1 &&
+      Math.abs(p.x) <= 1.04 &&
+      Math.abs(p.y) <= 1.04 &&
       !this.occluded(point)
     );
   }

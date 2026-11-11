@@ -26,3 +26,6 @@ export {
 } from "3d-tiles-renderer/core";
 export { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 export { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+export { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+export { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+export { LineMaterial } from "three/addons/lines/LineMaterial.js";

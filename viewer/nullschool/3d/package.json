@@ -2,7 +2,7 @@
   "name": "weather-earth-3d",
   "private": true,
   "type": "module",
-  "scripts": { "build": "node build.mjs", "test": "node --test weather.test.js wind-seeding.test.js overlays.test.js buildings.test.js map-streaming.test.js photorealistic.test.js" },
+  "scripts": { "build": "node build.mjs", "prepare:geography": "node scripts/prepare-geography.mjs", "test": "node --test weather.test.js wind-seeding.test.js wind-presentation.test.js temperature.test.js contours.test.js geographic-lines.test.js line-styles.test.js overlays.test.js buildings.test.js map-streaming.test.js photorealistic.test.js" },
   "dependencies": {
     "three": "0.187.0",
     "3d-tiles-renderer": "0.5.4"

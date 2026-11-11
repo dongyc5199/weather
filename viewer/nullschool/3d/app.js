@@ -6,10 +6,27 @@ import {
   QuantizedMeshPlugin,
   GeneratedSurfacePlugin,
   XYZTilesOverlay,
-  GeoJSONOverlay,
   WMSTilesOverlay,
 } from "./vendor.js";
 import { gridSampler, WindLayer } from "./weather.js";
+import { TemperatureLayer } from "./temperature.js";
+import { WeatherCompositor } from "./weather-compositor.js";
+import { WIND_SPEED_PALETTE } from "./wind-presentation.js";
+import { StyledGeoJSONOverlay } from "./styled-overlays.js";
+import {
+  GeographicLineLayer,
+  administrativeBoundaries,
+} from "./geographic-lines.js";
+import { LineStyleStore, readLineStyleDefaults } from "./line-styles.js";
+import { mountLineStylePanel } from "./line-style-panel.js";
+import { ContourLayer } from "./contour-layer.js";
+import {
+  ContourTask,
+  heightContourInput,
+  pressureContourInput,
+  contoursGeoJSON,
+  scalarAt,
+} from "./contours.js";
 import { CompleteImageOverlayPlugin } from "./overlays.js";
 import {
   BaseGlobe,
@@ -30,6 +47,36 @@ const $ = (id) => document.getElementById(id),
   RAD = Math.PI / 180;
 const theme = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// Keep completed descriptions out of the controls and show actionable loading feedback.
+const loadStatus = $("three-load-status");
+function updateLoadStatus() {
+  loadStatus.querySelectorAll("p").forEach((row) => {
+    row.classList.toggle(
+      "status-idle",
+      !/加载|正在|等待|失败|不可用|重试|错误/.test(
+        row.querySelector("span")?.textContent ?? row.textContent,
+      ) && !row.querySelector("button:not([hidden])"),
+    );
+  });
+}
+new MutationObserver(updateLoadStatus).observe(loadStatus, {
+  subtree: true,
+  childList: true,
+  characterData: true,
+});
+updateLoadStatus();
+let styleStorage = null;
+try {
+  styleStorage = window.localStorage;
+} catch {
+  /* Session styling remains available. */
+}
+const lineStyles = new LineStyleStore({
+  defaults: readLineStyleDefaults(theme),
+  rootStyle: document.documentElement.style,
+  storage: styleStorage,
+});
+let lineStylePanel = null;
 const levels = [
   "surface",
   "1000hPa",
@@ -53,8 +100,13 @@ const state = {
   level: levels.includes(query.get("level")) ? query.get("level") : "surface",
   manifest: null,
   grid: null,
+  temperatureRecord: null,
+  windRecords: null,
+  temperatureError: false,
+  heightContourError: false,
+  isobarError: false,
   profile: null,
-  heightStatus: "正在加载风层高度…",
+  heightStatus: "正在加载风温层高度…",
   weatherStatus: "",
   mapFailures: 0,
   mapBootstrapError: null,
@@ -71,7 +123,6 @@ const state = {
 let tiles,
   photoSurface,
   overlays,
-  weatherOverlay,
   cloudOverlay,
   terrainInfo,
   surfaceVersion = 0,
@@ -87,11 +138,25 @@ let cloudLoading = false,
   terrainRefreshAt = 0;
 let mapRetryAt = 0;
 let palette = null;
+let contourSnapshot = null,
+  heightContourKey = null,
+  heightContourRequestKey = null,
+  isobarSnapshot = null,
+  isobarRecord = null,
+  isobarOverlay = null,
+  pressureLoadingSnapshot = null,
+  pressureController = null,
+  heightContourGeneration = 0,
+  isobarGeneration = 0;
+const heightContourTask = new ContourTask(),
+  isobarTask = new ContourTask();
 const imageResponses = new ImageResponseCache();
 const imagePreviews = new SatellitePreviewCache();
 let mapStability;
 const geo = {};
 const scene = new THREE.Scene();
+const fillScene = new THREE.Scene();
+const weatherScene = new THREE.Scene();
 scene.background = new THREE.Color(theme("--earth-scene-background"));
 scene.add(new THREE.AmbientLight(theme("--earth-scene-light"), 2.1));
 const terrainLight = new THREE.DirectionalLight(
@@ -112,6 +177,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+const weatherCompositor = new WeatherCompositor(renderer);
 $("three-stage").append(renderer.domElement);
 const fallback = new BaseGlobe(theme);
 scene.add(fallback);
@@ -126,7 +192,34 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.12;
 controls.enableDoubleTapZoom = true;
 controls.zoomSpeed = 1.25;
-const winds = new WindLayer(scene, camera);
+const winds = new WindLayer(weatherScene, camera, lineStyles.get("wind"));
+winds.setViewport(
+  innerWidth,
+  innerHeight,
+  matchMedia("(pointer: coarse)").matches,
+);
+winds.lines.renderOrder = 20;
+const temperatures = new TemperatureLayer(fillScene, camera);
+const windSpeeds = new TemperatureLayer(fillScene, camera, { kind: "wind" });
+windSpeeds.setPalette(WIND_SPEED_PALETTE);
+const contourStyle = {
+  opacity: Number(theme("--earth-contour-opacity")),
+  font: theme("--earth-ui-font"),
+  fontSize: Number(theme("--earth-contour-label-size")),
+  padding: Number(theme("--earth-contour-label-padding")),
+  background: theme("--earth-floating-background"),
+};
+const heightContours = new ContourLayer(weatherScene, camera, {
+  ...contourStyle,
+  ...lineStyles.get("height"),
+  kind: "height",
+});
+const isobarLabels = new ContourLayer(weatherScene, camera, {
+  ...contourStyle,
+  ...lineStyles.get("pressure"),
+  kind: "pressure",
+  getGround: (lon, lat) => state.grid?.heightAt(lon, lat)?.ground || 0,
+});
 const buildings = new BuildingsLayer({
   parent: surfaceGroup,
   camera,
@@ -146,7 +239,7 @@ const marker = new THREE.Mesh(
 );
 marker.visible = false;
 marker.renderOrder = 100;
-scene.add(marker);
+weatherScene.add(marker);
 
 const satellite = new XYZTilesOverlay({
   url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -165,30 +258,58 @@ satellite.onFetchResponse = (url, r) => {
         (loadMetrics.imageryZooms[zoom] || 0) + 1;
   }
 };
-const admin = {
-  countries: new GeoJSONOverlay({
-    url: "../data/geography/countries.geojson",
-    strokeStyle: theme("--earth-country-line"),
-    strokeWidth: 0.7,
-    fillStyle: "transparent",
-    opacity: 0.64,
-  }),
-  provinces: new GeoJSONOverlay({
-    url: "../data/geography/china-provinces.geojson",
-    strokeStyle: theme("--earth-province-line"),
-    strokeWidth: 0.6,
-    fillStyle: "transparent",
-    opacity: 0.52,
-  }),
-  cities: new GeoJSONOverlay({
-    url: "../data/geography/china-cities.geojson",
-    strokeStyle: theme("--earth-city-line"),
-    strokeWidth: 0.6,
-    fillStyle: "transparent",
-    opacity: 0,
-  }),
-};
-for (const layer of Object.values(admin)) layer.detailResolution = 256;
+const admin = Object.fromEntries(
+  [
+    ["countries", 28],
+    ["provinces", 26],
+    ["cities", 24],
+    ["rivers", 22],
+  ].map(([key, order]) => [
+    key,
+    new GeographicLineLayer(weatherScene, camera, lineStyles.get(key), {
+      name: `Geographic reference ${key}`,
+      order,
+      haloColor: theme("--earth-reference-halo-color"),
+      haloOpacity: Number(theme("--earth-reference-halo-opacity")),
+      haloWidth: Number(theme("--earth-reference-halo-width")),
+    }),
+  ]),
+);
+const adminTopologyModes = {};
+function syncAdministrativeTopology() {
+  const country =
+    $("countries").checked && lineStyles.get("countries").opacity > 0;
+  const province =
+    $("provinces").checked && lineStyles.get("provinces").opacity > 0;
+  for (const key of ["provinces", "cities"]) {
+    if (!geo[key]) continue;
+    const options =
+      key === "provinces"
+        ? { includeOuter: !country }
+        : { includeOuter: !country && !province, withinParent: province };
+    const mode = JSON.stringify({
+      ...options,
+      parentReady: key === "cities" && !!geo.provinces,
+    });
+    if (adminTopologyModes[key] === mode) continue;
+    adminTopologyModes[key] = mode;
+    if (key === "cities" && geo.provinces) {
+      const geometries = [
+        administrativeBoundaries(geo.cities, {
+          includeOuter: false,
+          withinParent: true,
+        }),
+      ];
+      // Reuse the same province topology for city-level outer boundaries,
+      // rather than independently simplified outlines from each city file.
+      if (!province)
+        geometries.push(
+          administrativeBoundaries(geo.provinces, { includeOuter: !country }),
+        );
+      admin[key].setData({ type: "GeometryCollection", geometries });
+    } else admin[key].setData(administrativeBoundaries(geo[key], options));
+  }
+}
 
 function date(value) {
   return new Date(value).toLocaleString("zh-CN", {
@@ -200,10 +321,12 @@ function error(message) {
   state.errors.push(message);
   $("three-map-status").textContent = message;
 }
-async function json(url, timeout = 25000) {
+async function json(url, timeout = 25000, signal = null) {
   const r = await fetch(url, {
     cache: "no-store",
-    signal: AbortSignal.timeout(timeout),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(timeout)])
+      : AbortSignal.timeout(timeout),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
@@ -404,12 +527,7 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
     anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
     previewCache: photo ? null : imagePreviews,
     isInteracting: () => mapStability.moving,
-    overlays: [
-      ...(!photo && $("satellite").checked ? [satellite] : []),
-      ...Object.entries(admin)
-        .filter(([key]) => $(key).checked)
-        .map(([, layer]) => layer),
-    ],
+    overlays: !photo && $("satellite").checked ? [satellite] : [],
   });
   tiles.registerPlugin(overlays);
   overlays.onTexture = (overlay, texture) => {
@@ -462,9 +580,9 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
   controls.setScene(surfaceGroup);
   controls.setEllipsoid(WGS84_ELLIPSOID, tiles.group);
   activeFrame = surfaceGroup;
-  if (weatherOverlay && $("temperature").checked)
-    overlays.addOverlay(weatherOverlay, 10);
   if (cloudOverlay && state.cloud) overlays.addOverlay(cloudOverlay, 20);
+  if (isobarOverlay && $("isobars").checked)
+    overlays.addOverlay(isobarOverlay, 5);
   $("terrain-options").hidden = photo;
   $("building-options").hidden = photo;
   $("photo-note").hidden = !photo;
@@ -499,6 +617,7 @@ async function retryMap() {
 }
 
 function applyLayerOpacity() {
+  syncAdministrativeTopology();
   const include = (layer, enabled, order) => {
     if (!layer || !overlays) return;
     const present = overlays.overlays.includes(layer);
@@ -508,53 +627,229 @@ function applyLayerOpacity() {
   satellite.opacity = $("satellite").checked ? 1 : 0;
   include(satellite, !photoSurface && $("satellite").checked, 0);
   for (const key of Object.keys(admin)) {
-    admin[key].opacity = $(key).checked
-      ? key === "countries"
-        ? 0.64
-        : key === "provinces"
-          ? 0.52
-          : 0.48
-      : 0;
-    include(
-      admin[key],
-      $(key).checked,
-      key === "countries" ? 1 : key === "provinces" ? 2 : 3,
-    );
+    admin[key].setEnabled($(key).checked);
   }
-  if (weatherOverlay)
-    weatherOverlay.opacity = $("temperature").checked
-      ? Number($("weather-opacity").value)
-      : 0;
+  temperatures.enabled = $("temperature").checked;
+  temperatures.opacity = Number($("weather-opacity").value);
+  windSpeeds.enabled = $("wind-speed").checked;
+  windSpeeds.opacity = Number($("weather-opacity").value);
   if (cloudOverlay) cloudOverlay.opacity = $("cloud").checked ? 0.58 : 0;
-  include(weatherOverlay, $("temperature").checked, 10);
   include(cloudOverlay, $("cloud").checked, 20);
-  $("three-scale-row").hidden = !$("temperature").checked;
-  if ($("temperature").checked) drawLegend();
+  include(isobarOverlay, $("isobars").checked, 5);
+  $("three-scale-row").hidden = $("color-none").checked;
+  $("three-field-status").hidden = $("color-none").checked;
+  if (!$("color-none").checked) drawLegend();
+  updateFieldStatus();
   winds.enabled = $("wind").checked;
   $("opacity-value").value =
     Math.round(Number($("weather-opacity").value) * 100) + "%";
+  const url = new URL(location);
+  url.searchParams.set("rivers", $("rivers").checked ? "1" : "0");
+  url.searchParams.set("temperature", $("temperature").checked ? "1" : "0");
+  url.searchParams.set(
+    "color",
+    $("wind-speed").checked
+      ? "wind"
+      : $("temperature").checked
+        ? "temp"
+        : "none",
+  );
+  history.replaceState(null, "", url);
+  $("classic-link").href =
+    `../#current/wind/${state.level === "surface" ? "surface/level" : "isobaric/" + state.level}/overlay=${$("temperature").checked ? "temp" : $("wind-speed").checked ? "default" : "off"}`;
+  applyContours();
+  lineStylePanel?.sync();
+}
+
+function applyLineStyle(layer, style) {
+  if (layer === "wind") winds.setLineStyle(style);
+  else if (layer === "height") heightContours.setLineStyle(style);
+  else if (layer === "pressure") {
+    isobarLabels.setLineStyle(style);
+    isobarOverlay?.setLineStyle(style);
+  } else if (Object.hasOwn(admin, layer)) {
+    admin[layer].setLineStyle(style);
+    admin[layer].setEnabled($(layer).checked);
+    syncAdministrativeTopology();
+  }
+}
+
+function clearHeightContours() {
+  heightContourGeneration++;
+  heightContourTask.cancel();
+  heightContourKey = heightContourRequestKey = null;
+  heightContours.clear();
+  state.heightContourError = false;
+}
+
+function clearIsobars() {
+  isobarGeneration++;
+  pressureController?.abort();
+  pressureController = null;
+  pressureLoadingSnapshot = null;
+  isobarTask.cancel();
+  if (isobarOverlay) overlays?.deleteOverlay(isobarOverlay);
+  isobarOverlay = isobarRecord = isobarSnapshot = null;
+  isobarLabels.clear();
+  state.isobarError = false;
+}
+
+function applyContours() {
+  const height = $("height-contours").checked,
+    pressure = $("isobars").checked;
+  $("height-contours").disabled = state.level === "surface";
+  heightContours.enabled = height && state.level !== "surface";
+  isobarLabels.enabled = pressure;
+  $("height-contour-status").hidden = !height;
+  $("isobar-status").hidden = !pressure;
+  if (!height) {
+    heightContourGeneration++;
+    heightContourTask.cancel();
+    heightContourRequestKey = null;
+  } else ensureHeightContours();
+  if (!pressure) {
+    isobarGeneration++;
+    pressureController?.abort();
+    pressureController = null;
+    pressureLoadingSnapshot = null;
+    isobarTask.cancel();
+  } else loadIsobars();
+  const url = new URL(location);
+  url.searchParams.set("heightContours", height ? "1" : "0");
+  url.searchParams.set("isobars", pressure ? "1" : "0");
+  history.replaceState(null, "", url);
+}
+
+async function ensureHeightContours() {
+  if (!$("height-contours").checked) return;
+  if (state.level === "surface") {
+    $("height-contour-status").textContent =
+      "位势高度线用于等压层；地面可开启海平面等压线";
+    return;
+  }
+  if (!state.profile || !state.grid) {
+    $("height-contour-status").textContent = "位势高度线等待当前层高度…";
+    return;
+  }
+  const key = state.manifest.id + ":" + state.level;
+  if (heightContourKey === key || heightContourRequestKey === key) return;
+  const generation = ++heightContourGeneration;
+  heightContourRequestKey = key;
+  $("height-contour-status").textContent = "正在生成位势高度线…";
+  try {
+    const result = await heightContourTask.run(
+      heightContourInput(state.profile, state.grid.header),
+    );
+    if (
+      !result ||
+      generation !== heightContourGeneration ||
+      !$("height-contours").checked
+    )
+      return;
+    heightContours.setData(result);
+    heightContourKey = key;
+    state.heightContourError = false;
+    $("height-contour-status").textContent =
+      `${result.layer} 位势高度线 · 间距 ${result.interval} m · 标注为原始值`;
+  } catch {
+    if (generation !== heightContourGeneration) return;
+    state.heightContourError = true;
+    $("height-contour-status").textContent = "位势高度线暂不可用，可重试";
+  } finally {
+    if (generation === heightContourGeneration) heightContourRequestKey = null;
+  }
+}
+
+async function loadIsobars() {
+  if (!$("isobars").checked || !state.manifest) return;
+  const snapshot = state.manifest.id;
+  if (isobarSnapshot === snapshot || pressureLoadingSnapshot === snapshot)
+    return;
+  if (!state.grid) {
+    $("isobar-status").textContent = "海平面等压线等待当前预报…";
+    return;
+  }
+  const reference = state.grid.header,
+    generation = ++isobarGeneration;
+  pressureController?.abort();
+  const controller = new AbortController();
+  pressureController = controller;
+  pressureLoadingSnapshot = snapshot;
+  $("isobar-status").textContent = "正在读取同批次海平面气压…";
+  try {
+    const data = await json(
+      `/api/earth/3d/pressure/${snapshot}`,
+      120000,
+      controller.signal,
+    );
+    if (generation !== isobarGeneration || snapshot !== state.manifest.id)
+      return;
+    const result = await isobarTask.run(
+      pressureContourInput(data, reference, snapshot),
+    );
+    if (
+      !result ||
+      generation !== isobarGeneration ||
+      snapshot !== state.manifest.id ||
+      !$("isobars").checked
+    )
+      return;
+    const layer = new StyledGeoJSONOverlay(
+      {
+        geojson: contoursGeoJSON(result),
+        fillStyle: "transparent",
+      },
+      lineStyles.get("pressure"),
+    );
+    layer.detailResolution = 256;
+    if (isobarOverlay) overlays?.deleteOverlay(isobarOverlay);
+    isobarOverlay = layer;
+    isobarRecord = data.pressure;
+    isobarSnapshot = snapshot;
+    isobarLabels.setData(result);
+    overlays?.addOverlay(layer, 5);
+    state.isobarError = false;
+    $("isobar-status").textContent =
+      "海平面等压线 · 间距 4 hPa · 与风温场同批次";
+    if (state.selected) showPoint(state.selected);
+  } catch (error) {
+    if (generation !== isobarGeneration || error.name === "AbortError") return;
+    state.isobarError = true;
+    $("isobar-status").textContent = "同批次海平面气压暂不可用，可重试";
+  } finally {
+    if (generation === isobarGeneration) {
+      pressureLoadingSnapshot = null;
+      pressureController = null;
+    }
+  }
 }
 
 async function drawLegend() {
-  if (!palette) {
+  const wind = $("wind-speed").checked;
+  if (!wind && !palette) {
     try {
       palette = await json("/api/earth/3d/palette");
     } catch {
       return;
     }
   }
+  const colors = wind ? WIND_SPEED_PALETTE : palette;
+  if (wind !== $("wind-speed").checked || $("color-none").checked) return;
+  if (!colors) return;
+  $("three-scale-title").textContent = wind ? "风速 | 0 km/h" : "气温 | −80°C";
+  $("three-scale-end").textContent = wind ? "360 km/h" : "55°C";
   const canvas = $("three-scale"),
     rect = canvas.getBoundingClientRect();
   canvas.width = Math.max(1, Math.round(rect.width));
   canvas.height = Math.max(1, Math.round(rect.height));
   const ctx = canvas.getContext("2d"),
     gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  const min = palette.stops[0],
-    max = palette.stops.at(-1);
-  palette.stops.forEach((stop, i) =>
+  const min = colors.stops[0],
+    max = colors.stops.at(-1);
+  colors.stops.forEach((stop, i) =>
     gradient.addColorStop(
       (stop - min) / (max - min),
-      `rgb(${palette.colors[i].join(",")})`,
+      `rgb(${colors.colors[i].join(",")})`,
     ),
   );
   ctx.fillStyle = gradient;
@@ -563,16 +858,24 @@ async function drawLegend() {
 
 async function loadWeather() {
   const version = ++weatherVersion;
+  clearHeightContours();
+  if (contourSnapshot !== state.manifest?.id) {
+    clearIsobars();
+    contourSnapshot = state.manifest?.id;
+  }
   winds.clear();
   winds.setGrid(null);
   state.grid = null;
+  state.temperatureRecord = null;
+  state.windRecords = null;
+  state.temperatureError = false;
   state.profile = null;
-  $("three-height-status").textContent = "正在加载风场与对应高度…";
+  temperatures.clear();
+  windSpeeds.clear();
+  $("three-height-status").textContent = "正在加载风温场与对应高度…";
+  $("three-field-status").textContent = "填色等待对应高度…";
+  applyContours();
   if (state.selected) showPoint(state.selected);
-  if (weatherOverlay) {
-    overlays?.deleteOverlay(weatherOverlay);
-    weatherOverlay = null;
-  }
   const level = state.level;
   $("three-data-status").textContent =
     "正在加载 " + (level === "surface" ? "地面" : level) + " 风场与气温…";
@@ -592,19 +895,12 @@ async function loadWeather() {
     if ((grid.header.layer || "surface") !== level)
       throw new Error("气压层不匹配");
     state.grid = grid;
+    state.temperatureRecord = temp[0];
+    state.windRecords = wind;
     state.profile = null;
-    state.heightStatus = "正在加载同批次 GFS 风层高度…";
+    state.heightStatus = "正在加载同批次 GFS 风温层高度…";
     $("three-height-status").textContent = state.heightStatus;
     loadHeights(version, grid, level, state.manifest.id);
-    if (weatherOverlay) overlays?.deleteOverlay(weatherOverlay);
-    weatherOverlay = new XYZTilesOverlay({
-      url: `/api/earth/3d/grid/${state.manifest.id}/${level}/temp/{z}/{x}/{y}.png`,
-      projection: "EPSG:4326",
-      levels: 9,
-      opacity: 0,
-    });
-    weatherOverlay.detailResolution = 256;
-    if ($("temperature").checked) overlays?.addOverlay(weatherOverlay, 10);
     applyLayerOpacity();
     $("three-date").textContent = date(state.manifest.valid_time);
     $("three-run").textContent = date(state.manifest.run_time);
@@ -613,7 +909,7 @@ async function loadWeather() {
     state.weatherStatus = "风场与气温：0.5° 网格，同批次预报";
     $("three-data-status").textContent = state.weatherStatus;
     $("classic-link").href =
-      `../#current/wind/${level === "surface" ? "surface/level" : "isobaric/" + level}/overlay=${$("temperature").checked ? "temp" : "default"}`;
+      `../#current/wind/${level === "surface" ? "surface/level" : "isobaric/" + level}/overlay=${$("temperature").checked ? "temp" : $("wind-speed").checked ? "default" : "off"}`;
     const u = new URL(location);
     u.searchParams.set("level", level);
     history.replaceState(null, "", u);
@@ -634,18 +930,61 @@ async function loadHeights(version, grid, level, snapshot) {
     grid.setHeightProfile(profile);
     state.profile = profile;
     winds.setGrid(grid);
+    windSpeeds.setData(state.windRecords, profile);
     updateHeightLabel();
+    updateFieldStatus();
+    loadTemperature(version, state.temperatureRecord, profile);
+    ensureHeightContours();
     if (state.selected) showPoint(state.selected);
   } catch {
     if (version !== weatherVersion) return;
-    state.heightStatus = "对应高度暂不可用，风线暂停；可重试";
+    state.heightStatus = "对应高度暂不可用，风温层暂停；可重试";
     $("three-height-status").textContent = state.heightStatus;
+    $("three-field-status").textContent = "风速与气温填色等待对应高度，可重试";
   }
+}
+
+async function loadTemperature(version, record, profile) {
+  try {
+    const colors = palette || (await json("/api/earth/3d/palette"));
+    if (version !== weatherVersion) return;
+    palette = colors;
+    temperatures.setPalette(colors);
+    temperatures.setData(record, profile);
+    state.temperatureError = false;
+    updateFieldStatus();
+    if (state.selected) showPoint(state.selected);
+  } catch {
+    if (version !== weatherVersion) return;
+    temperatures.clear();
+    state.temperatureError = true;
+    updateFieldStatus();
+  }
+}
+
+function updateFieldStatus() {
+  const wind = $("wind-speed").checked,
+    layer = wind ? windSpeeds : temperatures;
+  if (!layer.field) {
+    $("three-field-status").textContent = "填色等待对应高度，可重试";
+    return;
+  }
+  $("three-field-status").textContent = wind
+    ? state.level === "surface"
+      ? "风速：模式地形以上 10 m"
+      : `风速：${state.level} · 与经典模式同一色标`
+    : state.level === "surface"
+      ? "气温面：模式地形以上 2 m"
+      : `气温面：${state.level} 位势高度面`;
+  $("three-field-status").textContent += " · 低于地形时贴地";
 }
 
 function updateHeightLabel() {
   const scale = Number($("height-scale").value);
   winds.setHeightScale(scale);
+  temperatures.setHeightScale(scale);
+  windSpeeds.setHeightScale(scale);
+  heightContours.setHeightScale(scale);
   $("height-scale-value").value = scale + "×";
   const url = new URL(location);
   url.searchParams.set("heightScale", scale);
@@ -653,9 +992,10 @@ function updateHeightLabel() {
   if (!state.profile) return;
   state.heightStatus =
     state.level === "surface"
-      ? "地面风：GFS 地形以上 10 m"
+      ? "模式地形以上：风 10 m · 气温 2 m"
       : `${state.level} · GFS 位势高度 · ${scale === 1 ? "真实比例" : "垂直距离放大 " + scale + " 倍"}`;
   $("three-height-status").textContent = state.heightStatus;
+  if (state.selected) showPoint(state.selected);
 }
 
 async function refreshWeather() {
@@ -777,6 +1117,15 @@ function featureAt(collection, lon, lat) {
   });
 }
 function showPoint(point) {
+  let temperaturePoint;
+  if (point.temperatureHit || point.windSpeedHit) {
+    temperaturePoint = (point.windSpeedHit ? windSpeeds : temperatures).sample(
+      point.lon / RAD,
+      point.lat / RAD,
+      point.terrainHeight,
+    );
+    if (temperaturePoint) point = { ...point, height: temperaturePoint.height };
+  }
   state.selected = point;
   $("location").hidden = false;
   const lon = point.lon / RAD,
@@ -791,29 +1140,44 @@ function showPoint(point) {
   $("three-point-wind").textContent = w
     ? `风 | ${((Math.atan2(-w.u, -w.v) / RAD + 360) % 360).toFixed(0)}° · ${(w.speed * 3.6).toFixed(0)} km/h`
     : "";
-  $("three-point-temp").textContent =
-    w && Number.isFinite(w.temp) ? `气温 | ${w.temp.toFixed(1)} °C` : "";
+  const temperature = state.grid?.temperatureAt(lon, lat);
+  $("three-point-temp").textContent = Number.isFinite(temperature)
+    ? `气温 | ${temperature.toFixed(1)} °C`
+    : "";
+  const pressure =
+    isobarRecord && $("isobars").checked
+      ? scalarAt(isobarRecord, lon, lat) / 100
+      : NaN;
+  $("three-point-pressure").textContent = Number.isFinite(pressure)
+    ? `海平面气压 | ${pressure.toFixed(1)} hPa`
+    : "";
   const height = state.grid?.heightAt(lon, lat);
   $("three-point-layer").textContent = height
     ? state.level === "surface"
-      ? "风层 | 地面以上 10 m"
-      : `风层 | ${state.level} · 位势高度约 ${(height.geopotential / 1000).toFixed(2)} km${height.belowGround ? "（低于地面，不绘制风线）" : ""}`
+      ? "气象层 | 地面风 10 m · 气温 2 m"
+      : `气象层 | ${state.level} · 位势高度约 ${(height.geopotential / 1000).toFixed(2)} km${height.belowGround ? "（位于地下，填色贴地；风线及等值线不绘制）" : ""}`
     : "";
-  $("three-point-height").textContent = point.photoHit
-    ? "Google Maps · 实景三维表面"
-    : point.buildingHit
-      ? `OSM 建筑表面高程（近似） | ${Math.round(point.height)} m`
-      : point.terrainHit &&
-          WGS84_ELLIPSOID.getPositionElevation(camera.position) < 500000
-        ? `地形高程（近似） | ${Math.round(point.height)} m`
-        : "放大后可查看地形高程";
+  $("three-point-height").textContent =
+    point.temperatureHit || point.windSpeedHit
+      ? temperaturePoint
+        ? `${point.windSpeedHit ? "风速" : "气温"}${temperaturePoint.clampedToGround ? "填色贴地" : "面显示高度"} | ${Math.round(point.height)} m`
+        : "填色面高度待更新"
+      : point.photoHit
+        ? "Google Maps · 实景三维表面"
+        : point.buildingHit
+          ? `OSM 建筑表面高程（近似） | ${Math.round(point.height)} m`
+          : point.terrainHit &&
+              WGS84_ELLIPSOID.getPositionElevation(camera.position) < 500000
+            ? `地形高程（近似） | ${Math.round(point.height)} m`
+            : "放大后可查看地形高程";
   WGS84_ELLIPSOID.getCartographicToPosition(
     point.lat,
     point.lon,
     point.height + 40,
     marker.position,
   );
-  marker.visible = true;
+  marker.visible =
+    !(point.temperatureHit || point.windSpeedHit) || !!temperaturePoint;
 }
 
 renderer.domElement.addEventListener(
@@ -837,6 +1201,28 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   const hit = activeFrame
     ? raycaster.intersectObject(activeFrame, true)[0]
     : null;
+  const temperatureHit = temperatures.pick(raycaster.ray, hit?.point);
+  const windSpeedHit = windSpeeds.pick(raycaster.ray, hit?.point);
+  if (windSpeedHit && (!hit || windSpeedHit.distance <= hit.distance + 1)) {
+    showPoint({
+      lat: windSpeedHit.lat,
+      lon: windSpeedHit.lon,
+      height: windSpeedHit.height,
+      windSpeedHit: true,
+      terrainHeight: windSpeedHit.terrainHeight,
+    });
+    return;
+  }
+  if (temperatureHit && (!hit || temperatureHit.distance <= hit.distance + 1)) {
+    showPoint({
+      lat: temperatureHit.lat,
+      lon: temperatureHit.lon,
+      height: temperatureHit.height,
+      temperatureHit: true,
+      terrainHeight: temperatureHit.terrainHeight,
+    });
+    return;
+  }
   const point =
     hit?.point ||
     WGS84_ELLIPSOID.intersectRay(raycaster.ray, new THREE.Vector3());
@@ -867,18 +1253,32 @@ $("show-menu").addEventListener("click", () => {
   if (open) drawLegend();
 });
 new ResizeObserver(() => {
-  if ($("temperature").checked) drawLegend();
+  if (!$("color-none").checked) drawLegend();
 }).observe($("three-scale"));
 for (const key of [
   "satellite",
   "countries",
   "provinces",
   "cities",
+  "rivers",
   "wind",
   "temperature",
+  "wind-speed",
+  "color-none",
 ])
   $(key).addEventListener("change", applyLayerOpacity);
 $("weather-opacity").addEventListener("input", applyLayerOpacity);
+for (const key of ["height-contours", "isobars"])
+  $(key).addEventListener("change", () => {
+    applyLayerOpacity();
+    if (state.selected) showPoint(state.selected);
+  });
+$("retry-contours").addEventListener("click", () => {
+  state.heightContourError = state.isobarError = false;
+  if (!state.profile && state.grid)
+    loadHeights(weatherVersion, state.grid, state.level, state.manifest.id);
+  applyContours();
+});
 $("height-scale").addEventListener("input", updateHeightLabel);
 $("retry-map").addEventListener("click", retryMap);
 $("retry-height").addEventListener("click", () => {
@@ -938,6 +1338,11 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
+  winds.setViewport(
+    innerWidth,
+    innerHeight,
+    matchMedia("(pointer: coarse)").matches,
+  );
   if (photoSurface) photoSurface.resize(camera, renderer);
   else tiles?.setResolutionFromRenderer(camera, renderer);
   buildings.resize();
@@ -963,11 +1368,44 @@ function frame(time) {
     buildings.recoverFromUpdateError(error);
   }
   winds.update(dt);
+  winds.updateLineViewport(innerHeight);
+  windSpeeds.update();
+  temperatures.update();
+  for (const layer of Object.values(admin))
+    layer.update(
+      !!mapStability?.moving || (winds.moving && winds.viewChanging),
+      innerHeight,
+    );
+  const occupied =
+    heightContours.enabled || isobarLabels.enabled
+      ? ["menu", "location", "sponsor", "three-load-status"]
+          .map((id) => $(id))
+          .filter(
+            (element) =>
+              !element.hidden && !element.classList.contains("invisible"),
+          )
+          .map((element) => element.getBoundingClientRect())
+      : [];
+  const heightBoxes = heightContours.update(
+    time,
+    innerWidth,
+    innerHeight,
+    occupied,
+  );
+  isobarLabels.update(
+    time,
+    innerWidth,
+    innerHeight,
+    occupied.concat(heightBoxes || []),
+  );
   if (marker.visible) {
     const distance = camera.position.distanceTo(marker.position);
     marker.scale.setScalar(Math.max(20, distance * 0.003));
   }
-  renderer.render(scene, camera);
+  weatherCompositor.render(scene, fillScene, weatherScene, camera, [
+    temperatures,
+    windSpeeds,
+  ]);
   if (time - lastStatus > 1500) {
     lastStatus = time;
     const pending =
@@ -998,7 +1436,10 @@ function frame(time) {
             ? "地图服务暂不可用 · 本地底图 · 自动重试"
             : "本地底图 · 正在加载地图细节";
     $("retry-map").hidden = !state.mapFailures;
-    $("retry-height").hidden = !!state.profile;
+    $("retry-height").hidden = !!state.profile && !state.temperatureError;
+    $("retry-contours").hidden =
+      !($("height-contours").checked && state.heightContourError) &&
+      !($("isobars").checked && state.isobarError);
     $("retry-buildings").hidden = !buildings.enabled || !buildings.failures;
     if (photoSurface) {
       const credits = photoSurface.credits();
@@ -1027,6 +1468,17 @@ function performanceMetrics() {
   return {
     basemap: state.basemap,
     photorealistic: photoSurface?.getState() || null,
+    temperature: temperatures.getState(),
+    windSpeed: windSpeeds.getState(),
+    colorSurface: weatherCompositor.getState(),
+    contours: {
+      height: heightContours.getState(),
+      pressure: {
+        ...isobarLabels.getState(),
+        snapshot: isobarSnapshot,
+        loading: !!pressureLoadingSnapshot,
+      },
+    },
     elapsedMs: Math.round(performance.now() - loadMetrics.startedAt),
     firstTerrainMs: loadMetrics.firstTerrainMs,
     firstImageryMs: loadMetrics.firstImageryMs,
@@ -1057,8 +1509,20 @@ window.weatherEarth3D = {
   captureMetrics: performanceMetrics,
   getState: () => ({
     engine: "three",
+    lineStyles: lineStyles.all(),
     basemap: state.basemap,
     photorealistic: photoSurface?.getState() || null,
+    temperature: temperatures.getState(),
+    windSpeed: windSpeeds.getState(),
+    colorSurface: weatherCompositor.getState(),
+    contours: {
+      height: heightContours.getState(),
+      pressure: {
+        ...isobarLabels.getState(),
+        snapshot: isobarSnapshot,
+        loading: !!pressureLoadingSnapshot,
+      },
+    },
     level: state.level,
     manifest: state.manifest?.id,
     validTime: state.manifest?.valid_time,
@@ -1081,7 +1545,11 @@ window.weatherEarth3D = {
     admin: Object.fromEntries(
       Object.keys(admin).map((k) => [
         k,
-        { enabled: $(k).checked, count: geo[k]?.features.length || 0 },
+        {
+          enabled: $(k).checked,
+          count: geo[k]?.features.length || 0,
+          ...admin[k].getState(),
+        },
       ]),
     ),
     cameraHeight: WGS84_ELLIPSOID.getPositionElevation(camera.position),
@@ -1091,6 +1559,25 @@ window.weatherEarth3D = {
 
 if (query.has("debug")) {
   window.weatherEarth3D.debug = {
+    setOverview: (lon, lat, altitude) => {
+      controls.resetState();
+      WGS84_ELLIPSOID.getCartographicToPosition(
+        lat * RAD,
+        lon * RAD,
+        altitude,
+        camera.position,
+      );
+      camera.up.set(
+        -Math.sin(lat * RAD) * Math.cos(lon * RAD),
+        -Math.sin(lat * RAD) * Math.sin(lon * RAD),
+        Math.cos(lat * RAD),
+      );
+      camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld();
+      controls.setCamera(camera);
+      controls.resetState();
+      winds.clear();
+    },
     captureView: () => {
       const pivot = controls.getPivotPoint(new THREE.Vector3());
       return { position: camera.position.toArray(), pivot: pivot.toArray() };
@@ -1121,6 +1608,21 @@ $("height-scale").value = Math.max(
   Math.min(20, Number(query.get("heightScale")) || 1),
 );
 $("buildings").checked = query.get("buildings") !== "0";
+$("temperature").checked = query.get("temperature") === "1";
+$("wind-speed").checked =
+  query.get("color") === "wind" ||
+  (!query.has("color") &&
+    !$("temperature").checked &&
+    query.get("windSpeed") !== "0");
+if (query.get("color") === "temp") $("temperature").checked = true;
+if (query.get("color") === "none")
+  $("temperature").checked = $("wind-speed").checked = false;
+$("color-none").checked = !$("temperature").checked && !$("wind-speed").checked;
+$("height-contours").checked = query.get("heightContours") === "1";
+$("isobars").checked = query.get("isobars") === "1";
+$("rivers").checked = query.get("rivers") !== "0";
+for (const key of Object.keys(admin)) admin[key].setEnabled($(key).checked);
+lineStylePanel = mountLineStylePanel(lineStyles, applyLineStyle);
 buildings.setEnabled(state.basemap !== "google" && $("buildings").checked);
 updateHeightLabel();
 preset(
@@ -1146,9 +1648,20 @@ for (const [key, file] of Object.entries({
   json("../data/geography/" + file + ".geojson")
     .then((data) => {
       geo[key] = data;
-      if (key === "countries") fallback.setCountries(data);
+      if (key === "countries") {
+        fallback.setCountries(data);
+        if (!admin.countries.source) admin.countries.setData(data);
+      } else syncAdministrativeTopology();
     })
     .catch(() => error("行政区划加载失败"));
 }
+json("../data/geography/reference-lines.json")
+  .then((data) => {
+    if (data.schema !== 1) throw new Error("Unsupported geography data");
+    admin.countries.setData(data.countries);
+    admin.rivers.setData(data.rivers);
+    geo.rivers = data.rivers.detail;
+  })
+  .catch(() => error("边界与河流数据加载失败"));
 refreshWeather();
 setInterval(refreshWeather, 60000);

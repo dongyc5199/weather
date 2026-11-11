@@ -12,13 +12,35 @@
     <div id="sponsor">
       <p id="three-source">Three.js · 三维地球</p>
       <p id="three-valid">正在加载 GFS…</p>
-      <p id="three-map-status" role="status">正在加载地球…</p>
-      <p id="three-building-status" role="status"></p>
-      <button id="retry-buildings" class="text-button" hidden>重试建筑</button>
-      <button id="retry-map" class="text-button" hidden>重试地图</button>
       <p id="three-cloud-time"></p>
     </div>
     <div id="details">
+      <aside
+        id="three-load-status"
+        role="status"
+        aria-live="polite"
+        aria-label="加载进度"
+      >
+        <p id="three-map-status" role="status">正在加载地球…</p>
+        <p id="three-building-status" role="status"></p>
+        <p id="three-field-status" class="earth-note" hidden>
+          填色等待对应高度…
+        </p>
+        <p id="height-contour-status" class="earth-note" hidden></p>
+        <p id="isobar-status" class="earth-note" hidden></p>
+        <p id="three-data-status" class="earth-note" role="status"></p>
+        <p class="earth-note">
+          <span id="three-height-status">正在加载风温层高度…</span>
+          <button id="retry-height" class="text-button" hidden>重试图层</button>
+        </p>
+        <button id="retry-map" class="text-button" hidden>重试地图</button>
+        <button id="retry-buildings" class="text-button" hidden>
+          重试建筑
+        </button>
+        <button id="retry-contours" class="text-button" hidden>
+          重试等值线
+        </button>
+      </aside>
       <div id="location" hidden>
         <p>
           <span id="location-coord"></span>
@@ -29,6 +51,7 @@
         <p id="three-place"></p>
         <p id="three-point-wind"></p>
         <p id="three-point-temp"></p>
+        <p id="three-point-pressure"></p>
         <p id="three-point-layer"></p>
         <p id="three-point-height"></p>
       </div>
@@ -41,11 +64,6 @@
         <p>
           视角 | <button class="text-button" data-view="world">全球</button>
           <button class="text-button" data-view="china">中国</button>
-          <button class="text-button" data-view="everest">珠峰地形</button>
-          <button class="text-button" data-view="layers">风层侧视</button>
-          <button class="text-button" data-view="city">西安城区</button>
-          <button class="text-button" data-view="buildings">建筑近景</button>
-          <button class="text-button" data-view="osaka">大阪实景</button>
         </p>
         <p>
           底图 |
@@ -64,9 +82,7 @@
             卫星地形
           </button>
         </p>
-        <p id="photo-note" class="earth-note" hidden>
-          Google Maps · 含真实纹理建筑，覆盖随地区变化
-        </p>
+        <p id="photo-note" class="earth-note" hidden></p>
         <p id="terrain-options">
           地形 |
           <label class="earth-toggle"
@@ -81,7 +97,6 @@
           <label class="earth-toggle"
             ><input id="buildings" type="checkbox" checked />3D 建筑</label
           >
-          <span class="earth-note">OSM · 覆盖随地区变化</span>
         </p>
         <p>
           边界 |
@@ -93,7 +108,13 @@
           >
           <label class="earth-toggle"
             ><input id="cities" type="checkbox" />市</label
-          ><span class="earth-note">（中国省市）</span>
+          >
+        </p>
+        <p>
+          水系 |
+          <label class="earth-toggle"
+            ><input id="rivers" type="checkbox" checked />主要河流与湖泊</label
+          >
         </p>
         <p>
           云图 |
@@ -107,12 +128,34 @@
           <label class="earth-toggle"
             ><input id="wind" type="checkbox" checked />风线</label
           >
+        </p>
+        <p role="group" aria-label="气象填色">
+          填色 |
           <label class="earth-toggle"
-            ><input id="temperature" type="checkbox" />气温</label
+            ><input
+              id="color-none"
+              name="weather-color"
+              type="radio"
+              checked
+            />无</label
+          >
+          <label class="earth-toggle"
+            ><input
+              id="wind-speed"
+              name="weather-color"
+              type="radio"
+            />风速</label
+          >
+          <label class="earth-toggle"
+            ><input
+              id="temperature"
+              name="weather-color"
+              type="radio"
+            />气温</label
           >
         </p>
         <p class="earth-range-row">
-          <label for="weather-opacity">气温透明度 | </label
+          <label for="weather-opacity">填色不透明度 | </label
           ><input
             id="weather-opacity"
             type="range"
@@ -123,15 +166,15 @@
           /><output id="opacity-value">40%</output>
         </p>
         <p class="scale-row" id="three-scale-row" hidden>
-          <span>气温 | −80°C</span
+          <span id="three-scale-title">气温 | −80°C</span
           ><canvas id="three-scale" class="earth-color-scale"></canvas
-          ><span>55°C</span>
+          ><span id="three-scale-end">55°C</span>
         </p>
         <p role="group" aria-label="气压层">
           高度 | <span id="three-heights"></span>
         </p>
         <p class="earth-range-row">
-          <label for="height-scale">风层高度放大 | </label>
+          <label for="height-scale">风温层高度放大 | </label>
           <input
             id="height-scale"
             type="range"
@@ -142,14 +185,119 @@
           />
           <output id="height-scale-value">1×</output>
         </p>
-        <p class="earth-note">
-          <span id="three-height-status">正在加载风层高度…</span>
-          <button id="retry-height" class="text-button" hidden>重试高度</button>
+        <p>
+          等值线 |
+          <label class="earth-toggle"
+            ><input id="height-contours" type="checkbox" /><span
+              class="earth-contour-swatch"
+              aria-hidden="true"
+            ></span
+            >位势高度线</label
+          >
+          <label class="earth-toggle"
+            ><input id="isobars" type="checkbox" /><span
+              class="earth-contour-swatch isobars"
+              aria-hidden="true"
+            ></span
+            >海平面等压线</label
+          >
         </p>
+        <p></p>
+        <details class="earth-line-style" id="line-style-settings">
+          <summary>线条样式</summary>
+          <div class="earth-line-style-fields">
+            <label class="earth-style-field" for="line-style-layer"
+              >图层<select id="line-style-layer"></select
+            ></label>
+            <div class="earth-style-field">
+              <label for="line-style-color">颜色</label>
+              <div class="earth-style-color-row">
+                <input
+                  id="line-style-color"
+                  type="color"
+                  aria-label="线条颜色"
+                />
+                <input
+                  id="line-style-hex"
+                  type="text"
+                  maxlength="7"
+                  spellcheck="false"
+                  aria-label="颜色十六进制值"
+                />
+                <svg
+                  id="line-style-preview"
+                  viewBox="0 0 160 24"
+                  role="img"
+                  aria-label="线条样式预览"
+                >
+                  <path
+                    id="line-style-preview-path"
+                    d="M4 17 C42 17 54 7 80 7 S122 17 156 17"
+                    fill="none"
+                  />
+                </svg>
+              </div>
+            </div>
+            <label class="earth-style-field" for="line-style-pattern"
+              >线型<select id="line-style-pattern">
+                <option value="solid">实线</option>
+                <option value="dashed">虚线</option>
+                <option value="dotted">点线</option>
+              </select></label
+            >
+            <div class="earth-style-range">
+              <label for="line-style-width">粗细</label
+              ><input
+                id="line-style-width"
+                type="range"
+                min="0.5"
+                max="6"
+                step="0.1"
+              /><output id="line-style-width-value"></output>
+            </div>
+            <div class="earth-style-range">
+              <label for="line-style-opacity">不透明度</label
+              ><input
+                id="line-style-opacity"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+              /><output id="line-style-opacity-value"></output>
+            </div>
+            <div id="line-style-label-options">
+              <label class="earth-toggle"
+                ><input
+                  id="line-style-labels"
+                  type="checkbox"
+                />显示数值标注</label
+              >
+              <div class="earth-style-range">
+                <label for="line-style-label-size">标注字号</label
+                ><input
+                  id="line-style-label-size"
+                  type="range"
+                  min="10"
+                  max="20"
+                  step="1"
+                /><output id="line-style-label-value"></output>
+              </div>
+            </div>
+            <p id="line-style-scope" hidden></p>
+            <div class="earth-style-actions">
+              <button id="line-style-reset" class="text-button" type="button">
+                恢复本层默认</button
+              ><span
+                id="line-style-status"
+                class="earth-note"
+                role="status"
+              ></span>
+            </div>
+          </div>
+        </details>
         <p>预报 | <span id="three-date">加载中…</span></p>
         <p>起报 | <span id="three-run">加载中…</span></p>
-        <p id="three-data-status" class="earth-note" role="status"></p>
-        <p class="earth-note">左键拖动 · 滚轮缩放 · 右键倾斜</p>
+
         <p>
           <a id="classic-link" class="internal-link" href="../">经典气象模式</a>
           ·

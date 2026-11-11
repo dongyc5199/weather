@@ -16,6 +16,8 @@
  * Styling Reset
  **************************************************************************************************/
 
+*, *::before, *::after { box-sizing: border-box; }
+
 :root {
     /* Shared UI scale, matched to the compact Nullschool reference. */
     --earth-ui-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -53,8 +55,46 @@
     --earth-country-line: #eef1f4;
     --earth-province-line: #edf1f4;
     --earth-city-line: #e4e9ee;
+    --earth-river-line: #c5e7f3;
+    --earth-reference-halo-color: #06111e;
+    --earth-reference-halo-opacity: 0.35;
+    --earth-reference-halo-width: 1;
     --earth-wind-color: #f2f2f2;
-    --earth-wind-opacity: 0.74;
+    --earth-wind-opacity: 0.62;
+    --earth-wind-width: 1.8;
+    --earth-wind-pattern: solid;
+    --earth-height-contour-color: #ffd166;
+    --earth-pressure-contour-color: #9bdaf1;
+    --earth-pressure-contour-width: 1.2;
+    --earth-height-contour-width: 1;
+    --earth-height-contour-pattern: solid;
+    --earth-pressure-contour-pattern: solid;
+    --earth-contour-opacity: 0.95;
+    --earth-contour-label-size: 12;
+    --earth-contour-label-padding: 3;
+    --earth-height-contour-opacity: var(--earth-contour-opacity);
+    --earth-pressure-contour-opacity: var(--earth-contour-opacity);
+    --earth-height-contour-labels-visible: 1;
+    --earth-pressure-contour-labels-visible: 1;
+    --earth-height-contour-label-size: var(--earth-contour-label-size);
+    --earth-pressure-contour-label-size: var(--earth-contour-label-size);
+    --earth-country-line-width: 1.1;
+    --earth-province-line-width: 0.8;
+    --earth-city-line-width: 0.6;
+    --earth-river-line-width: 1;
+    --earth-country-line-opacity: 0.95;
+    --earth-province-line-opacity: 0.8;
+    --earth-city-line-opacity: 0.48;
+    --earth-river-line-opacity: 0.85;
+    --earth-river-line-pattern: solid;
+    --earth-country-line-pattern: solid;
+    --earth-province-line-pattern: solid;
+    --earth-city-line-pattern: solid;
+    --earth-input-background: #171717;
+    --earth-input-border: #68707b;
+    --earth-input-height: 2rem;
+    --earth-field-gap: 0.5rem;
+    --earth-control-error: #ff9a9a;
     --earth-building-tint: #d0d6db;
     --earth-credit-logo-height: 1.25rem;
 }
@@ -115,6 +155,28 @@ a, .text-button {
 .earth-three [hidden] { display: none !important; }
 .earth-toggle { display: inline-flex; align-items: center; gap: 0.25rem; margin-right: var(--earth-control-gap); white-space: nowrap; }
 .earth-toggle input { accent-color: var(--earth-accent); width: 1em; height: 1em; margin: 0; }
+.earth-contour-swatch { display: inline-block; width: 1.5em; border-top: calc(var(--earth-height-contour-width) * 1px) var(--earth-height-contour-pattern) var(--earth-height-contour-color); opacity: var(--earth-height-contour-opacity); }
+.earth-contour-swatch.isobars { border-top-color: var(--earth-pressure-contour-color); border-top-width: calc(var(--earth-pressure-contour-width) * 1px); border-top-style: var(--earth-pressure-contour-pattern); opacity: var(--earth-pressure-contour-opacity); }
+.earth-line-style { margin-block: var(--earth-ui-gap); }
+.earth-line-style summary { cursor: pointer; padding-block: var(--earth-ui-gap); min-height: var(--earth-input-height); }
+.earth-line-style-fields { display: grid; gap: var(--earth-field-gap); padding-block: var(--earth-ui-gap); }
+.earth-style-field { display: grid; gap: var(--earth-control-gap); }
+.earth-style-field select, .earth-style-field input[type="text"], .earth-style-field input[type="color"] { min-height: var(--earth-input-height); color: var(--earth-text); background: var(--earth-input-background); border: 1px solid var(--earth-input-border); border-radius: var(--earth-control-radius); font: inherit; padding: 0.25rem 0.5rem; min-width: 0; }
+.earth-style-color-row { display: grid; grid-template-columns: 2.75rem 7rem minmax(0, 1fr); align-items: center; gap: var(--earth-control-gap); }
+.earth-style-field input[type="color"] { width: 100%; padding: 0.125rem; cursor: pointer; }
+.earth-style-field input[aria-invalid="true"] { border-color: var(--earth-control-error); }
+.earth-style-range { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 3.5rem; gap: var(--earth-control-gap); align-items: center; }
+.earth-style-range input { min-width: 0; width: 100%; accent-color: var(--earth-accent); }
+.earth-style-range output { text-align: right; font-variant-numeric: tabular-nums; }
+.earth-style-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--earth-ui-gap); }
+#line-style-preview { width: 100%; height: var(--earth-input-height); }
+.earth-line-style input:focus-visible, .earth-line-style select:focus-visible, .earth-line-style summary:focus-visible { outline: 2px solid var(--earth-accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+    .earth-line-style { --earth-input-height: 2.75rem; }
+    .earth-line-style .earth-toggle, .earth-line-style button { min-height: var(--earth-input-height); }
+    .earth-style-range { min-height: var(--earth-input-height); grid-template-columns: 5rem minmax(0, 1fr) 3rem; }
+    .earth-style-color-row { grid-template-columns: 2.75rem 6.5rem minmax(0, 1fr); }
+}
 .earth-note { font-size: 0.75rem; color: var(--earth-muted); }
 .earth-range-row { display: flex; gap: var(--earth-control-gap); align-items: center; }
 .earth-range-row input { flex: 1; min-width: 0; accent-color: var(--earth-accent); }
@@ -460,3 +522,20 @@ body {
 #closing {
     padding-bottom: 2.5rem;
 }
+
+/* Loading feedback shares the menu layout, outside its scrolling surface. */
+.earth-three #three-load-status {
+    width: 100%;
+    max-height: min(7rem, 18dvh);
+    overflow-y: auto;
+    margin-bottom: var(--earth-ui-gap);
+    padding-inline: var(--earth-panel-pad-x);
+    font-size: var(--earth-ui-size);
+    color: var(--earth-ink, #eee);
+    pointer-events: auto;
+}
+.earth-three #three-load-status .earth-note { font-size: inherit; color: inherit; }
+.earth-three #three-load-status .status-idle,
+.earth-three #three-load-status p:empty,
+.earth-three #photo-note { display: none; }
+.earth-three #three-load-status:not(:has(p:not(.status-idle):not([hidden]):not(:empty))):not(:has(button:not([hidden]))) { display: none; }
