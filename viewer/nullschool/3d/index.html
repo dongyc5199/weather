@@ -1,330 +1,472 @@
 <!doctype html>
+
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
     <title>Weather · 三维地球</title>
-    <link rel="icon" href="../favicon.ico" />
-    <link rel="stylesheet" href="../styles/styles.css" />
+    <link href="../favicon.ico" rel="icon" />
+    <link href="../styles/styles.css" rel="stylesheet" />
   </head>
-  <body class="earth-three">
-    <main id="three-stage" aria-label="三维天气地球"></main>
-    <div id="sponsor">
-      <p id="three-source">Three.js · 三维地球</p>
-      <p id="three-valid">正在加载 GFS…</p>
-      <p id="three-cloud-time"></p>
-    </div>
-    <div id="details">
-      <aside
-        id="three-load-status"
-        role="status"
-        aria-live="polite"
-        aria-label="加载进度"
+  <body class="earth-three earth-controls-open">
+    <header class="earth-toolbar">
+      <h1 id="earth">earth</h1>
+      <span class="earth-brand-context">天气地球</span>
+      <p class="earth-view-switch">
+        <span class="earth-row-controls"
+          ><button class="text-button" data-view="world">全球</button>
+          <button class="text-button" data-view="china">中国</button>
+        </span>
+      </p>
+      <button
+        aria-controls="menu"
+        aria-expanded="true"
+        aria-label="收起图层面板，专注地球"
+        class="text-button"
+        id="show-menu"
       >
+        专注地球
+      </button>
+      <div id="sponsor">
+        <p hidden="" id="three-valid">正在加载 GFS…</p>
+        <p class="earth-time">
+          预报
+          <span id="three-date"> 加载中… </span>
+        </p>
+        <p class="earth-time">
+          起报
+          <span id="three-run"> 加载中… </span>
+        </p>
+      </div>
+    </header>
+    <aside
+      aria-label="加载进度"
+      aria-live="polite"
+      id="three-load-status"
+      role="status"
+    >
+      <span aria-hidden="true" class="earth-status-spinner"></span
+      ><span id="three-load-summary"></span
+      ><button class="text-button" hidden="" id="retry-height">重试图层</button
+      ><button class="text-button" hidden="" id="retry-map">重试地图</button
+      ><button class="text-button" hidden="" id="retry-buildings">
+        重试建筑</button
+      ><button class="text-button" hidden="" id="retry-contours">
+        重试等值线
+      </button>
+      <div aria-hidden="true" class="earth-status-sources">
         <p id="three-map-status" role="status">正在加载地球…</p>
         <p id="three-building-status" role="status"></p>
-        <p id="three-field-status" class="earth-note" hidden>
+        <p class="earth-note" hidden="" id="three-field-status">
           填色等待对应高度…
         </p>
-        <p id="height-contour-status" class="earth-note" hidden></p>
-        <p id="isobar-status" class="earth-note" hidden></p>
-        <p id="three-data-status" class="earth-note" role="status"></p>
+        <p class="earth-note" hidden="" id="height-contour-status"></p>
+        <p class="earth-note" hidden="" id="isobar-status"></p>
+        <p class="earth-note" id="three-data-status" role="status"></p>
         <p class="earth-note">
-          <span id="three-height-status">正在加载风温层高度…</span>
-          <button id="retry-height" class="text-button" hidden>重试图层</button>
+          <span id="three-height-status"> 正在加载风温层高度… </span>
         </p>
-        <button id="retry-map" class="text-button" hidden>重试地图</button>
-        <button id="retry-buildings" class="text-button" hidden>
-          重试建筑
-        </button>
-        <button id="retry-contours" class="text-button" hidden>
-          重试等值线
-        </button>
-      </aside>
-      <div id="location" hidden>
-        <p>
-          <span id="location-coord"></span>
-          <button id="location-close" class="text-button" aria-label="关闭点位">
-            ×
-          </button>
-        </p>
-        <p id="three-place"></p>
-        <p id="three-point-wind"></p>
-        <p id="three-point-temp"></p>
-        <p id="three-point-pressure"></p>
-        <p id="three-point-layer"></p>
-        <p id="three-point-height"></p>
+        <p id="three-cloud-time"></p>
       </div>
-      <section
-        id="menu"
-        class="invisible"
-        aria-hidden="true"
-        aria-label="三维图层设置"
-      >
-        <p>
-          视角 | <button class="text-button" data-view="world">全球</button>
-          <button class="text-button" data-view="china">中国</button>
-        </p>
-        <p>
-          底图 |
+    </aside>
+    <main aria-label="三维天气地球" id="three-stage"></main>
+    <div id="details">
+      <section aria-hidden="false" aria-label="三维图层设置" class="" id="menu">
+        <div class="earth-panel-heading">
+          <h2>探索图层</h2>
+          <span id="earth-active-context">GFS</span>
+        </div>
+        <div aria-label="图层设置分类" class="earth-panel-tabs" role="tablist">
           <button
+            aria-controls="earth-panel-weather"
+            aria-selected="true"
             class="text-button"
-            data-basemap="google"
-            aria-pressed="false"
+            id="earth-tab-weather"
+            role="tab"
+            tabindex="0"
+            type="button"
           >
-            实景三维
-          </button>
-          <button
+            气象</button
+          ><button
+            aria-controls="earth-panel-map"
+            aria-selected="false"
             class="text-button"
-            data-basemap="terrain"
-            aria-pressed="false"
+            id="earth-tab-map"
+            role="tab"
+            tabindex="-1"
+            type="button"
           >
-            卫星地形
+            地图</button
+          ><button
+            aria-controls="earth-panel-style"
+            aria-selected="false"
+            class="text-button"
+            id="earth-tab-style"
+            role="tab"
+            tabindex="-1"
+            type="button"
+          >
+            样式
           </button>
-        </p>
-        <p id="photo-note" class="earth-note" hidden></p>
-        <p id="terrain-options">
-          地形 |
-          <label class="earth-toggle"
-            ><input id="satellite" type="checkbox" checked />卫星影像</label
-          >
-          <label class="earth-toggle"
-            ><input id="terrain" type="checkbox" checked />3D 地形</label
-          >
-        </p>
-        <p id="building-options">
-          建筑 |
-          <label class="earth-toggle"
-            ><input id="buildings" type="checkbox" checked />3D 建筑</label
-          >
-        </p>
-        <p>
-          边界 |
-          <label class="earth-toggle"
-            ><input id="countries" type="checkbox" checked />国家</label
-          >
-          <label class="earth-toggle"
-            ><input id="provinces" type="checkbox" checked />省</label
-          >
-          <label class="earth-toggle"
-            ><input id="cities" type="checkbox" />市</label
-          >
-        </p>
-        <p>
-          水系 |
-          <label class="earth-toggle"
-            ><input id="rivers" type="checkbox" checked />主要河流与湖泊</label
-          >
-        </p>
-        <p>
-          云图 |
-          <label class="earth-toggle"
-            ><input id="cloud" type="checkbox" />东亚红外</label
-          >
-          <button id="refresh-cloud" class="text-button">更新影像</button>
-        </p>
-        <p>
-          天气 |
-          <label class="earth-toggle"
-            ><input id="wind" type="checkbox" checked />风线</label
-          >
-        </p>
-        <p role="group" aria-label="气象填色">
-          填色 |
-          <label class="earth-toggle"
-            ><input
-              id="color-none"
-              name="weather-color"
-              type="radio"
-              checked
-            />无</label
-          >
-          <label class="earth-toggle"
-            ><input
-              id="wind-speed"
-              name="weather-color"
-              type="radio"
-            />风速</label
-          >
-          <label class="earth-toggle"
-            ><input
-              id="temperature"
-              name="weather-color"
-              type="radio"
-            />气温</label
-          >
-        </p>
-        <p class="earth-range-row">
-          <label for="weather-opacity">填色不透明度 | </label
-          ><input
-            id="weather-opacity"
-            type="range"
-            min="0"
-            max="0.8"
-            step="0.05"
-            value="0.4"
-          /><output id="opacity-value">40%</output>
-        </p>
-        <p class="scale-row" id="three-scale-row" hidden>
-          <span id="three-scale-title">气温 | −80°C</span
-          ><canvas id="three-scale" class="earth-color-scale"></canvas
-          ><span id="three-scale-end">55°C</span>
-        </p>
-        <p role="group" aria-label="气压层">
-          高度 | <span id="three-heights"></span>
-        </p>
-        <p class="earth-range-row">
-          <label for="height-scale">风温层高度放大 | </label>
-          <input
-            id="height-scale"
-            type="range"
-            min="1"
-            max="20"
-            step="1"
-            value="1"
-          />
-          <output id="height-scale-value">1×</output>
-        </p>
-        <p>
-          等值线 |
-          <label class="earth-toggle"
-            ><input id="height-contours" type="checkbox" /><span
-              class="earth-contour-swatch"
-              aria-hidden="true"
-            ></span
-            >位势高度线</label
-          >
-          <label class="earth-toggle"
-            ><input id="isobars" type="checkbox" /><span
-              class="earth-contour-swatch isobars"
-              aria-hidden="true"
-            ></span
-            >海平面等压线</label
-          >
-        </p>
-        <p></p>
-        <details class="earth-line-style" id="line-style-settings">
-          <summary>线条样式</summary>
-          <div class="earth-line-style-fields">
-            <label class="earth-style-field" for="line-style-layer"
-              >图层<select id="line-style-layer"></select
-            ></label>
-            <div class="earth-style-field">
-              <label for="line-style-color">颜色</label>
-              <div class="earth-style-color-row">
-                <input
-                  id="line-style-color"
-                  type="color"
-                  aria-label="线条颜色"
-                />
-                <input
-                  id="line-style-hex"
-                  type="text"
-                  maxlength="7"
-                  spellcheck="false"
-                  aria-label="颜色十六进制值"
-                />
-                <svg
-                  id="line-style-preview"
-                  viewBox="0 0 160 24"
-                  role="img"
-                  aria-label="线条样式预览"
-                >
-                  <path
-                    id="line-style-preview-path"
-                    d="M4 17 C42 17 54 7 80 7 S122 17 156 17"
-                    fill="none"
-                  />
-                </svg>
-              </div>
-            </div>
-            <label class="earth-style-field" for="line-style-pattern"
-              >线型<select id="line-style-pattern">
-                <option value="solid">实线</option>
-                <option value="dashed">虚线</option>
-                <option value="dotted">点线</option>
-              </select></label
-            >
-            <div class="earth-style-range">
-              <label for="line-style-width">粗细</label
-              ><input
-                id="line-style-width"
-                type="range"
-                min="0.5"
-                max="6"
-                step="0.1"
-              /><output id="line-style-width-value"></output>
-            </div>
-            <div class="earth-style-range">
-              <label for="line-style-opacity">不透明度</label
-              ><input
-                id="line-style-opacity"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-              /><output id="line-style-opacity-value"></output>
-            </div>
-            <div id="line-style-label-options">
-              <label class="earth-toggle"
-                ><input
-                  id="line-style-labels"
-                  type="checkbox"
-                />显示数值标注</label
-              >
-              <div class="earth-style-range">
-                <label for="line-style-label-size">标注字号</label
-                ><input
-                  id="line-style-label-size"
-                  type="range"
-                  min="10"
-                  max="20"
-                  step="1"
-                /><output id="line-style-label-value"></output>
-              </div>
-            </div>
-            <p id="line-style-scope" hidden></p>
-            <div class="earth-style-actions">
-              <button id="line-style-reset" class="text-button" type="button">
-                恢复本层默认</button
-              ><span
-                id="line-style-status"
-                class="earth-note"
-                role="status"
-              ></span>
-            </div>
-          </div>
-        </details>
-        <p>预报 | <span id="three-date">加载中…</span></p>
-        <p>起报 | <span id="three-run">加载中…</span></p>
-
-        <p>
-          <a id="classic-link" class="internal-link" href="../">经典气象模式</a>
-          ·
-          <a class="internal-link" href="about.html" target="_blank"
-            >图层与数据说明</a
-          >
-        </p>
-      </section>
-      <h1 id="earth">
-        <button
-          id="show-menu"
-          class="text-button"
-          aria-controls="menu"
-          aria-expanded="false"
+        </div>
+        <div
+          aria-labelledby="earth-tab-weather"
+          class="earth-panel-content"
+          id="earth-panel-weather"
+          role="tabpanel"
         >
-          earth 3D
-        </button>
-      </h1>
+          <section class="earth-control-group">
+            <h2>气象要素</h2>
+            <p class="earth-control-row">
+              <span class="earth-row-label">天气</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input checked="" id="wind" type="checkbox" />
+                  风线
+                </label>
+              </span>
+            </p>
+            <p aria-label="气象填色" class="earth-control-row" role="group">
+              <span class="earth-row-label">填色</span
+              ><span class="earth-row-controls earth-color-options"
+                ><label class="earth-toggle">
+                  <input
+                    checked=""
+                    id="color-none"
+                    name="weather-color"
+                    type="radio"
+                  />
+                  无
+                </label>
+                <label class="earth-toggle">
+                  <input id="wind-speed" name="weather-color" type="radio" />
+                  风速
+                </label>
+                <label class="earth-toggle">
+                  <input id="temperature" name="weather-color" type="radio" />
+                  气温
+                </label>
+              </span>
+            </p>
+            <p class="earth-control-row">
+              <span class="earth-row-label">云图</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input id="cloud" type="checkbox" />
+                  东亚红外
+                </label>
+                <button class="text-button" id="refresh-cloud">更新影像</button>
+              </span>
+            </p>
+            <p class="earth-control-row">
+              <span class="earth-row-label">等值线</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input id="height-contours" type="checkbox" />
+                  <span aria-hidden="true" class="earth-contour-swatch"> </span>
+                  位势高度线
+                </label>
+                <label class="earth-toggle">
+                  <input id="isobars" type="checkbox" />
+                  <span aria-hidden="true" class="earth-contour-swatch isobars">
+                  </span
+                  >海平面等压线</label
+                >
+              </span>
+            </p>
+          </section>
+        </div>
+        <div
+          aria-labelledby="earth-tab-map"
+          class="earth-panel-content"
+          hidden=""
+          id="earth-panel-map"
+          role="tabpanel"
+        >
+          <section class="earth-control-group">
+            <h2>地图底图</h2>
+            <p class="earth-control-row">
+              <span class="earth-row-label">底图</span
+              ><span class="earth-row-controls"
+                ><button
+                  aria-pressed="false"
+                  class="text-button"
+                  data-basemap="none"
+                >
+                  无底图
+                </button>
+                <button
+                  aria-pressed="false"
+                  class="text-button"
+                  data-basemap="google"
+                >
+                  实景底图
+                </button>
+              </span>
+            </p>
+            <p class="earth-control-row" hidden="" id="terrain-options">
+              <span class="earth-row-label">地形</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input checked="" id="satellite" type="checkbox" />
+                  卫星影像
+                </label>
+                <label class="earth-toggle">
+                  <input checked="" id="terrain" type="checkbox" />
+                  3D 地形
+                </label>
+              </span>
+            </p>
+            <p class="earth-control-row" hidden="" id="building-options">
+              <span class="earth-row-label">建筑</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input checked="" id="buildings" type="checkbox" />
+                  3D 建筑
+                </label>
+              </span>
+            </p>
+          </section>
+          <section class="earth-control-group">
+            <h2>地理参考</h2>
+            <p class="earth-control-row">
+              <span class="earth-row-label">边界</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input checked="" id="countries" type="checkbox" />
+                  国家
+                </label>
+                <label class="earth-toggle">
+                  <input checked="" id="provinces" type="checkbox" />
+                  省
+                </label>
+                <label class="earth-toggle">
+                  <input id="cities" type="checkbox" />
+                  市
+                </label>
+              </span>
+            </p>
+            <p class="earth-control-row">
+              <span class="earth-row-label">水系</span
+              ><span class="earth-row-controls"
+                ><label class="earth-toggle">
+                  <input checked="" id="rivers" type="checkbox" />
+                  主要河流与湖泊
+                </label>
+              </span>
+            </p>
+          </section>
+        </div>
+        <div
+          aria-labelledby="earth-tab-style"
+          class="earth-panel-content"
+          hidden=""
+          id="earth-panel-style"
+          role="tabpanel"
+        >
+          <section class="earth-control-group">
+            <h2>显示设置</h2>
+            <p class="earth-range-row">
+              <label for="weather-opacity">填色透明度</label>
+              <input
+                id="weather-opacity"
+                max="0.8"
+                min="0"
+                step="0.05"
+                type="range"
+                value="0.4"
+              />
+              <output id="opacity-value"> 40% </output>
+            </p>
+            <p class="earth-range-row">
+              <label for="height-scale">高度放大</label>
+              <input
+                id="height-scale"
+                max="20"
+                min="1"
+                step="1"
+                type="range"
+                value="1"
+              />
+              <output id="height-scale-value"> 1× </output>
+            </p>
+            <details class="earth-line-style" id="line-style-settings">
+              <summary>线条样式</summary>
+              <div class="earth-line-style-fields">
+                <label class="earth-style-field" for="line-style-layer">
+                  图层
+                  <select id="line-style-layer"></select>
+                </label>
+                <div class="earth-style-field">
+                  <label for="line-style-color"> 颜色 </label>
+                  <div class="earth-style-color-row">
+                    <input
+                      aria-label="线条颜色"
+                      id="line-style-color"
+                      type="color"
+                    />
+                    <input
+                      aria-label="颜色十六进制值"
+                      id="line-style-hex"
+                      maxlength="7"
+                      spellcheck="false"
+                      type="text"
+                    />
+                    <svg
+                      aria-label="线条样式预览"
+                      id="line-style-preview"
+                      role="img"
+                      viewbox="0 0 160 24"
+                    >
+                      <path
+                        d="M4 17 C42 17 54 7 80 7 S122 17 156 17"
+                        fill="none"
+                        id="line-style-preview-path"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <label class="earth-style-field" for="line-style-pattern">
+                  线型
+                  <select id="line-style-pattern">
+                    <option value="solid">实线</option>
+                    <option value="dashed">虚线</option>
+                    <option value="dotted">点线</option>
+                  </select>
+                </label>
+                <div class="earth-style-range">
+                  <label for="line-style-width"> 粗细 </label>
+                  <input
+                    id="line-style-width"
+                    max="6"
+                    min="0.5"
+                    step="0.1"
+                    type="range"
+                  />
+                  <output id="line-style-width-value"> </output>
+                </div>
+                <div class="earth-style-range">
+                  <label for="line-style-opacity"> 不透明度 </label>
+                  <input
+                    id="line-style-opacity"
+                    max="100"
+                    min="0"
+                    step="1"
+                    type="range"
+                  />
+                  <output id="line-style-opacity-value"> </output>
+                </div>
+                <div id="line-style-label-options">
+                  <label class="earth-toggle">
+                    <input id="line-style-labels" type="checkbox" />
+                    显示数值标注
+                  </label>
+                  <div class="earth-style-range">
+                    <label for="line-style-label-size"> 标注字号 </label>
+                    <input
+                      id="line-style-label-size"
+                      max="20"
+                      min="10"
+                      step="1"
+                      type="range"
+                    />
+                    <output id="line-style-label-value"> </output>
+                  </div>
+                </div>
+                <p hidden="" id="line-style-scope"></p>
+                <div class="earth-style-actions">
+                  <button
+                    class="text-button"
+                    id="line-style-reset"
+                    type="button"
+                  >
+                    恢复本层默认
+                  </button>
+                  <span class="earth-note" id="line-style-status" role="status">
+                  </span>
+                </div>
+              </div>
+            </details>
+          </section>
+        </div>
+      </section>
     </div>
     <div class="earth-attribution">
-      <span id="base-credit"
-        >Cesium World Terrain · Esri / Maxar / Earthstar Geographics
+      <span id="base-credit">
+        Cesium World Terrain · Esri / Maxar / Earthstar Geographics
       </span>
-      <span id="provider-credit"></span><span id="tile-credit"></span> · Natural
-      Earth · DataV · NOAA GFS<span id="cloud-credit"></span
-      ><span id="building-credit"></span>
+      <span id="provider-credit"> </span>
+      <span id="tile-credit"> </span>
+      · Natural Earth · DataV · NOAA GFS
+      <span id="cloud-credit"> </span>
+      <span id="building-credit"> </span>
     </div>
-    <script type="module" src="./app.js"></script>
+    <script src="./app.js" type="module"></script>
+    <div hidden="" id="location">
+      <p>
+        <span id="location-coord"> </span>
+        <button aria-label="关闭点位" class="text-button" id="location-close">
+          ×
+        </button>
+      </p>
+      <p id="three-place"></p>
+      <p id="three-point-wind"></p>
+      <p id="three-point-temp"></p>
+      <p id="three-point-pressure"></p>
+      <p id="three-point-layer"></p>
+      <p id="three-point-height"></p>
+    </div>
+    <p class="scale-row" hidden="" id="three-scale-row">
+      <span id="three-scale-title"> 气温 | −80°C </span>
+      <canvas class="earth-color-scale" id="three-scale"> </canvas>
+      <span id="three-scale-end"> 55°C </span>
+    </p>
+    <p class="earth-footer-links">
+      <a class="internal-link" href="../" id="classic-link"> 经典气象模式 </a>
+      ·
+      <a class="internal-link" href="about.html" target="_blank">
+        图层与数据说明
+      </a>
+    </p>
+    <p class="earth-note" hidden="" id="photo-note"></p>
+    <section aria-label="气压层选择" id="earth-pressure-dock">
+      <p
+        aria-label="气压层"
+        class="earth-control-row earth-level-row"
+        role="group"
+      >
+        <span class="earth-row-label">气压层</span
+        ><span class="earth-row-controls"
+          ><span id="three-heights"> </span>
+        </span>
+      </p>
+    </section>
+    <nav aria-label="地球视角工具" class="earth-camera-tools">
+      <button
+        aria-label="放大"
+        class="text-button"
+        id="earth-zoom-in"
+        title="放大"
+        type="button"
+      >
+        +</button
+      ><button
+        aria-label="缩小"
+        class="text-button"
+        id="earth-zoom-out"
+        title="缩小"
+        type="button"
+      >
+        −</button
+      ><button
+        aria-label="恢复全球视角"
+        class="text-button"
+        id="earth-reset-view"
+        title="恢复全球视角"
+        type="button"
+      >
+        ↺
+      </button>
+    </nav>
   </body>
 </html>

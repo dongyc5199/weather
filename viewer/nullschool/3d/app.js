@@ -58,11 +58,64 @@ function updateLoadStatus() {
       ) && !row.querySelector("button:not([hidden])"),
     );
   });
+  const rows = [...loadStatus.querySelectorAll("p")].filter(
+    (row) => !row.hidden && !row.classList.contains("status-idle"),
+  );
+  const failed = rows.find((row) => /失败|不可用|错误/.test(row.textContent));
+  const pending = rows.find((row) => /正在|加载/.test(row.textContent));
+  const active = failed || pending || rows[0];
+  const retry = !!loadStatus.querySelector("button:not([hidden])");
+  const text = active?.textContent.trim() || "";
+  const subject = /高度/.test(text)
+    ? "高度"
+    : /等压|气压/.test(text)
+      ? "气压"
+      : /等值|等高/.test(text)
+        ? "等值线"
+        : /建筑/.test(text)
+          ? "建筑"
+          : /云|卫星观测/.test(text)
+            ? "云图"
+            : /风|气温|填色|天气/.test(text)
+              ? "天气"
+              : "地图";
+  const message = failed
+    ? `${subject}暂不可用`
+    : pending
+      ? `加载${subject}…`
+      : active
+        ? `等待${subject}…`
+        : retry
+          ? "图层待重试"
+          : "";
+  const summary = $("three-load-summary");
+  if (summary.textContent !== message) summary.textContent = message;
+  loadStatus.title = rows.map((row) => row.textContent.trim()).join("\n");
+  loadStatus.dataset.active = String(!!active || retry);
+  loadStatus.dataset.state =
+    failed || (!pending && retry) ? "error" : "loading";
+  const retryId = /高度|天气/.test(subject)
+    ? "retry-height"
+    : /建筑/.test(subject)
+      ? "retry-buildings"
+      : /气压|等值线/.test(subject)
+        ? "retry-contours"
+        : "retry-map";
+  const visibleRetries = [...loadStatus.querySelectorAll("button")].filter(
+    (button) => !button.hidden,
+  );
+  const primaryRetry =
+    visibleRetries.find((button) => button.id === retryId) || visibleRetries[0];
+  visibleRetries.forEach((button) =>
+    button.classList.toggle("status-secondary-retry", button !== primaryRetry),
+  );
 }
 new MutationObserver(updateLoadStatus).observe(loadStatus, {
   subtree: true,
   childList: true,
   characterData: true,
+  attributes: true,
+  attributeFilter: ["hidden"],
 });
 updateLoadStatus();
 let styleStorage = null;
@@ -96,7 +149,9 @@ const loadMetrics = {
   textureSize: 0,
 };
 const state = {
-  basemap: query.get("basemap") === "terrain" ? "terrain" : "google",
+  basemap: ["none", "terrain"].includes(query.get("basemap"))
+    ? "none"
+    : "google",
   level: levels.includes(query.get("level")) ? query.get("level") : "surface",
   manifest: null,
   grid: null,
@@ -164,9 +219,12 @@ const terrainLight = new THREE.DirectionalLight(
   1.1,
 );
 scene.add(terrainLight);
+const stage = $("three-stage");
+let stageWidth = stage.clientWidth,
+  stageHeight = stage.clientHeight;
 const camera = new THREE.PerspectiveCamera(
   42,
-  innerWidth / innerHeight,
+  stageWidth / stageHeight,
   100,
   1e9,
 );
@@ -175,7 +233,7 @@ const renderer = new THREE.WebGLRenderer({
   logarithmicDepthBuffer: true,
 });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(stageWidth, stageHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const weatherCompositor = new WeatherCompositor(renderer);
 $("three-stage").append(renderer.domElement);
@@ -194,8 +252,8 @@ controls.enableDoubleTapZoom = true;
 controls.zoomSpeed = 1.25;
 const winds = new WindLayer(weatherScene, camera, lineStyles.get("wind"));
 winds.setViewport(
-  innerWidth,
-  innerHeight,
+  stageWidth,
+  stageHeight,
   matchMedia("(pointer: coarse)").matches,
 );
 winds.lines.renderOrder = 20;
@@ -446,6 +504,40 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
   state.requestedBasemap = basemap;
   state.mapBootstrapError = null;
   const photo = basemap === "google";
+  if (basemap === "none") {
+    if (tiles) {
+      tiles.group.removeFromParent();
+      tiles.dispose();
+    }
+    photoSurface?.dispose();
+    photoSurface = null;
+    tiles = null;
+    overlays = null;
+    mapStability = null;
+    buildings.setEnabled(false);
+    state.basemap = "none";
+    state.terrain = state.terrainReady = false;
+    state.models = state.mapFailures = 0;
+    state.ready = true;
+    fallback.visible = true;
+    fallback.material.colorWrite = false;
+    controls.setScene(fallback);
+    controls.setEllipsoid(WGS84_ELLIPSOID, fallback);
+    activeFrame = fallback;
+    $("three-map-status").textContent = "";
+    $("three-building-status").textContent = "";
+    $("retry-map").hidden = $("retry-buildings").hidden = true;
+    $("terrain-options").hidden = $("building-options").hidden = true;
+    $("base-credit").hidden = true;
+    $("tile-credit").textContent =
+      $("provider-credit").textContent =
+      $("building-credit").textContent =
+        "";
+    syncBasemapControls();
+    applyLayerOpacity();
+    return;
+  }
+  fallback.material.colorWrite = true;
   let photoInfo;
   $("three-map-status").textContent = photo
     ? "正在连接 Google 实景三维…"
@@ -589,6 +681,12 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
   $("base-credit").hidden = photo;
   $("tile-credit").textContent = "";
   renderBuildingCredits($("provider-credit"), photoInfo, "");
+  syncBasemapControls();
+  applyLayerOpacity();
+}
+
+function syncBasemapControls() {
+  const basemap = state.basemap;
   document.querySelectorAll("[data-basemap]").forEach((button) => {
     button.classList.toggle("highlighted", button.dataset.basemap === basemap);
     button.setAttribute(
@@ -599,7 +697,6 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
   const url = new URL(location);
   url.searchParams.set("basemap", basemap);
   history.replaceState(null, "", url);
-  applyLayerOpacity();
 }
 
 async function retryMap() {
@@ -625,7 +722,7 @@ function applyLayerOpacity() {
     if (!enabled && present) overlays.deleteOverlay(layer);
   };
   satellite.opacity = $("satellite").checked ? 1 : 0;
-  include(satellite, !photoSurface && $("satellite").checked, 0);
+  include(satellite, state.basemap === "terrain" && $("satellite").checked, 0);
   for (const key of Object.keys(admin)) {
     admin[key].setEnabled($(key).checked);
   }
@@ -902,6 +999,8 @@ async function loadWeather() {
     $("three-height-status").textContent = state.heightStatus;
     loadHeights(version, grid, level, state.manifest.id);
     applyLayerOpacity();
+    $("earth-active-context").textContent =
+      `GFS · ${level === "surface" ? "地面" : level.replace("hPa", " hPa")}`;
     $("three-date").textContent = date(state.manifest.valid_time);
     $("three-run").textContent = date(state.manifest.run_time);
     $("three-valid").textContent =
@@ -1193,8 +1292,14 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(
     new THREE.Vector2(
-      (e.clientX / innerWidth) * 2 - 1,
-      1 - (e.clientY / innerHeight) * 2,
+      ((e.clientX - renderer.domElement.getBoundingClientRect().left) /
+        stageWidth) *
+        2 -
+        1,
+      1 -
+        ((e.clientY - renderer.domElement.getBoundingClientRect().top) /
+          stageHeight) *
+          2,
     ),
     camera,
   );
@@ -1250,7 +1355,105 @@ $("show-menu").addEventListener("click", () => {
   const open = $("menu").classList.toggle("invisible") === false;
   $("menu").setAttribute("aria-hidden", String(!open));
   $("show-menu").setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("earth-controls-open", open);
+  $("show-menu").textContent = open ? "专注地球" : "图层设置";
+  $("show-menu").setAttribute(
+    "aria-label",
+    open ? "收起图层面板，专注地球" : "展开图层设置",
+  );
   if (open) drawLegend();
+});
+// Local panel navigation preserves each setting and its scroll position.
+const panelTabs = [
+  ...document.querySelectorAll(".earth-panel-tabs [role=tab]"),
+];
+function selectPanel(tab, focus = false) {
+  const previousIndex = panelTabs.findIndex(
+    (item) => item.getAttribute("aria-selected") === "true",
+  );
+  const nextIndex = panelTabs.indexOf(tab);
+  if (nextIndex === previousIndex) {
+    if (focus) tab.focus();
+    return;
+  }
+  // CSS moves the same indicator, so a new click interrupts from its current position.
+  tab.parentElement.style.setProperty("--earth-panel-index", nextIndex);
+  panelTabs.forEach((item) => {
+    const selected = item === tab;
+    item.setAttribute("aria-selected", String(selected));
+    item.tabIndex = selected ? 0 : -1;
+    const content = $(item.getAttribute("aria-controls"));
+    content.getAnimations().forEach((animation) => animation.cancel());
+    content.hidden = !selected;
+  });
+  const panel = $(tab.getAttribute("aria-controls"));
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const motion = getComputedStyle(tab.parentElement);
+    const distance = parseFloat(
+      motion.getPropertyValue("--earth-panel-travel"),
+    );
+    panel.animate(
+      [
+        {
+          opacity: 0,
+          transform: `translateX(${nextIndex > previousIndex ? distance : -distance}px)`,
+        },
+        { opacity: 1, transform: "translateX(0)" },
+      ],
+      {
+        duration: parseFloat(motion.getPropertyValue("--earth-panel-duration")),
+        easing: motion.getPropertyValue("--earth-feedback-easing").trim(),
+      },
+    );
+  }
+  if (focus) tab.focus();
+}
+panelTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => selectPanel(tab));
+  tab.addEventListener("keydown", (event) => {
+    const next =
+      event.key === "ArrowRight"
+        ? (index + 1) % panelTabs.length
+        : event.key === "ArrowLeft"
+          ? (index + panelTabs.length - 1) % panelTabs.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? panelTabs.length - 1
+              : null;
+    if (next !== null) {
+      event.preventDefault();
+      selectPanel(panelTabs[next], true);
+    }
+  });
+});
+$("earth-reset-view").addEventListener("click", () => preset("world"));
+for (const [id, delta] of [
+  ["earth-zoom-in", -150],
+  ["earth-zoom-out", 150],
+]) {
+  $(id).addEventListener("click", () => {
+    const box = renderer.domElement.getBoundingClientRect();
+    renderer.domElement.dispatchEvent(
+      new WheelEvent("wheel", {
+        deltaY: delta,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+}
+document.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Escape" &&
+    document.body.classList.contains("earth-controls-open") &&
+    !/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")
+  ) {
+    $("show-menu").click();
+    $("show-menu").focus();
+  }
 });
 new ResizeObserver(() => {
   if (!$("color-none").checked) drawLegend();
@@ -1326,27 +1529,37 @@ for (const level of levels) {
   button.dataset.level = level;
   button.textContent = level === "surface" ? "Sfc" : level.replace("hPa", "");
   button.title = level === "surface" ? "10 米风 / 2 米气温" : level;
+  button.setAttribute(
+    "aria-label",
+    level === "surface" ? "地面" : level.replace("hPa", " hPa"),
+  );
   button.addEventListener("click", () => {
     state.level = level;
     loadWeather();
   });
   $("three-heights").append(button, " ");
 }
-$("three-heights").append("hPa");
-window.addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
+$("three-heights").setAttribute("aria-label", "气压层，单位 hPa");
+function resizeStage() {
+  stageWidth = stage.clientWidth;
+  stageHeight = stage.clientHeight;
+  camera.aspect = stageWidth / stageHeight;
+  camera.fov =
+    (2 / RAD) * Math.atan(Math.tan(21 * RAD) / Math.min(1, camera.aspect));
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(stageWidth, stageHeight);
   winds.setViewport(
-    innerWidth,
-    innerHeight,
+    stageWidth,
+    stageHeight,
     matchMedia("(pointer: coarse)").matches,
   );
   if (photoSurface) photoSurface.resize(camera, renderer);
   else tiles?.setResolutionFromRenderer(camera, renderer);
   buildings.resize();
-});
+}
+new ResizeObserver(resizeStage).observe(stage);
+window.addEventListener("resize", resizeStage);
 document.addEventListener("visibilitychange", () => {
   paused = document.hidden;
   lastRender = performance.now();
@@ -1368,34 +1581,51 @@ function frame(time) {
     buildings.recoverFromUpdateError(error);
   }
   winds.update(dt);
-  winds.updateLineViewport(innerHeight);
+  winds.updateLineViewport(stageHeight);
   windSpeeds.update();
   temperatures.update();
   for (const layer of Object.values(admin))
     layer.update(
       !!mapStability?.moving || (winds.moving && winds.viewChanging),
-      innerHeight,
+      stageHeight,
     );
   const occupied =
     heightContours.enabled || isobarLabels.enabled
-      ? ["menu", "location", "sponsor", "three-load-status"]
+      ? [
+          "menu",
+          "location",
+          "sponsor",
+          "three-load-status",
+          "earth-pressure-dock",
+        ]
           .map((id) => $(id))
           .filter(
             (element) =>
               !element.hidden && !element.classList.contains("invisible"),
           )
-          .map((element) => element.getBoundingClientRect())
+          .map((element) => {
+            const box = element.getBoundingClientRect();
+            const viewport = stage.getBoundingClientRect();
+            return {
+              left: box.left - viewport.left,
+              right: box.right - viewport.left,
+              top: box.top - viewport.top,
+              bottom: box.bottom - viewport.top,
+              width: box.width,
+              height: box.height,
+            };
+          })
       : [];
   const heightBoxes = heightContours.update(
     time,
-    innerWidth,
-    innerHeight,
+    stageWidth,
+    stageHeight,
     occupied,
   );
   isobarLabels.update(
     time,
-    innerWidth,
-    innerHeight,
+    stageWidth,
+    stageHeight,
     occupied.concat(heightBoxes || []),
   );
   if (marker.visible) {
@@ -1412,7 +1642,8 @@ function frame(time) {
       (tiles?.stats.downloading || 0) +
       (tiles?.stats.parsing || 0) +
       (overlays?.pendingTextures || 0);
-    if (state.mapBootstrapError)
+    if (state.basemap === "none") $("three-map-status").textContent = "";
+    else if (state.mapBootstrapError)
       $("three-map-status").textContent = state.mapBootstrapError;
     else if (state.models > 0)
       $("three-map-status").textContent =
@@ -1623,7 +1854,7 @@ $("isobars").checked = query.get("isobars") === "1";
 $("rivers").checked = query.get("rivers") !== "0";
 for (const key of Object.keys(admin)) admin[key].setEnabled($(key).checked);
 lineStylePanel = mountLineStylePanel(lineStyles, applyLineStyle);
-buildings.setEnabled(state.basemap !== "google" && $("buildings").checked);
+buildings.setEnabled(false);
 updateHeightLabel();
 preset(
   [
