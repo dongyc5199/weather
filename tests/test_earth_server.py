@@ -110,3 +110,59 @@ def test_pressure_route_passes_the_requested_snapshot(tmp_path, monkeypatch):
         with urlopen(url + "/api/earth/3d/pressure/" + key) as response:
             assert json.load(response)["reference"] == "mean sea level"
     assert calls == [key]
+
+
+def test_snapshot_json_compression_caching_and_error_policy(tmp_path,monkeypatch):
+    import gzip
+    from weather_geo_extractor import earth_heights
+    key='20261116T06Z-f009-0p5-v2'
+    payload={'snapshot':key,'data':list(range(1000))}
+    path=tmp_path/'data/live'/key/'wind.json';path.parent.mkdir(parents=True);path.write_text(json.dumps(payload))
+    monkeypatch.setattr(earth_heights,'height_profile',lambda *_:payload)
+    with local_server(tmp_path) as (url,_):
+        for route in ['/data/live/'+key+'/wind.json','/api/earth/3d/height/'+key+'/surface']:
+            with urlopen(Request(url+route,headers={'Accept-Encoding':'gzip'})) as response:
+                compressed=response.read()
+                assert json.loads(gzip.decompress(compressed))==payload
+                assert len(compressed)<len(json.dumps(payload))
+                assert 'immutable' in response.headers['Cache-Control']
+                assert response.headers['Vary']=='Accept-Encoding'
+            with urlopen(Request(url+route,headers={'Accept-Encoding':'gzip;q=0'})) as response:
+                assert response.headers.get('Content-Encoding') is None
+                assert json.load(response)==payload
+        with pytest.raises(HTTPError) as error:
+            urlopen(url+'/data/live/'+key+'/temp.json')
+        assert 'immutable' not in error.value.headers['Cache-Control']
+        with urlopen(url+'/api/earth/status') as response:
+            assert 'immutable' not in response.headers['Cache-Control']
+
+
+def test_shape_binary_uses_gzip_without_json_or_precision_conversion(tmp_path,monkeypatch):
+    import gzip
+    from weather_geo_extractor import earth_cloud_shape
+    body=bytes(range(256))*32
+    monkeypatch.setattr(earth_cloud_shape,'cloud_shape_bytes',lambda _v,_s,compressed: gzip.compress(body) if compressed else body)
+    route='/api/earth/3d/cloud-shape/20261116T12Z-f003-0p5-v2/field.bin'
+    with local_server(tmp_path) as (url,_):
+        with urlopen(Request(url+route,headers={'Accept-Encoding':'gzip'})) as response:
+            assert gzip.decompress(response.read())==body
+            assert 'immutable' in response.headers['Cache-Control']
+            assert response.headers['Content-Type']=='application/octet-stream'
+        with urlopen(url+route) as response:
+            assert response.read()==body
+            assert response.headers.get('Content-Encoding') is None
+
+
+def test_static_geojson_conditional_get(tmp_path):
+    (tmp_path / 'overlay.geojson').write_text('{"type":"FeatureCollection","features":[]}')
+    with local_server(tmp_path) as (url, _):
+        resource = url + '/overlay.geojson'
+        with urlopen(Request(resource, headers={'Accept-Encoding': 'gzip'})) as response:
+            assert response.headers['Content-Encoding'] == 'gzip'
+            etag = response.headers['ETag']
+        with pytest.raises(HTTPError) as error:
+            urlopen(Request(resource, headers={'Accept-Encoding': 'gzip', 'If-None-Match': etag}))
+        assert error.value.code == 304
+        with urlopen(resource) as response:
+            assert response.headers['Vary'] == 'Accept-Encoding'
+            assert json.load(response)['type'] == 'FeatureCollection'

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import argparse
+from collections import OrderedDict
+import gzip
+import io
 import json
 import threading
 from datetime import datetime
@@ -13,8 +16,18 @@ from urllib.parse import urlparse, parse_qs
 import re
 
 from .earth_data import UTC, iso_time, load_manifest, sync_latest
+from .earth_heights import SNAPSHOT_PATTERN
 
 DEFAULT_VIEWER = Path(__file__).resolve().parents[2] / "viewer" / "nullschool"
+_compressed_files = OrderedDict()
+_compressed_lock = threading.Lock()
+
+
+def immutable_path(path):
+    return bool(re.fullmatch(r"/data/live/" + SNAPSHOT_PATTERN + r"/(?:[^/]+/)?(?:wind|temp|metadata)\.json", path)
+                or re.fullmatch(r"/data/earth3d-cache/cloud-observation/" + SNAPSHOT_PATTERN + r"/(?:mask\.png|cloud-ra-v1\.webp)", path)
+                or re.fullmatch(r"/api/earth/3d/(?:height|pressure|cloud-observation|cloud-volume|cloud-convection|cloud-cores|cloud-point|cloud-shape)/"
+                                + SNAPSHOT_PATTERN + r"(?:/[^/]+)?", path))
 
 
 class Updates:
@@ -26,6 +39,27 @@ class Updates:
         self.updating = False
         self.last_error: str | None = None
         self.last_attempt: str | None = None
+
+        self.warmed_snapshot = None
+
+    def warm(self, manifest):
+        if not manifest:
+            return
+        with self.lock:
+            if self.warmed_snapshot == manifest['id']:
+                return
+            self.warmed_snapshot = manifest['id']
+        viewer = self.cache.parent.parent
+        def clouds():
+            from .earth_observations import cloud_observation
+            from .earth_cloud_shape import cloud_shape_profile
+            try:
+                cloud_observation(viewer, manifest['id'])
+                if not self.stop.is_set():
+                    cloud_shape_profile(viewer, manifest['id'])
+            except Exception:
+                pass
+        threading.Thread(target=clouds, name="cloud-warmup", daemon=True).start()
 
     def status(self) -> dict:
         with self.lock:
@@ -48,6 +82,7 @@ class Updates:
             print(f"GFS ready: run={manifest['run_time']} valid={manifest['valid_time']} layers={len(manifest.get('layers', {}))}", flush=True)
             with self.lock:
                 self.last_error = None
+            self.warm(manifest)
         except Exception as exc:
             print(f"GFS update failed; keeping cached data: {exc}", flush=True)
             with self.lock:
@@ -71,19 +106,88 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         # The manifest and UI must not get stuck on yesterday's forecast.
         path = urlparse(self.path).path
-        policy = "no-store" if path in {"/api/earth/3d/terrain", "/api/earth/3d/buildings", "/api/earth/3d/photorealistic"} else ("private, max-age=3600" if getattr(self, "_terrain_tile_ok", False) else "no-store") if path.startswith("/api/earth/3d/terrain-tile/") else "no-cache"
+        if getattr(self, '_immutable_ok', False):
+            policy = 'private, max-age=31536000, immutable'
+        elif path in {"/api/earth/3d/terrain", "/api/earth/3d/buildings", "/api/earth/3d/photorealistic"}:
+            policy = 'no-store'
+        elif path.startswith('/api/earth/3d/terrain-tile/'):
+            policy = 'private, max-age=3600' if getattr(self, '_terrain_tile_ok', False) else 'no-store'
+        else:
+            policy = 'no-cache'
+        if path.endswith((".json", ".geojson")):
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Cache-Control", policy)
         super().end_headers()
 
     def json_response(self, status: int, payload: dict) -> None:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        body = json.dumps(payload, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode("utf-8")
+        self._immutable_ok = status == 200 and immutable_path(urlparse(self.path).path)
+        compressed = len(body) > 1024 and self.accepts_gzip()
+        if compressed:
+            body = gzip.compress(body, compresslevel=3, mtime=0)
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header('Vary', 'Accept-Encoding')
+        if compressed:
+            self.send_header('Content-Encoding', 'gzip')
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def accepts_gzip(self):
+        for item in self.headers.get("Accept-Encoding", "").lower().split(","):
+            coding, *options = item.strip().split(";")
+            if coding.strip() != "gzip":
+                continue
+            for option in options:
+                name, _, value = option.partition("=")
+                if name.strip() == "q":
+                    try:
+                        return 0 < float(value) <= 1
+                    except ValueError:
+                        return False
+            return True
+        return False
+
+    def send_head(self):
+        path = urlparse(self.path).path
+        source = Path(self.translate_path(path))
+        self._immutable_ok = immutable_path(path) and source.is_file()
+        # Static geography and snapshot JSON use the same gzip delivery as API JSON.
+        if source.suffix in {'.json', '.geojson'} and source.is_file() and self.accepts_gzip():
+            stat = source.stat()
+            if stat.st_size > 16 * 1024**2:
+                return super().send_head()  # Stream unusually large files directly.
+            key = (str(source), stat.st_ino, stat.st_mtime_ns, stat.st_size)
+            etag = f'"{stat.st_ino:x}-{stat.st_mtime_ns:x}-{stat.st_size:x}-gz"'
+            candidates = [tag.strip().removeprefix("W/") for tag in self.headers.get("If-None-Match", "").split(",")]
+            if etag in candidates or "*" in candidates:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.end_headers()
+                return None
+            with _compressed_lock:
+                body = _compressed_files.get(key)
+            if body is None:
+                body = gzip.compress(source.read_bytes(), compresslevel=3, mtime=0)
+                with _compressed_lock:
+                    _compressed_files[key] = body
+                    while len(_compressed_files) > 24 or sum(map(len, _compressed_files.values())) > 32 * 1024**2:
+                        _compressed_files.popitem(last=False)
+            self.send_response(200)
+            self.send_header("ETag", etag)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Encoding', 'gzip')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            return io.BytesIO(body)
+        return super().send_head()
 
     def do_GET(self) -> None:
+        self._immutable_ok = False
         path = urlparse(self.path).path
         if path.startswith("/api/earth/3d/"):
             self.map_data_response(path)
@@ -121,6 +225,41 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
                     pass
             elif path == "/api/earth/3d/cloud":
                 self.json_response(200, cloud_metadata(Path(self.directory) / "data" / "earth3d-cache" / "cloud-metadata.json"))
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-observation/([^/]+)", path):
+                from .earth_observations import cloud_observation
+                self.json_response(200, cloud_observation(Path(self.directory), match[1]))
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-convection/([^/]+)", path):
+                from .earth_convection import convection_profile
+                self.json_response(200, convection_profile(Path(self.directory), match[1]))
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-cores/([^/]+)", path):
+                from .earth_convection import core_profile
+                self.json_response(200, core_profile(Path(self.directory), match[1]))
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-shape/([^/]+)(/field\.bin)?", path):
+                from .earth_cloud_shape import cloud_shape_profile, cloud_shape_bytes
+                if not match[2]:
+                    self.json_response(200, cloud_shape_profile(Path(self.directory), match[1]))
+                else:
+                    compressed = self.accepts_gzip()
+                    body = cloud_shape_bytes(Path(self.directory), match[1], compressed)
+                    self._immutable_ok = True
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/octet-stream')
+                    self.send_header('Vary', 'Accept-Encoding')
+                    if compressed:
+                        self.send_header('Content-Encoding', 'gzip')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    try:
+                        self.wfile.write(body)
+                    except (BrokenPipeError, ConnectionResetError):
+                        pass
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-point/([^/]+)", path):
+                from .earth_convection import convective_point
+                args = parse_qs(urlparse(self.path).query)
+                self.json_response(200, convective_point(Path(self.directory), match[1], float(args.get('lon', ['nan'])[0]), float(args.get('lat', ['nan'])[0])))
+            elif match := re.fullmatch(r"/api/earth/3d/cloud-volume/([^/]+)", path):
+                from .earth_clouds import cloud_profile
+                self.json_response(200, cloud_profile(Path(self.directory), match[1]))
             elif path == "/api/earth/3d/palette":
                 self.json_response(200, {"unit": "K", "stops": TEMP_STOPS.tolist(), "colors": TEMP_COLORS.tolist()})
             elif match := re.fullmatch(r"/api/earth/3d/height/([^/]+)/([^/]+)", path):
@@ -178,6 +317,7 @@ def main() -> None:
     handler = partial(EarthRequestHandler, directory=str(viewer), updates=updates)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"Weather Earth: http://{args.host}:{args.port}/", flush=True)
+    updates.warm(load_manifest(cache))
     updates.refresh()
     def warm_terrain():
         from .earth_layers import terrain_bootstrap

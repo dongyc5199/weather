@@ -20,6 +20,7 @@ dev = [
 ]
 weather = [
   "eccodes>=2.43,<3",
+  "netCDF4>=1.7,<2",
 ]
 
 [project.scripts]

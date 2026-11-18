@@ -28,9 +28,10 @@
         专注地球
       </button>
       <div id="sponsor">
+        <p class="earth-time" hidden="" id="cloud-observation-label"></p>
         <p hidden="" id="three-valid">正在加载 GFS…</p>
         <p class="earth-time">
-          预报
+          <span id="forecast-label">预报</span>
           <span id="three-date"> 加载中… </span>
         </p>
         <p class="earth-time">
@@ -153,9 +154,9 @@
               ><span class="earth-row-controls"
                 ><label class="earth-toggle">
                   <input id="cloud" type="checkbox" />
-                  东亚红外
+                  云层
                 </label>
-                <button class="text-button" id="refresh-cloud">更新影像</button>
+                <button class="text-button" id="refresh-cloud">更新云层</button>
               </span>
             </p>
             <p class="earth-control-row">
@@ -401,7 +402,7 @@
       <span id="cloud-credit"> </span>
       <span id="building-credit"> </span>
     </div>
-    <script src="./app.js" type="module"></script>
+    <script src="./app.js?build=observed-volume-v8" type="module"></script>
     <div hidden="" id="location">
       <p>
         <span id="location-coord"> </span>
@@ -415,6 +416,7 @@
       <p id="three-point-pressure"></p>
       <p id="three-point-layer"></p>
       <p id="three-point-height"></p>
+      <p id="three-point-cloud" hidden></p>
     </div>
     <p class="scale-row" hidden="" id="three-scale-row">
       <span id="three-scale-title"> 气温 | −80°C </span>

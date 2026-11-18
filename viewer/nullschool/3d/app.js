@@ -6,9 +6,11 @@ import {
   QuantizedMeshPlugin,
   GeneratedSurfacePlugin,
   XYZTilesOverlay,
-  WMSTilesOverlay,
 } from "./vendor.js";
 import { gridSampler, WindLayer } from "./weather.js";
+import { DataLoader } from "./data-loading.js";
+import { CloudLayer } from "./cloud-layer.js";
+import { CLOUD_VIEW_LIMITS } from "./cloud-data.js";
 import { TemperatureLayer } from "./temperature.js";
 import { WeatherCompositor } from "./weather-compositor.js";
 import { WIND_SPEED_PALETTE } from "./wind-presentation.js";
@@ -118,6 +120,7 @@ new MutationObserver(updateLoadStatus).observe(loadStatus, {
   attributeFilter: ["hidden"],
 });
 updateLoadStatus();
+let debugCameraHold = false;
 let styleStorage = null;
 try {
   styleStorage = window.localStorage;
@@ -147,6 +150,7 @@ const loadMetrics = {
   firstImageryMs: null,
   imageryZooms: {},
   textureSize: 0,
+  cloud: null,
 };
 const state = {
   basemap: ["none", "terrain"].includes(query.get("basemap"))
@@ -168,6 +172,7 @@ const state = {
   terrain: false,
   terrainReady: false,
   models: 0,
+  mapDepthVersion: 0,
   imageryResponses: 0,
   cloud: false,
   cloudObservation: null,
@@ -178,7 +183,6 @@ const state = {
 let tiles,
   photoSurface,
   overlays,
-  cloudOverlay,
   terrainInfo,
   surfaceVersion = 0,
   weatherVersion = 0,
@@ -189,6 +193,9 @@ let activeFrame = null,
   lastStatus = 0,
   pointerDown = null,
   cloudRefreshAt = 0;
+let cloudVolumeController = null,
+  cloudVolumeLoading = false,
+  cloudVolumeRetryAt = 0;
 let cloudLoading = false,
   terrainRefreshAt = 0;
 let mapRetryAt = 0;
@@ -243,6 +250,16 @@ const surfaceGroup = new THREE.Group();
 surfaceGroup.name = "Terrain and buildings";
 scene.add(surfaceGroup);
 const controls = new GlobeControls(surfaceGroup, camera, renderer.domElement);
+renderer.domElement.addEventListener("pointerdown", () => {
+  debugCameraHold = false;
+});
+renderer.domElement.addEventListener(
+  "wheel",
+  () => {
+    debugCameraHold = false;
+  },
+  { passive: true },
+);
 controls.minDistance = 150;
 controls.maxDistance = 35000000;
 controls.cameraRadius = 100;
@@ -250,6 +267,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.12;
 controls.enableDoubleTapZoom = true;
 controls.zoomSpeed = 1.25;
+const clouds = new CloudLayer();
 const winds = new WindLayer(weatherScene, camera, lineStyles.get("wind"));
 winds.setViewport(
   stageWidth,
@@ -379,18 +397,11 @@ function error(message) {
   state.errors.push(message);
   $("three-map-status").textContent = message;
 }
-async function json(url, timeout = 25000, signal = null) {
-  const r = await fetch(url, {
-    cache: "no-store",
-    signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(timeout)])
-      : AbortSignal.timeout(timeout),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
+const dataLoader = new DataLoader();
+const json = (url, timeout, signal) => dataLoader.json(url, timeout, signal);
 
 function preset(name) {
+  debugCameraHold = false;
   controls.resetState();
   winds.clear();
   let lat = 26,
@@ -654,6 +665,7 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
       performance.now() - loadMetrics.startedAt,
     );
     state.models++;
+    state.mapDepthVersion++;
     state.terrainReady = useTerrain || photo;
     if (photo)
       loadMetrics.firstImageryMs ??= Math.round(
@@ -661,6 +673,8 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
       );
     state.ready = true;
   });
+  for (const event of ["tile-visibility-change", "dispose-model"])
+    tiles.addEventListener(event, () => state.mapDepthVersion++);
   tiles.addEventListener("load-error", (event) => {
     const message = event.error?.message || "图层加载失败";
     state.errors.push(message.replace(/Bearer\s+\S+/g, "[redacted]"));
@@ -672,7 +686,6 @@ async function buildSurface(useTerrain, basemap = state.basemap) {
   controls.setScene(surfaceGroup);
   controls.setEllipsoid(WGS84_ELLIPSOID, tiles.group);
   activeFrame = surfaceGroup;
-  if (cloudOverlay && state.cloud) overlays.addOverlay(cloudOverlay, 20);
   if (isobarOverlay && $("isobars").checked)
     overlays.addOverlay(isobarOverlay, 5);
   $("terrain-options").hidden = photo;
@@ -730,8 +743,7 @@ function applyLayerOpacity() {
   temperatures.opacity = Number($("weather-opacity").value);
   windSpeeds.enabled = $("wind-speed").checked;
   windSpeeds.opacity = Number($("weather-opacity").value);
-  if (cloudOverlay) cloudOverlay.opacity = $("cloud").checked ? 0.58 : 0;
-  include(cloudOverlay, $("cloud").checked, 20);
+  clouds.enabled = $("cloud").checked && state.cloud;
   include(isobarOverlay, $("isobars").checked, 5);
   $("three-scale-row").hidden = $("color-none").checked;
   $("three-field-status").hidden = $("color-none").checked;
@@ -1100,71 +1112,172 @@ function updateHeightLabel() {
 async function refreshWeather() {
   try {
     const status = await json("/api/earth/status");
-    if (!status.manifest) return;
+    const forecastLabel = $("forecast-label");
+    if (!status.manifest) {
+      $("three-data-status").textContent = status.updating ? "正在准备天气数据…" : "天气数据暂不可用，可重试";
+      return;
+    }
+    forecastLabel.textContent = status.last_error ? "缓存预报" : "预报";
+    forecastLabel.title = status.last_error ? "本次更新失败，显示最近可用的预报" : "";
     const changed = state.manifest?.id !== status.manifest.id;
     state.manifest = status.manifest;
-    if (changed) await loadWeather();
+    if (changed) {
+      const weather = loadWeather();
+      if ($("cloud").checked) {
+        clouds.enabled = false;
+        cloudVersion++;
+        loadCloud();
+      }
+      await weather;
+    }
   } catch {
     $("three-data-status").textContent = "天气更新暂不可用，保留已加载的预报";
+  }
+}
+
+let cloudWindWorker=null, cloudWindRetryAt=0;
+function cancelCloudWind(){
+  cloudWindWorker?.terminate();cloudWindWorker=null;cloudWindRetryAt=0;
+}
+
+function ensureCloudWind(){
+  const manifest=state.manifest;
+  if(cloudWindWorker && clouds.cameraAltitude>CLOUD_VIEW_LIMITS.preloadAltitude)cancelCloudWind();
+  if(!manifest || !clouds.requiresTerrainDepth || clouds.convectionSnapshot!==manifest.id ||
+     clouds.windSnapshot===manifest.id || cloudWindWorker || performance.now()<cloudWindRetryAt)return;
+  // The cloud renderer samples pressure levels by cloud altitude. Changing the
+  // wind-line selector must never change the wind transporting the cloud texture.
+  const version=cloudVersion;
+  const fail=()=>{cancelCloudWind();cloudWindRetryAt=performance.now()+60000};
+  try{
+    const worker=new Worker(new URL('./cloud-wind-worker.js',import.meta.url),{type:'module'});
+    cloudWindWorker=worker;
+    worker.onmessage=({data})=>{
+      if(cloudWindWorker!==worker)return;
+      if(version!==cloudVersion || state.manifest?.id!==manifest.id){cancelCloudWind();return}
+      if(data.error){fail();return}
+      try{clouds.setWindField(data);cancelCloudWind()}catch{fail()}
+    };
+    worker.onerror=()=>{if(cloudWindWorker===worker)fail()};
+    worker.postMessage(manifest);
+  }catch{fail()}
+}
+
+function cancelCloudVolume() {
+  cancelCloudWind();
+  cloudVolumeController?.abort();
+  cloudVolumeController = null;
+  cloudVolumeLoading = false;
+  cloudVolumeRetryAt = 0;
+}
+
+async function ensureCloudVolume() {
+  if (
+    !$("cloud").checked ||
+    !state.cloud ||
+    !state.manifest ||
+    clouds.snapshot !== state.manifest.id ||
+    cloudVolumeLoading ||
+    WGS84_ELLIPSOID.getPositionElevation(camera.position) >
+      CLOUD_VIEW_LIMITS.preloadAltitude ||
+    clouds.convectionSnapshot === state.manifest.id ||
+    performance.now() < cloudVolumeRetryAt
+  )
+    return;
+  const snapshot = state.manifest.id,
+    version = cloudVersion;
+  const controller = new AbortController();
+  cloudVolumeController = controller;
+  cloudVolumeLoading = true;
+  $("three-cloud-time").textContent = "正在预载近景云高，继续显示观测云图…";
+  try {
+    const profile = await json(`/api/earth/3d/cloud-shape/${snapshot}?renderer=6.1`, 180000, controller.signal);
+    if (profile.shape_version !== 3) throw new Error("Cloud shape revision mismatch");
+    const field = await dataLoader.binary(profile.field_url+"?renderer=6.1", 180000, controller.signal);
+    if (
+      controller.signal.aborted ||
+      version !== cloudVersion ||
+      state.manifest.id !== snapshot
+    )
+      return;
+    clouds.setShape(profile, field);
+    clouds.enabled = state.cloud;
+    if (state.selected) showPoint(state.selected);
+    $("three-cloud-time").textContent =
+      "GMGSI 观测云 · " + date(state.cloudObservation);
+  } catch {
+    if (!controller.signal.aborted && version === cloudVersion) {
+      cloudVolumeRetryAt = performance.now() + 60000;
+      $("three-cloud-time").textContent = "近景云高暂不可用，保留观测云图";
+    }
+  } finally {
+    if (cloudVolumeController === controller) {
+      cloudVolumeLoading = false;
+      cloudVolumeController = null;
+    }
   }
 }
 
 async function loadCloud() {
   if (!$("cloud").checked) {
     cloudVersion++;
+    cancelCloudVolume();
     state.cloud = false;
-    applyLayerOpacity();
+    clouds.enabled = false;
+    $("cloud-observation-label").hidden = true;
     $("three-cloud-time").textContent = "";
     return;
   }
+  if (!state.manifest) {
+    $("three-cloud-time").textContent = "云图等待天气数据…";
+    return;
+  }
   if (cloudLoading) return;
-  const version = ++cloudVersion;
+  cancelCloudVolume();
+  const version = ++cloudVersion,
+    snapshot = state.manifest.id;
   cloudLoading = true;
   cloudRefreshAt = performance.now();
+  const started = performance.now();
   $("refresh-cloud").disabled = true;
-  $("three-cloud-time").textContent = "正在读取卫星观测时刻…";
+  $("three-cloud-time").textContent = "正在加载卫星观测云图…";
   try {
-    const info = await json("/api/earth/3d/cloud", 40000);
-    if (version !== cloudVersion) return;
-    const observationLabel =
-      (info.stale ? "更新暂不可用 · 缓存观测 " : "红外观测 · ") +
-      date(info.observation_time);
-    if (cloudOverlay && state.cloudObservation === info.observation_time) {
-      state.cloud = true;
-      applyLayerOpacity();
-      $("three-cloud-time").textContent = observationLabel;
-      return;
-    }
-    if (cloudOverlay) overlays?.deleteOverlay(cloudOverlay);
-    const url = new URL(info.wms_url);
-    url.searchParams.set("TIME", info.observation_time);
-    cloudOverlay = new WMSTilesOverlay({
-      url: url.href,
-      layer: info.layer,
-      crs: "EPSG:4326",
-      version: "1.3.0",
-      transparent: true,
-      format: "image/png",
-      levels: 9,
-      opacity: 0.58,
-    });
-    overlays?.addOverlay(cloudOverlay, 20);
+    const info = await json(
+      `/api/earth/3d/cloud-observation/${snapshot}?display=ra-v1`,
+      180000,
+    );
+    if (version !== cloudVersion || state.manifest.id !== snapshot) return;
+    if (info.snapshot !== snapshot)
+      throw new Error("Cloud observation snapshot mismatch");
+    const attached = await clouds.setObservation(
+      info,
+      () => version === cloudVersion && state.manifest.id === snapshot,
+    );
+    if (!attached) return;
     state.cloud = true;
+    clouds.enabled = true;
+    loadMetrics.cloud = { snapshot, readyMs: Math.round(performance.now() - started) };
     state.cloudObservation = info.observation_time;
-    $("three-cloud-time").textContent = observationLabel;
-    $("cloud-credit").textContent = " · NASA GIBS / JMA";
+    $("cloud-observation-label").textContent =
+      "云图 " + date(info.observation_time);
+    $("cloud-observation-label").title = info.source + " · 诊断云区遮罩";
+    $("cloud-observation-label").hidden = false;
+    $("cloud").closest("label").title =
+      info.source +
+      " · " +
+      date(info.observation_time) +
+      " · 远景卫星图，近景自动体积云";
+    $("three-cloud-time").textContent =
+      "GMGSI 观测云 · " + date(info.observation_time);
+    $("cloud-credit").textContent = " · NOAA GMGSI observations / GFS";
+    ensureCloudVolume();
   } catch {
     if (version !== cloudVersion) return;
-    if (cloudOverlay && state.cloudObservation) {
-      state.cloud = true;
-      $("three-cloud-time").textContent =
-        "更新失败 · 保留观测 " + date(state.cloudObservation);
-    } else {
-      state.cloud = false;
-      $("cloud").checked = false;
-      $("three-cloud-time").textContent = "云图暂不可用，可重试";
-    }
-    applyLayerOpacity();
+    state.cloud = clouds.snapshot === snapshot && !!clouds.reference;
+    clouds.enabled = state.cloud;
+    $("three-cloud-time").textContent = state.cloud
+      ? "观测更新失败，保留同批次云图"
+      : "卫星云图暂不可用，可重试";
   } finally {
     cloudLoading = false;
     $("refresh-cloud").disabled = false;
@@ -1237,7 +1350,7 @@ function showPoint(point) {
   $("three-place").textContent = [...new Set(names)].join(" · ");
   const w = state.grid?.sample(lon, lat);
   $("three-point-wind").textContent = w
-    ? `风 | ${((Math.atan2(-w.u, -w.v) / RAD + 360) % 360).toFixed(0)}° · ${(w.speed * 3.6).toFixed(0)} km/h`
+    ? (w.speed === 0 ? "风 | 静风" : `风 | ${(Math.round(Math.atan2(-w.u, -w.v) / RAD) + 360) % 360}° · ${(w.speed * 3.6).toFixed(0)} km/h`)
     : "";
   const temperature = state.grid?.temperatureAt(lon, lat);
   $("three-point-temp").textContent = Number.isFinite(temperature)
@@ -1277,6 +1390,28 @@ function showPoint(point) {
   );
   marker.visible =
     !(point.temperatureHit || point.windSpeedHit) || !!temperaturePoint;
+  const cloudPoint = $("three-point-cloud");
+  cloudPoint.hidden =
+    !state.cloud || clouds.convectionSnapshot !== state.manifest?.id;
+  if (!cloudPoint.hidden) {
+    const describe = column => column
+      ? `对流云（模式）| 云底 ${(column.bottom / 1000).toFixed(2)} km · 云顶 ${(column.top / 1000).toFixed(2)} km`
+      : "对流云高 | 该点暂无有效模式诊断";
+    if (clouds.pointUrl) {
+      const snapshot = state.manifest.id;
+      const lon = ((point.lon / RAD + 540) % 360) - 180, lat = point.lat / RAD;
+      cloudPoint.textContent = "正在读取该点云高…";
+      json(`${clouds.pointUrl}?lon=${lon}&lat=${lat}`).then(result => {
+        if (state.selected === point && snapshot === state.manifest?.id && !cloudPoint.hidden)
+          cloudPoint.textContent = describe(result.point);
+      }).catch(() => {
+        if (state.selected === point && snapshot === state.manifest?.id && !cloudPoint.hidden)
+          cloudPoint.textContent = "对流云高暂不可用";
+      });
+    } else {
+      cloudPoint.textContent = describe(clouds.sampleConvection(point.lon / RAD, point.lat / RAD));
+    }
+  }
 }
 
 renderer.domElement.addEventListener(
@@ -1502,10 +1637,17 @@ $("buildings").addEventListener("change", async () => {
   }
 });
 $("retry-buildings").addEventListener("click", () => buildings.retry());
-$("cloud").addEventListener("change", loadCloud);
+function changeCloudChoice() {
+  const url=new URL(location);
+  if($("cloud").checked)url.searchParams.set("cloud","1");
+  else url.searchParams.delete("cloud");
+  history.replaceState(null,"",url);
+  loadCloud();
+}
+$("cloud").addEventListener("change", changeCloudChoice);
 $("refresh-cloud").addEventListener("click", () => {
   $("cloud").checked = true;
-  loadCloud();
+  changeCloudChoice();
 });
 document.querySelectorAll("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
@@ -1570,7 +1712,7 @@ function frame(time) {
   if (paused) return;
   const dt = Math.min((time - lastRender) / 1000, 0.1);
   lastRender = time;
-  controls.update(dt);
+  if (!debugCameraHold) controls.update(dt);
   camera.updateMatrixWorld();
   terrainLight.position.copy(camera.position).normalize();
   mapStability?.observe(time);
@@ -1632,10 +1774,16 @@ function frame(time) {
     const distance = camera.position.distanceTo(marker.position);
     marker.scale.setScalar(Math.max(20, distance * 0.003));
   }
+  if (clouds.enabled) clouds.updateView(camera);
+  clouds.setDepthRevision(`${surfaceVersion}:${state.mapDepthVersion}:${buildings.modelInfo.size}:${state.terrainReady}`);
   weatherCompositor.render(scene, fillScene, weatherScene, camera, [
     temperatures,
     windSpeeds,
+    clouds,
   ]);
+  ensureCloudVolume();
+  ensureCloudWind();
+  clouds.render(renderer, camera, true);
   if (time - lastStatus > 1500) {
     lastStatus = time;
     const pending =
@@ -1715,6 +1863,7 @@ function performanceMetrics() {
     firstImageryMs: loadMetrics.firstImageryMs,
     imageryZooms: loadMetrics.imageryZooms,
     textureSize: loadMetrics.textureSize,
+    dataLoading: { cloud: loadMetrics.cloud, cache: dataLoader.metrics() },
     models: state.models,
     visibleTiles: tiles?.visibleTiles.size,
     pending: tiles
@@ -1764,6 +1913,7 @@ window.weatherEarth3D = {
     visibleTiles: tiles?.visibleTiles.size,
     imageryResponses: state.imageryResponses,
     cloud: state.cloud,
+    cloudVolume: clouds.getState(),
     cloudObservation: state.cloudObservation,
     heightSource: state.profile?.source,
     heightScale: winds.heightScale,
@@ -1790,7 +1940,7 @@ window.weatherEarth3D = {
 
 if (query.has("debug")) {
   window.weatherEarth3D.debug = {
-    setOverview: (lon, lat, altitude) => {
+    setOverview: (lon, lat, altitude, tilt = 0, lookHeight = 0) => {
       controls.resetState();
       WGS84_ELLIPSOID.getCartographicToPosition(
         lat * RAD,
@@ -1803,15 +1953,63 @@ if (query.has("debug")) {
         -Math.sin(lat * RAD) * Math.sin(lon * RAD),
         Math.cos(lat * RAD),
       );
-      camera.lookAt(0, 0, 0);
+      if (tilt) {
+        const target = WGS84_ELLIPSOID.getCartographicToPosition(
+          lat * RAD,
+          lon * RAD,
+          0,
+          new THREE.Vector3(),
+        );
+        const east = new THREE.Vector3(
+          -Math.sin(lon * RAD),
+          Math.cos(lon * RAD),
+          0,
+        );
+        camera.position
+          .sub(target)
+          .applyAxisAngle(east, tilt * RAD)
+          .add(target);
+        const viewTarget = WGS84_ELLIPSOID.getCartographicToPosition(
+          lat * RAD,
+          lon * RAD,
+          lookHeight,
+          new THREE.Vector3(),
+        );
+        camera.lookAt(viewTarget);
+      } else camera.lookAt(0, 0, 0);
       camera.updateMatrixWorld();
       controls.setCamera(camera);
       controls.resetState();
+      debugCameraHold = tilt !== 0;
+      if (debugCameraHold) {
+        WGS84_ELLIPSOID.getPositionToNormal(camera.position,camera.up);
+        camera.lookAt(
+          WGS84_ELLIPSOID.getCartographicToPosition(
+            lat * RAD,
+            lon * RAD,
+            lookHeight,
+            new THREE.Vector3(),
+          ),
+        );
+        camera.updateMatrixWorld();
+        // A held view skips controls.update(), so refresh clipping after the debug jump.
+        controls.adjustCamera(camera);
+      }
       winds.clear();
     },
     captureView: () => {
       const pivot = controls.getPivotPoint(new THREE.Vector3());
-      return { position: camera.position.toArray(), pivot: pivot.toArray() };
+      return {
+        position: camera.position.toArray(),
+        pivot: pivot.toArray(),
+        direction: camera.getWorldDirection(new THREE.Vector3()).toArray(),
+        matrixWorld: camera.matrixWorld.toArray(),
+        inverseProjection: camera.projectionMatrixInverse.toArray(),
+        fov: camera.fov,
+        aspect: camera.aspect,
+        near: camera.near,
+        far: camera.far,
+      };
     },
     orbitView: (view, degrees) => {
       const pivot = new THREE.Vector3().fromArray(view.pivot);
@@ -1838,6 +2036,7 @@ $("height-scale").value = Math.max(
   1,
   Math.min(20, Number(query.get("heightScale")) || 1),
 );
+$("cloud").checked = query.get("cloud") === "1";
 $("buildings").checked = query.get("buildings") !== "0";
 $("temperature").checked = query.get("temperature") === "1";
 $("wind-speed").checked =

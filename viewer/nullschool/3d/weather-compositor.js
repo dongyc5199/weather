@@ -70,7 +70,9 @@ export class WeatherCompositor {
     const renderer = this.renderer,
       destination = renderer.getRenderTarget(),
       autoClear = renderer.autoClear;
-    this.active = layers.some((layer) => layer.mesh.visible);
+    this.active = layers.some(
+      (layer) => layer.mesh.visible && layer.requiresTerrainDepth !== false,
+    );
     try {
       if (this.active) {
         this.ensureTarget(destination);
