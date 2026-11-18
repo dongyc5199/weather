@@ -9,7 +9,7 @@
 
 ## Nullschool 风场地球
 
-三维预览入口：<http://127.0.0.1:8080/3d/>，默认使用带真实建筑贴图的 Google 实景三维，可直接查看[大阪实景](http://127.0.0.1:8080/3d/?view=osaka&basemap=google&level=850hPa)。菜单可切回 Cesium 地形、Esri 卫星影像和 OSM 建筑；行政区划、GFS 风温数据和带观测时间的东亚红外云图仍可叠加。三维地图沿用本地配置中的 Cesium ion 授权，经典风场页面不需要密钥。使用下面同一个本地服务启动，具体范围见 [三维预览说明](viewer/nullschool/3d/README.md)。
+三维预览入口：<http://127.0.0.1:8080/3d/>，默认使用带真实建筑贴图的 Google 实景三维，可直接查看[大阪实景](http://127.0.0.1:8080/3d/?view=osaka&basemap=google&level=850hPa)。菜单可切换至仅显示边界的无底图模式。行政区划、GFS 风温数据与 NOAA 多卫星红外云图均可叠加。三维地图沿用本地配置中的 Cesium ion 授权，经典风场页面不需要密钥。使用下面同一个本地服务启动，具体范围见 [三维预览说明](viewer/nullschool/3d/README.md)。
 
 已接入 `cambecc/earth` 开源引擎和 NOAA GFS 最新风场/气温，入口为 `viewer/nullschool/`。在项目虚拟环境中运行：
 
@@ -596,7 +596,7 @@ iframe.contentWindow.postMessage({
   requestId: "load-001",
   geojson,
   options: { name: "nmc-wind.geojson", fit: true }
-}, "*");
+}, new URL(iframe.src, window.location.href).origin);
 ```
 
 `postMessage` 支持的请求消息类型包括：`ping`、`get-ready`、`set-geojson`、`append-geojson`、`get-project`、`set-project`、`create-weather-element`、`add-weather-element`、`add-feature`、`update-feature`、`delete-feature`、`select-feature`、`get-features`、`get-layers`、`get-quality-profile`、`set-quality-profile`、`capture-metrics`、`get-benchmark-paths`、`run-benchmark-path`、`get-places`、`get-scene-presets`、`set-scene-preset`、`search-places`、`get-focus-target`、`set-focus-target`、`clear-focus-target`、`get-surface-probe`、`set-surface-probe`、`clear-surface-probe`、`set-focus-orbit`、`fly-to-place`、`fly-to-search`、`fly-to-camera`、`get-element-types`、`get-element-type-state`、`set-element-type-visibility`、`set-all-element-type-visibility`、`set-layer-visibility`、`set-weather-opacity`、`set-map-details`、`set-terrain`、`set-terrain-exaggeration`、`set-sunlight`、`set-sunlight-intensity`、`set-sunlight-time`、`set-buildings`、`set-building-height-scale`、`set-weather-3d`、`set-weather-3d-scale`、`set-weather-volume`、`set-weather-volume-scale`、`get-measurement`、`start-measurement`、`add-measurement-point`、`finish-measurement`、`undo-measurement-point`、`clear-measurement`、`get-camera-tour`、`set-camera-tour`、`add-camera-tour-stop`、`play-camera-tour`、`stop-camera-tour`、`clear-camera-tour`、`load-geojson-url`、`load-manifest-url`、`load-project-url`、`set-basemap`、`set-projection`、`set-immersive`、`set-time-filter`、`clear-weather`、`get-state`、`get-geojson`、`validate-geojson`、`get-validation-report`、`standardize-weather`、`fit-weather`。其中 `get-geojson` 可传 `options: { visible: true }` 只取当前时次和类型显隐筛选后的显示结果，默认会去掉 `_earthFeatureId` 等页面内部字段，适合直接作为业务 GeoJSON 交付；`get-quality-profile` / `set-quality-profile` 用于切换 `quality`、`balanced`、`performance` 三档 Cesium/3D Tiles 质量策略；`capture-metrics` 会返回 FPS、帧耗时、分辨率、当前底座 provider、可用瓦片/资源请求统计和 attribution 状态；`get-benchmark-paths` / `run-benchmark-path` 会枚举或执行固定镜头路径并逐站采样指标，适合 Google Earth 效果对比验收；`get-scene-presets` / `set-scene-preset` 用于恢复展示、校验、城市三类内置地球场景；`set-immersive` 用于切换地图优先的沉浸布局；`create-weather-element` / `add-weather-element` 适合外部系统用简化天气对象接入；`get-places` / `fly-to-place` / `fly-to-search` / `fly-to-camera` 用于 Google Earth 式镜头飞行和搜索定位；`get-focus-target` / `set-focus-target` / `clear-focus-target` 用于控制地球目标聚焦层；`get-surface-probe` / `set-surface-probe` / `clear-surface-probe` 用于控制临时地表信息探针；`set-focus-orbit` 用于控制围绕聚焦点的镜头环绕；`get-camera-tour` / `set-camera-tour` / `add-camera-tour-stop` / `play-camera-tour` 用于控制 Google Earth 式视角巡航；`get-measurement` / `start-measurement` / `add-measurement-point` / `finish-measurement` / `clear-measurement` 用于控制临时测量工具层；`set-map-details` 用于控制行政边界、水系、道路和地名矢量叠加；`set-terrain` / `set-terrain-exaggeration` 用于控制 3D 地形；`set-sunlight` / `set-sunlight-intensity` / `set-sunlight-time` 用于控制昼夜光照层和太阳时间；`set-buildings` / `set-building-height-scale` 用于控制城市 3D 建筑；`set-weather-3d` / `set-weather-3d-scale` 用于控制点状天气的 3D 光柱；`set-weather-volume` / `set-weather-volume-scale` 用于控制面状风区 3D 体块；`get-project` / `set-project` / `load-project-url` 用于保存和恢复完整地球工作台状态；`validate-geojson` 会返回 `{ ok, errors, warnings, summary, issues }`，适合自动化接入前判断是否缺天气类型、缺时次、缺样式或几何异常；`get-validation-report` 会返回 `WeatherEarthValidationReport`，额外包含来源、视图、图层和天气类型显隐状态。地球页也会主动向父窗口发送 `{ target: "weather-earth-client", type: "event", event: "ready" | "change" | "filterchange" | "layerchange" | "scenechange" | "qualitychange" | "immersivechange" | "mapdetailschange" | "sunlightchange" | "focuschange" | "surfaceprobechange" | "focusorbitchange" | "weather3dchange" | "weathervolumechange" | "searchchange" | "measurementchange" | "tourchange", detail }`，外部项目可直接监听 `message` 或使用 `WeatherEarthClient.on(...)`。
@@ -626,3 +626,11 @@ http://127.0.0.1:8765/viewer/earth-embed-demo.html
 如果当前 GeoJSON 来自本地文件、绘制或文本编辑器，`复制数据链接` 会把小型当前 GeoJSON 直接内联进 URL 的 `data` 参数，别人打开链接即可恢复同一份天气元素。内联链接会自动去掉 `_earthFeatureId`、`_weatherColor`、`marker-size-px` 等页面内部字段；大型风区过程仍建议下载 GeoJSON 或部署为文件 URL 后再分享。
 
 `复制项目链接` 会把当前 `WeatherEarthProject` 内联进 URL 的 `project` 参数，适合发送小型完整工作台状态；大型过程建议点击 `下载项目文档`，把 JSON 部署成 URL 后使用 `project=项目文档地址`。
+
+### 预报保留期与集合降水校准
+
+本地 Earth 服务按预报**有效时间**保留最近 24 小时的数据。当前 manifest 指向的批次一直保留到新批次成功发布。服务启动、发布新批次后及每 15 分钟检查一次；正在读写的请求会推迟清理。可用 `weather-earth prune` 预览，`weather-earth prune --apply` 执行。范围包括自动生成的风温快照及对应天气瓦片、云场、气压、高度和原始卫星缓存。地形沿用自身的空间上限。NMC 原图与手工导出独立于该窗口。
+
+集合降水采用同一 UTC 24 小时区间，阈值为累计 **≥25 mm**。日期表示该 UTC 自然日，带时区的结束时刻须同时指定 `duration_hours: 24`，也可以直接提供 `period_start`、`period_end`。每日累计量支持 mm、m 和 kg/m²（单位字符串可用 `kg/m^2`），日平均速率支持 mm/day、mm/h、kg/m²/s 等。存在不一致的累计窗口、混用已声明与缺失单位、重复成员或未知单位时会报错。部分成员缺测的格点只提供描述性统计。旧文件未声明时段或单位时，可读取其汇总值，输入单位假设记录在输出元数据中。
+
+`member_exceedance_fraction` 为当天有效成员中达到阈值的加权比例。`prob_heavy_rain` 只在匹配且通过时间留出检验的配置上返回。检查 `probability_status` 可区分缺测、未校准、配置不适用及验证期重叠。校准只适用于相同地点、成员、权重、偏差订正、时窗和预报时效。数据说明、命令及实测分数见 [降水验证样本](examples/rain-verification/README.md)。

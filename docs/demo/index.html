@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>夜间观测台 · 全球 500 hPa 风场</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+<header class="topbar">
+  <div class="topbar-l">
+    <div class="brand"><span class="brand-name">earth</span><span class="brand-sub">天气地球</span></div>
+    <nav class="nav" aria-label="区域">
+      <button class="chip on" aria-current="page">全球</button>
+      <button class="chip">中国</button>
+      <button class="chip">专注地球</button>
+    </nav>
+  </div>
+  <div class="meta mono">
+    <span>预报 <b>2026/11/12 12:00</b></span>
+    <span>起报 <b>2026/11/12 08:00</b></span>
+    <span class="amber">GFS</span>
+  </div>
+</header>
+
+<section class="panel layers" aria-label="探索图层">
+  <div class="panel-head"><h2>探索图层</h2><span class="mono lvtxt">GFS · </span></div>
+  <div class="seg"><span class="pill"></span>
+    <input class="hid" id="t0" type="radio" name="tab" checked><label class="tab" for="t0">气象</label>
+    <input class="hid" id="t1" type="radio" name="tab"><label class="tab" for="t1">地图</label>
+    <input class="hid" id="t2" type="radio" name="tab"><label class="tab" for="t2">样式</label>
+  </div>
+  <div class="rows">
+    <div class="row"><span class="lab">天气</span><input id="c1" type="checkbox" checked><span class="dot" style="background:var(--c-wind)"></span><label for="c1">风线</label></div>
+    <div class="row"><span class="lab">填色</span>
+      <input class="hid" id="f0" type="radio" name="fill"><label class="chip" for="f0">无</label>
+      <input class="hid" id="f1" type="radio" name="fill" checked><label class="chip" for="f1">风速</label>
+      <input class="hid" id="f2" type="radio" name="fill"><label class="chip" for="f2">气温</label>
+    </div>
+    <div class="row"><span class="lab">云图</span><input id="c2" type="checkbox"><span class="dot" style="background:var(--c-cloud)"></span><label for="c2">云层</label></div>
+    <div class="row"><span class="lab">等值线</span><input id="c3" type="checkbox" checked><span class="swatch" style="background:var(--amber)"></span><label for="c3">位势高度线</label></div>
+    <div class="row"><span class="lab"></span><input id="c4" type="checkbox"><span class="swatch" style="background:var(--muted)"></span><label for="c4">海平面等压线</label></div>
+    <div class="row"><span class="lab">色带</span>
+      <input class="hid" id="r0" type="radio" name="ramp"><label class="chip" for="r0">经典</label>
+      <input class="hid" id="r1" type="radio" name="ramp" checked><label class="chip" for="r1">观测台</label>
+    </div>
+  </div>
+</section>
+
+<aside class="panel tip">
+  <div class="tip-title mono">500 HPA · 读图提示</div>
+  <p>等高线越密，风越大。图中东亚上空这条密集的橙红带就是急流轴，槽前通常对应降水系统。</p>
+</aside>
+
+<main class="stage">
+<svg class="globe" id="globe" viewBox="0 0 680 680" role="img" aria-label="500 hPa 全球风场示意图，可点击取点">
+<defs>
+<radialGradient id="oc" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#123a8c"/><stop offset=".7" stop-color="#0a1f5c"/><stop offset="1" stop-color="#050f33"/></radialGradient>
+<linearGradient id="jet" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2fd07a" stop-opacity="0"/><stop offset=".3" stop-color="#d9d94a" stop-opacity=".7"/><stop offset=".6" stop-color="#ff7a3d" stop-opacity=".85"/><stop offset=".85" stop-color="#e0309a" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
+<radialGradient id="atm" cx="50%" cy="50%" r="50%"><stop offset=".94" stop-color="#8fb4d9" stop-opacity="0"/><stop offset=".985" stop-color="#8fb4d9" stop-opacity=".28"/><stop offset="1" stop-color="#8fb4d9" stop-opacity="0"/></radialGradient>
+<clipPath id="gc"><circle cx="340" cy="340" r="318"/></clipPath>
+<filter id="bl"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="bs"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<circle cx="340" cy="340" r="338" fill="url(#atm)"/>
+<g clip-path="url(#gc)">
+<circle cx="340" cy="340" r="318" fill="url(#oc)"/>
+<g class="fw"><g filter="url(#bl)" opacity=".75">
+<ellipse cx="170" cy="190" rx="110" ry="60" fill="#1f9d55"/>
+<ellipse cx="330" cy="140" rx="150" ry="50" fill="#2fb36a"/>
+<ellipse cx="470" cy="260" rx="140" ry="45" fill="#7bcf4a"/>
+<ellipse cx="260" cy="340" rx="120" ry="40" fill="#1f9d55"/>
+<ellipse cx="420" cy="430" rx="160" ry="42" fill="#d9d94a" opacity=".6"/>
+<ellipse cx="520" cy="190" rx="60" ry="90" fill="#ff7a3d" opacity=".55"/>
+</g>
+<path d="M30 300 C150 230 260 330 360 360 C450 385 520 330 640 250" stroke="url(#jet)" stroke-width="26" fill="none" filter="url(#bs)"/>
+<path d="M60 220 C170 170 290 215 380 250 C470 285 540 230 640 170" stroke="url(#jet)" stroke-width="14" fill="none" filter="url(#bs)" opacity=".8"/>
+</g>
+<g class="ft" filter="url(#bl)"><ellipse cx="340" cy="90" rx="200" ry="70" fill="#3b6cff"/><ellipse cx="340" cy="250" rx="220" ry="60" fill="#38c3ff"/><ellipse cx="340" cy="400" rx="230" ry="60" fill="#ffd04a"/><ellipse cx="340" cy="540" rx="200" ry="70" fill="#ff5a3d"/></g>
+<g class="cl" filter="url(#bl)"><ellipse cx="230" cy="260" rx="90" ry="30" fill="#fff"/><ellipse cx="450" cy="330" rx="110" ry="26" fill="#fff"/><ellipse cx="330" cy="470" rx="130" ry="28" fill="#fff"/></g>
+<g class="sl" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="1">
+<path d="M40 280 C150 220 260 320 360 350 C450 375 520 320 640 240"/>
+<path d="M40 300 C150 245 260 345 360 372 C450 396 520 345 640 265"/>
+<path d="M70 200 C170 150 290 200 380 235 C470 270 540 215 640 150"/>
+<path d="M60 420 C160 380 260 440 350 430 C450 420 520 460 630 410"/>
+<path d="M90 480 C180 450 270 500 360 490 C450 480 520 520 600 480"/>
+<path d="M110 120 C220 90 330 110 430 90 C500 80 560 100 600 130"/>
+<path d="M120 560 C220 540 320 570 420 555 C500 545 560 560 590 540"/>
+<circle cx="200" cy="215" r="34"/><circle cx="200" cy="215" r="20"/><circle cx="200" cy="215" r="8"/>
+</g>
+<g class="iso" fill="none" stroke="#F2B84B" stroke-width="1.2" stroke-opacity=".9">
+<path d="M30 250 C150 190 280 290 370 330 C460 365 540 300 650 215"/>
+<path d="M20 330 C140 280 260 380 360 410 C460 438 540 385 650 305"/>
+<path d="M50 170 C160 120 290 170 390 205 C480 238 550 180 650 120"/>
+<path d="M40 470 C150 440 260 490 360 475 C460 462 540 500 640 455"/>
+<path d="M70 90 C200 60 340 80 450 60 C520 50 570 70 610 100"/>
+</g>
+<g fill="none" stroke="#fff" stroke-opacity=".4" stroke-width=".9">
+<path d="M255 230 L285 215 L330 225 L350 250 L330 285 L290 300 L262 280 Z"/>
+<path d="M395 300 L430 290 L455 310 L440 345 L405 350 Z"/>
+<path d="M430 470 L480 455 L520 480 L500 520 L450 515 Z"/>
+</g>
+<g class="mono iso" font-size="12" font-weight="500" fill="#F2B84B" stroke="#05060A" stroke-width="3" paint-order="stroke">
+<text x="118" y="262">5820</text><text x="300" y="316">5700</text><text x="470" y="300">5640</text>
+<text x="120" y="190">5460</text><text x="370" y="214">5400</text><text x="520" y="142">5340</text>
+<text x="170" y="456">5880</text><text x="470" y="490">5880</text><text x="300" y="82">5160</text>
+</g>
+</g>
+<circle cx="340" cy="340" r="318" fill="none" stroke="#8fb4d9" stroke-opacity=".3" stroke-width="1.5"/>
+<g id="probe-g">
+<g stroke="#E8E9EC" stroke-width="1" stroke-opacity=".85"><line x1="440" y1="262" x2="440" y2="298"/><line x1="440" y1="326" x2="440" y2="362"/><line x1="388" y1="312" x2="426" y2="312"/><line x1="454" y1="312" x2="492" y2="312"/></g>
+<circle class="ping" cx="440" cy="312" r="5" fill="none" stroke="#F2B84B" stroke-width="1.5"/>
+<circle cx="440" cy="312" r="5" fill="none" stroke="#F2B84B" stroke-width="1.5"/>
+<circle id="ripple" cx="440" cy="312" r="6" fill="none" stroke="#fff" stroke-width="1.5"/>
+</g>
+</svg>
+
+<div class="probe" id="probe" style="left:64.7%;top:45.9%" aria-live="polite">
+  <section class="panel mono">
+    <div class="probe-title">探针 · 示例读数</div>
+    <dl>
+      <dt>位置</dt><dd id="v-pos"></dd>
+      <dt>风速</dt><dd><b id="v-spd" style="font-weight:400"></b> <span>km/h</span></dd>
+      <dt>风向</dt><dd id="v-dir"></dd>
+      <dt>位势高度</dt><dd><b id="v-hgt" style="font-weight:400"></b> <span>m</span></dd>
+      <dt>气温</dt><dd><b id="v-tmp" style="font-weight:400"></b> <span>°C</span></dd>
+    </dl>
+  </section>
+</div>
+</main>
+
+<nav class="panel rail-panel" aria-label="气压层">
+  <div class="rail-title">气压层 · 约等高度</div>
+  <div class="rail"><span class="pill2"></span>
+    <input class="hid" id="l0" type="radio" name="lv"><label class="lvl" for="l0"><span class="mono">10</span><small class="mono">31 km</small></label>
+    <input class="hid" id="l1" type="radio" name="lv"><label class="lvl" for="l1"><span class="mono">70</span><small class="mono">18 km</small></label>
+    <input class="hid" id="l2" type="radio" name="lv"><label class="lvl" for="l2"><span class="mono">250</span><small class="mono">10.4 km</small></label>
+    <input class="hid" id="l3" type="radio" name="lv" checked><label class="lvl" for="l3"><span class="mono">500</span><small class="mono">5.5 km</small></label>
+    <input class="hid" id="l4" type="radio" name="lv"><label class="lvl" for="l4"><span class="mono">700</span><small class="mono">3.0 km</small></label>
+    <input class="hid" id="l5" type="radio" name="lv"><label class="lvl" for="l5"><span class="mono">850</span><small class="mono">1.5 km</small></label>
+    <input class="hid" id="l6" type="radio" name="lv"><label class="lvl" for="l6"><span class="mono">1000</span><small class="mono">0.1 km</small></label>
+    <input class="hid" id="l7" type="radio" name="lv"><label class="lvl" for="l7"><span class="mono">Sfc</span><small class="mono">地面</small></label>
+  </div>
+</nav>
+
+<div class="controls">
+  <div class="legend mono">
+    <div class="lg lgw"><span>风速 0</span><i></i><span>360 km/h</span></div>
+    <div class="lg lgt"><span>气温 -60</span><i></i><span>+40 °C</span></div>
+  </div>
+  <div class="panel timeline">
+    <input class="hid" id="play" type="checkbox">
+    <label class="chip play" for="play" aria-label="播放 / 暂停">
+      <svg class="ip" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5 12 7 3 12.5Z" fill="#0E1014"/></svg>
+      <svg class="ipp" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="2" width="3" height="10" fill="#0E1014"/><rect x="8" y="2" width="3" height="10" fill="#0E1014"/></svg>
+    </label>
+    <div class="track-wrap">
+      <div class="track"><div class="tw"></div><div class="tk"></div></div>
+      <div class="ticks mono"><span>08:00</span><span>11:00</span><span>14:00</span><span>17:00</span><span>20:00</span><span>23:00</span><span>02:00</span><span>05:00</span><span>08:00</span></div>
+    </div>
+    <span class="step mono">+3 h</span>
+  </div>
+</div>
+
+<div class="panel zoom">
+  <button class="icon-btn" aria-label="放大">+</button>
+  <button class="icon-btn" aria-label="缩小">−</button>
+  <button class="export" aria-label="分享图片">导出</button>
+</div>
+
+<div class="foot">经典气象模式 · 图层与数据说明</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
