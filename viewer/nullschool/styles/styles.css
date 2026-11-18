@@ -48,6 +48,11 @@
     --earth-metadata-bottom: var(--earth-ui-inset);
     --earth-menu-duration: 250ms;
     --earth-scene-background: #000005;
+    --earth-atmosphere-color: #4b8cdb;
+    --earth-atmosphere-height: 80000;
+    --earth-atmosphere-opacity: .32;
+    --earth-globe-light-ambient: .72;
+    --earth-globe-light-directional: .28;
     --earth-globe-placeholder: #101c26;
     --earth-globe-land: #34463e;
     --earth-scene-light: #ffffff;

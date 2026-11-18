@@ -12,6 +12,8 @@
       }
 
       this.targetOrigin = options.targetOrigin || new URL(this.frame.getAttribute("src") || this.frame.src, window.location.href).origin;
+      this.replyOrigin = ["*", "null"].includes(this.targetOrigin) ? this.targetOrigin :
+        new URL(this.targetOrigin === "/" ? window.location.href : this.targetOrigin, window.location.href).origin;
       this.timeoutMs = Number(options.timeoutMs || 30000);
       this.requestSeq = 1;
       this.pending = new Map();
@@ -59,12 +61,15 @@
       }
 
       const requestId = options.requestId || `weather-earth-${this.requestSeq++}`;
+      if (this.pending.has(requestId)) {
+        return Promise.reject(new Error("WeatherEarth requestId is already pending."));
+      }
       const timeoutMs = Number(options.timeoutMs || this.timeoutMs);
       const message = {
+        ...payload,
         target: REQUEST_TARGET,
         type,
         requestId,
-        ...payload,
       };
 
       return new Promise((resolve, reject) => {
@@ -74,7 +79,13 @@
         }, timeoutMs);
 
         this.pending.set(requestId, { resolve, reject, timer });
-        this.frame.contentWindow.postMessage(message, this.targetOrigin);
+        try {
+          this.frame.contentWindow.postMessage(message, this.targetOrigin);
+        } catch (error) {
+          this.pending.delete(requestId);
+          window.clearTimeout(timer);
+          reject(error);
+        }
       });
     }
 
@@ -82,6 +93,7 @@
       const message = event.data;
       if (!message || typeof message !== "object" || message.target !== RESPONSE_TARGET) return;
       if (event.source !== this.frame.contentWindow) return;
+      if (this.replyOrigin !== "*" && event.origin !== this.replyOrigin) return;
 
       if (message.type === "event" && message.event) {
         if (message.event === "ready") {

@@ -8,9 +8,10 @@ import {
   XYZTilesOverlay,
 } from "./vendor.js";
 import { gridSampler, WindLayer } from "./weather.js";
-import { DataLoader } from "./data-loading.js";
+import { DataLoader, weatherResources } from "./data-loading.js";
 import { CloudLayer } from "./cloud-layer.js";
 import { CLOUD_VIEW_LIMITS } from "./cloud-data.js";
+import { AtmosphereLayer } from "./atmosphere.js";
 import { TemperatureLayer } from "./temperature.js";
 import { WeatherCompositor } from "./weather-compositor.js";
 import { WIND_SPEED_PALETTE } from "./wind-presentation.js";
@@ -150,6 +151,7 @@ const loadMetrics = {
   firstImageryMs: null,
   imageryZooms: {},
   textureSize: 0,
+  weather: null,
   cloud: null,
 };
 const state = {
@@ -268,6 +270,7 @@ controls.dampingFactor = 0.12;
 controls.enableDoubleTapZoom = true;
 controls.zoomSpeed = 1.25;
 const clouds = new CloudLayer();
+const atmosphere = new AtmosphereLayer(theme);
 const winds = new WindLayer(weatherScene, camera, lineStyles.get("wind"));
 winds.setViewport(
   stageWidth,
@@ -965,8 +968,12 @@ async function drawLegend() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+let weatherController;
 async function loadWeather() {
+  weatherController?.abort();
+  weatherController = new AbortController();
   const version = ++weatherVersion;
+  const started = performance.now();
   clearHeightContours();
   if (contourSnapshot !== state.manifest?.id) {
     clearIsobars();
@@ -996,9 +1003,10 @@ async function loadWeather() {
   try {
     const paths = [weatherPath("wind"), weatherPath("temp")];
     if (paths.some((p) => !p)) throw new Error("这一高度的数据还未准备好");
-    const [wind, temp] = await Promise.all(
-      paths.map((path) => json("../" + path)),
-    );
+    const [wind, temp, profile] = await weatherResources(json, {
+      wind: "../" + paths[0], temp: "../" + paths[1],
+      height: `/api/earth/3d/height/${state.manifest.id}/${level}`,
+    }, weatherController.signal);
     if (version !== weatherVersion) return;
     const grid = gridSampler(wind, temp);
     if ((grid.header.layer || "surface") !== level)
@@ -1009,7 +1017,13 @@ async function loadWeather() {
     state.profile = null;
     state.heightStatus = "正在加载同批次 GFS 风温层高度…";
     $("three-height-status").textContent = state.heightStatus;
-    loadHeights(version, grid, level, state.manifest.id);
+    if (profile.error) {
+      state.heightStatus = "对应高度暂不可用，风温层暂停；可重试";
+      $("three-height-status").textContent = state.heightStatus;
+    } else {
+      applyHeights(version, grid, profile);
+      loadMetrics.weather = { snapshot: state.manifest.id, level, readyMs: Math.round(performance.now() - started) };
+    }
     applyLayerOpacity();
     $("earth-active-context").textContent =
       `GFS · ${level === "surface" ? "地面" : level.replace("hPa", " hPa")}`;
@@ -1038,21 +1052,25 @@ async function loadHeights(version, grid, level, snapshot) {
       120000,
     );
     if (version !== weatherVersion) return;
-    grid.setHeightProfile(profile);
-    state.profile = profile;
-    winds.setGrid(grid);
-    windSpeeds.setData(state.windRecords, profile);
-    updateHeightLabel();
-    updateFieldStatus();
-    loadTemperature(version, state.temperatureRecord, profile);
-    ensureHeightContours();
-    if (state.selected) showPoint(state.selected);
+    applyHeights(version, grid, profile);
   } catch {
     if (version !== weatherVersion) return;
     state.heightStatus = "对应高度暂不可用，风温层暂停；可重试";
     $("three-height-status").textContent = state.heightStatus;
     $("three-field-status").textContent = "风速与气温填色等待对应高度，可重试";
   }
+}
+
+function applyHeights(version, grid, profile) {
+  grid.setHeightProfile(profile);
+  state.profile = profile;
+  winds.setGrid(grid);
+  windSpeeds.setData(state.windRecords, profile);
+  updateHeightLabel();
+  updateFieldStatus();
+  loadTemperature(version, state.temperatureRecord, profile);
+  ensureHeightContours();
+  if (state.selected) showPoint(state.selected);
 }
 
 async function loadTemperature(version, record, profile) {
@@ -1620,8 +1638,9 @@ $("retry-contours").addEventListener("click", () => {
 $("height-scale").addEventListener("input", updateHeightLabel);
 $("retry-map").addEventListener("click", retryMap);
 $("retry-height").addEventListener("click", () => {
-  if (state.grid && state.manifest)
-    loadHeights(weatherVersion, state.grid, state.level, state.manifest.id);
+  if (!state.manifest) { refreshWeather(); return; }
+  if (state.grid) loadHeights(weatherVersion, state.grid, state.level, state.manifest.id);
+  else loadWeather();
 });
 $("terrain").addEventListener("change", () =>
   buildSurface($("terrain").checked),
@@ -1676,8 +1695,9 @@ for (const level of levels) {
     level === "surface" ? "地面" : level.replace("hPa", " hPa"),
   );
   button.addEventListener("click", () => {
+    if (state.level === level && state.profile) return;
     state.level = level;
-    loadWeather();
+    if (state.manifest) loadWeather();
   });
   $("three-heights").append(button, " ");
 }
@@ -1726,11 +1746,23 @@ function frame(time) {
   winds.updateLineViewport(stageHeight);
   windSpeeds.update();
   temperatures.update();
-  for (const layer of Object.values(admin))
+  // On imagery, reference lines recede at orbital scale without changing saved layer choices.
+  const orbitalWeight =
+    state.basemap === "google"
+      ? THREE.MathUtils.smoothstep(
+          WGS84_ELLIPSOID.getPositionElevation(camera.position),
+          2000000,
+          8000000,
+        )
+      : 0;
+  for (const [key, layer] of Object.entries(admin)) {
+    const quiet = key === "countries" ? 0.65 : key === "rivers" ? 0.8 : 1;
     layer.update(
       !!mapStability?.moving || (winds.moving && winds.viewChanging),
       stageHeight,
+      1 - quiet * orbitalWeight,
     );
+  }
   const occupied =
     heightContours.enabled || isobarLabels.enabled
       ? [
@@ -1781,9 +1813,15 @@ function frame(time) {
     windSpeeds,
     clouds,
   ]);
+  atmosphere.renderSurface(
+    renderer,
+    camera,
+    state.basemap === "google" && $("color-none").checked,
+  );
   ensureCloudVolume();
   ensureCloudWind();
   clouds.render(renderer, camera, true);
+  atmosphere.render(renderer, camera, state.basemap === "google");
   if (time - lastStatus > 1500) {
     lastStatus = time;
     const pending =
@@ -1863,7 +1901,7 @@ function performanceMetrics() {
     firstImageryMs: loadMetrics.firstImageryMs,
     imageryZooms: loadMetrics.imageryZooms,
     textureSize: loadMetrics.textureSize,
-    dataLoading: { cloud: loadMetrics.cloud, cache: dataLoader.metrics() },
+    dataLoading: { weather: loadMetrics.weather, cloud: loadMetrics.cloud, cache: dataLoader.metrics() },
     models: state.models,
     visibleTiles: tiles?.visibleTiles.size,
     pending: tiles

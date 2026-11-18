@@ -21,7 +21,6 @@ for (const name of ["three", "3d-tiles-renderer"]) {
     } catch {}
   }
 }
-await writeFile("THIRD-PARTY-NOTICES.txt", notices.join("\n\n"));
 await mkdir("decoders/draco", { recursive: true });
 for (const file of [
   "draco_wasm_wrapper.js",

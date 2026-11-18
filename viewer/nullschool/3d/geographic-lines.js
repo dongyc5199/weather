@@ -273,14 +273,18 @@ export class GeographicLineLayer {
       level.halo.setStyle(this.haloStyle());
     }
   }
-  update(moving, height) {
+  update(moving, height, viewOpacity = 1) {
+    const opacity = Math.max(0, Math.min(1, viewOpacity));
     this.group.visible =
-      this.enabled && !!this.levels && this.style.opacity > 0;
+      this.enabled && !!this.levels && this.style.opacity > 0 && opacity > 0;
     if (!this.group.visible) return;
     this.lod = moving ? "coarse" : "detail";
     for (const [key, level] of Object.entries(this.levels)) {
       level.group.visible = key === this.lod;
       if (level.group.visible) {
+        level.line.material.opacity = this.style.opacity * opacity;
+        level.halo.material.opacity =
+          this.style.opacity * this.haloOpacity * opacity;
         level.line.updateViewport(this.camera, height);
         level.halo.updateViewport(this.camera, height);
       }

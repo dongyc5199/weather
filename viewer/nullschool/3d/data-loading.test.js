@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DataLoader, immutableData } from "./data-loading.js";
+import { DataLoader, weatherResources, immutableData } from "./data-loading.js";
 const base="/data/live/20261116T06Z-f009-0p5-v2/";
 test("Snapshot data is decoded once while status is always fetched live", async()=>{
  const calls=[];const loader=new DataLoader(async(url,options)=>{calls.push({url,options});return new Response('{"id":1}');});
@@ -24,6 +24,19 @@ test("Decoded data has a bounded LRU budget and never crosses snapshots",async()
  assert.equal(calls,3);assert.equal(loader.metrics().entries,1);
  await loader.json(base.replace('f009','f010')+'wind.json');assert.equal(calls,4);
 });
+test("Height loading starts alongside wind and temperature, not after either",async()=>{
+ const started=[];let release;
+ const wait=new Promise(resolve=>release=resolve);
+ const task=weatherResources(async url=>{started.push(url);await wait;return url;},{wind:'wind',temp:'temp',height:'height'});
+ assert.deepEqual(started,['wind','temp','height']);release();
+ assert.deepEqual(await task,['wind','temp','height']);
+});
+
+test("A height failure leaves wind/temp available for an independent retry",async()=>{
+ const result=await weatherResources(async url=>{if(url==='height')throw new Error('source unavailable');return url;},{wind:'wind',temp:'temp',height:'height'});
+ assert.equal(result[0],'wind');assert.equal(result[1],'temp');assert.match(result[2].error.message,/unavailable/);
+});
+
 test("A compressed binary field is cached as bytes without numeric JSON conversion",async()=>{
  let calls=0;const bytes=new Uint8Array([0,0,0,60,0,56,0,60]);
  const loader=new DataLoader(async()=>{calls++;return new Response(bytes);});

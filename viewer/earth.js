@@ -419,6 +419,9 @@
   let manifestIndex = 0;
   let manifestPlaying = false;
   let manifestTimer = 0;
+  let manifestRequest = 0;
+  let frameRequest = 0;
+  let pendingFrame = 0;
   let drawMode = "";
   let drawCoordinates = [];
   let selectedFeatureId = "";
@@ -798,13 +801,6 @@
     if (event.deltaMode === 1) return event.deltaY * 16;
     if (event.deltaMode === 2) return event.deltaY * 120;
     return event.deltaY;
-  }
-
-  function eventCanvasPosition(event) {
-    const canvas = viewer?.scene?.canvas;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    return new Cesium.Cartesian2(event.clientX - rect.left, event.clientY - rect.top);
   }
 
   function stopCameraGestureEvent(event) {
@@ -2065,11 +2061,11 @@
     on(elements.processPlay, "click", () => toggleManifestPlayback());
     on(elements.processPrev, "click", () => stepManifest(-1));
     on(elements.processNext, "click", () => stepManifest(1));
-    on(elements.processRange, "input", () => setManifestIndex(Number(elements.processRange.value), { fit: false }));
+    on(elements.processRange, "input", () => setManifestIndex(Number(elements.processRange.value), { fit: false }).catch(() => {}));
     on(elements.immersiveProcessPlay, "click", () => toggleManifestPlayback());
     on(elements.immersiveProcessPrev, "click", () => stepManifest(-1));
     on(elements.immersiveProcessNext, "click", () => stepManifest(1));
-    on(elements.immersiveProcessRange, "input", () => setManifestIndex(Number(elements.immersiveProcessRange.value)));
+    on(elements.immersiveProcessRange, "input", () => setManifestIndex(Number(elements.immersiveProcessRange.value)).catch(() => {}));
     on(elements.weatherCaseOverview, "click", () => flyToWeatherCaseView("overview"));
     on(elements.weatherCaseCore, "click", () => flyToWeatherCaseView("core"));
     on(elements.weatherCaseCity, "click", () => flyToWeatherCaseView("city"));
@@ -2218,6 +2214,7 @@
       throw new Error(`${response.status} ${response.statusText}`);
     }
     const payload = await response.json();
+    if (options.current && !options.current()) return;
     setWeatherGeoJson(payload, label || readableNameFromUrl(response.url || value) || "weather.geojson", {
       fit: options.fit !== false,
       persist: true,
@@ -3195,34 +3192,6 @@
     flyToCamera({ ...camera, zoom: clamp(camera.zoom - delta, 0.4, 19) }, { duration: 0.35 });
   }
 
-  function zoomCameraRange(zoomDelta) {
-    if (!viewer || !Cesium) return null;
-    const camera = currentCameraState();
-    const nextZoom = clamp(camera.zoom + Number(zoomDelta || 0), 0.4, 19);
-    const currentRange = zoomToHeight(camera.zoom);
-    const nextRange = zoomToHeight(nextZoom);
-    const moveMeters = currentRange - nextRange;
-    const direction = Cesium.Cartesian3.normalize(viewer.camera.directionWC, new Cesium.Cartesian3());
-    const up = Cesium.Cartesian3.normalize(viewer.camera.upWC, new Cesium.Cartesian3());
-    const destination = Cesium.Cartesian3.add(
-      viewer.camera.positionWC,
-      Cesium.Cartesian3.multiplyByScalar(direction, moveMeters, new Cesium.Cartesian3()),
-      new Cesium.Cartesian3()
-    );
-    viewer.camera.setView({
-      destination,
-      orientation: {
-        direction,
-        up,
-      },
-    });
-    lastCamera = currentCameraState();
-    scheduleCameraUiUpdate();
-    scheduleReplaceUrlState();
-    viewer.scene.requestRender?.();
-    return lastCamera;
-  }
-
   function zoomToLocation(lonLat, options = {}) {
     if (!validLonLat(lonLat?.lon, lonLat?.lat)) return null;
     const camera = currentCameraState();
@@ -3638,21 +3607,25 @@
   }
 
   async function loadManifestFromUrl(url = DEFAULT_MANIFEST_URL, options = {}) {
+    const request = ++manifestRequest;
+    ++frameRequest;
     const value = String(url || DEFAULT_MANIFEST_URL).trim();
     try {
       setStatus("正在加载天气过程...", value);
       const response = await fetch(value, { cache: "no-store" });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const manifest = await response.json();
+      if (request !== manifestRequest) return weatherEarthApi.getState();
       manifestFrames = normalizeManifestFrames(manifest, response.url || value);
-      manifestIndex = Math.max(0, manifestFrames.findIndex((frame) => frame.default || frame.peak));
-      if (manifestIndex < 0) manifestIndex = 0;
+      const preferred = manifest.defaultIndex;
+      manifestIndex = Number.isInteger(preferred) && preferred >= 0 && preferred < manifestFrames.length
+        ? preferred : Math.max(0, manifestFrames.findIndex(frame => frame.default || frame.peak));
       setShareSource("manifest", value);
       renderManifestControls();
       if (manifestFrames.length) await setManifestIndex(manifestIndex, { fit: options.fit !== false });
-      setStatus("天气过程已加载。", `${manifestFrames.length} 个时次`);
+      if (request === manifestRequest) setStatus("天气过程已加载。", `${manifestFrames.length} 个时次`);
     } catch (error) {
-      setStatus("天气过程加载失败。", error.message || String(error));
+      if (request === manifestRequest) setStatus("天气过程加载失败。", error.message || String(error));
     }
     return weatherEarthApi.getState();
   }
@@ -3674,9 +3647,23 @@
 
   async function setManifestIndex(index, options = {}) {
     if (!manifestFrames.length) return;
-    manifestIndex = clamp(Math.round(Number(index)), 0, manifestFrames.length - 1);
+    const numericIndex = Number(index);
+    if (!Number.isFinite(numericIndex)) throw new Error("无效时次");
+    const request = ++frameRequest;
+    pendingFrame = request;
+    const current = () => request === frameRequest;
+    manifestIndex = clamp(Math.round(numericIndex), 0, manifestFrames.length - 1);
     const frame = manifestFrames[manifestIndex];
-    await loadGeoJsonFromUrl(frame.geojsonUrl, frame.label, { fit: options.fit === true, shareType: "manifest", shareValue: currentShareSourceValue || DEFAULT_MANIFEST_URL });
+    try {
+      await loadGeoJsonFromUrl(frame.geojsonUrl, frame.label, { current, fit: options.fit === true, shareType: "manifest", shareValue: currentShareSourceValue || DEFAULT_MANIFEST_URL });
+    } catch (error) {
+      if (!current()) return weatherEarthApi.getState();
+      setStatus("时次加载失败。", error.message || String(error));
+      throw error;
+    } finally {
+      if (pendingFrame === request) pendingFrame = 0;
+    }
+    if (!current()) return weatherEarthApi.getState();
     if (frame.time) setTimeFilter(frame.time, { notify: false });
     else setSunlightTime(frame.label || frame.geojsonUrl, { source: "manifest-frame", fallbackRealtime: true });
     renderManifestControls();
@@ -3684,14 +3671,14 @@
 
   function stepManifest(delta) {
     if (!manifestFrames.length) return;
-    setManifestIndex((manifestIndex + delta + manifestFrames.length) % manifestFrames.length, { fit: false });
+    setManifestIndex((manifestIndex + delta + manifestFrames.length) % manifestFrames.length, { fit: false }).catch(() => {});
   }
 
   function toggleManifestPlayback() {
     if (!manifestFrames.length) return;
     manifestPlaying = !manifestPlaying;
     if (manifestPlaying) {
-      manifestTimer = window.setInterval(() => stepManifest(1), 1600);
+      manifestTimer = window.setInterval(() => { if (!pendingFrame) stepManifest(1); }, 1600);
     } else {
       window.clearInterval(manifestTimer);
       manifestTimer = 0;
@@ -3704,7 +3691,7 @@
     window.clearInterval(manifestTimer);
     manifestTimer = 0;
     manifestIndex = 0;
-    if (manifestFrames.length) setManifestIndex(0, { fit: true });
+    if (manifestFrames.length) setManifestIndex(0, { fit: true }).catch(() => {});
     renderManifestControls();
   }
 
@@ -3744,7 +3731,7 @@
       if (!container) continue;
       container.innerHTML = manifestFrames.map((frame, index) => `<button type="button" data-frame="${index}" class="${index === manifestIndex ? "is-active" : ""}">${escapeHtml(frame.label)}</button>`).join("");
       container.querySelectorAll("[data-frame]").forEach((button) => {
-        button.addEventListener("click", () => setManifestIndex(Number(button.dataset.frame), { fit: false }));
+        button.addEventListener("click", () => setManifestIndex(Number(button.dataset.frame), { fit: false }).catch(() => {}));
       });
     }
   }

@@ -86,3 +86,8 @@ export class DataLoader {
     return { requests: this.requests, hits: this.hits, entries: this.entries.size, decodedMiB: Math.round(this.bytes / 1024 ** 2) };
   }
 }
+
+/** Start independent prerequisites together, including before wind/temp completes. */
+export function weatherResources(loader, {wind, temp, height}, signal) {
+  return Promise.all([loader(wind, 25000, signal), loader(temp, 25000, signal), loader(height, 120000, signal).catch(error => ({error}))]);
+}

@@ -78,6 +78,9 @@
   let manifestFrames = [];
   let manifestIndex = 0;
   let manifestTimer = 0;
+  let manifestRequest = 0;
+  let frameRequest = 0;
+  let pendingFrame = 0;
   let autoRotateEnabled = params.get("rotate") !== "0";
   let userInteracting = false;
   let spinChanging = false;
@@ -221,7 +224,7 @@
     elements.loadGeoJsonUrl?.addEventListener("click", () => loadGeoJsonFromUrl(elements.geoJsonUrlInput.value || DEFAULT_GEOJSON_URL, "", { fit: true }));
     elements.loadManifestUrl?.addEventListener("click", () => loadManifestFromUrl(elements.manifestUrlInput.value || DEFAULT_MANIFEST_URL, { fit: true }));
     elements.playManifest?.addEventListener("click", () => toggleManifestPlayback());
-    elements.timeRange?.addEventListener("input", () => setManifestIndex(Number(elements.timeRange.value), { fit: false }));
+    elements.timeRange?.addEventListener("input", () => setManifestIndex(Number(elements.timeRange.value), { fit: false }).catch(() => {}));
     elements.weatherOpacity?.addEventListener("input", () => setWeatherOpacity(elements.weatherOpacity.value));
     elements.toggleCloud?.addEventListener("click", () => toggleRasterOverlay("cloud"));
     elements.toggleRadar?.addEventListener("click", () => toggleRasterOverlay("radar"));
@@ -274,6 +277,7 @@
       throw new Error(`GeoJSON ${response.status} ${response.statusText}`);
     }
     const payload = await response.json();
+    if (options.current && !options.current()) return;
     return setWeatherGeoJson(payload, label || readableNameFromUrl(response.url || value) || "weather.geojson", {
       fit: options.fit === true,
       sourceLabel: value,
@@ -316,12 +320,15 @@
   }
 
   async function loadManifestFromUrl(url, options = {}) {
+    const request = ++manifestRequest;
+    ++frameRequest;
     const value = String(url || "").trim();
     if (!value) throw new Error("Manifest URL 为空。");
     setStatus("正在加载天气过程...", value);
     const response = await fetch(value, { cache: "no-store" });
     if (!response.ok) throw new Error(`Manifest ${response.status} ${response.statusText}`);
     const manifest = await response.json();
+    if (request !== manifestRequest) return weatherEarthApi.getState();
     manifestFrames = normalizeManifestFrames(manifest, response.url || value);
     const requestedTime = params.get("time");
     const requestedIndex = requestedTime ? manifestFrames.findIndex((frame) => frame.label === requestedTime || frame.time === requestedTime) : -1;
@@ -329,7 +336,7 @@
     if (manifestIndex < 0) manifestIndex = 0;
     updateManifestUi();
     if (manifestFrames.length) await setManifestIndex(manifestIndex, { fit: options.fit === true });
-    setStatus("天气过程已加载。", `${manifestFrames.length} 个时次`);
+    if (request === manifestRequest) setStatus("天气过程已加载。", `${manifestFrames.length} 个时次`);
     return weatherEarthApi.getState();
   }
 
@@ -349,10 +356,24 @@
 
   async function setManifestIndex(index, options = {}) {
     if (!manifestFrames.length) return weatherEarthApi.getState();
-    manifestIndex = clamp(Math.round(Number(index)), 0, manifestFrames.length - 1);
+    const numericIndex = Number(index);
+    if (!Number.isFinite(numericIndex)) throw new Error("无效时次");
+    const request = ++frameRequest;
+    pendingFrame = request;
+    const current = () => request === frameRequest;
+    manifestIndex = clamp(Math.round(numericIndex), 0, manifestFrames.length - 1);
     const frame = manifestFrames[manifestIndex];
-    await loadGeoJsonFromUrl(frame.geojsonUrl, frame.label, { fit: options.fit === true });
-    activeTimeFilter = TIME_FILTER_ALL;
+    try {
+      await loadGeoJsonFromUrl(frame.geojsonUrl, frame.label, { current, fit: options.fit === true });
+    } catch (error) {
+      if (!current()) return weatherEarthApi.getState();
+      setStatus("时次加载失败。", error.message || String(error));
+      throw error;
+    } finally {
+      if (pendingFrame === request) pendingFrame = 0;
+    }
+    if (!current()) return weatherEarthApi.getState();
+    if (activeTimeFilter !== TIME_FILTER_ALL) setTimeFilter(TIME_FILTER_ALL, { fit: false });
     updateManifestUi();
     return weatherEarthApi.getState();
   }
@@ -365,7 +386,9 @@
       updateManifestUi();
       return;
     }
-    manifestTimer = window.setInterval(() => setManifestIndex((manifestIndex + 1) % manifestFrames.length, { fit: false }), 1600);
+    manifestTimer = window.setInterval(() => {
+      if (!pendingFrame) setManifestIndex((manifestIndex + 1) % manifestFrames.length, { fit: false }).catch(() => {});
+    }, 1600);
     updateManifestUi();
   }
 

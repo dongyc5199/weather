@@ -284,3 +284,29 @@ test("Disabled geography builds lazily; style changes keep geometry and matching
   layer.dispose();
   assert.equal(scene.children.length, 0);
 });
+
+test("Orbital line fading preserves saved opacity and layer selection", () => {
+  const layer = new GeographicLineLayer(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(42, 1.5, 1, 1e8),
+    style,
+    options,
+  );
+  layer.setData(
+    line([
+      [100, 30],
+      [101, 31],
+    ]),
+  );
+  layer.setEnabled(true);
+  layer.update(false, 900, 0.2);
+  assert.equal(layer.style.opacity, style.opacity);
+  assert.equal(layer.enabled, true);
+  assert.equal(layer.levels.detail.line.material.opacity, style.opacity * 0.2);
+  layer.update(false, 900, 0);
+  assert.equal(layer.group.visible, false);
+  layer.update(false, 900, 1);
+  assert.equal(layer.group.visible, true);
+  assert.equal(layer.levels.detail.line.material.opacity, style.opacity);
+  layer.dispose();
+});
