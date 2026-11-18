@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import json
 
 import numpy as np
@@ -252,3 +251,26 @@ def test_range_download_refuses_full_grib_response(monkeypatch):
     monkeypatch.setattr(data.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
     with pytest.raises(data.EarthDataError, match="honor"):
         data.read_url("https://example.test/grib", byte_range=(100, 199))
+
+
+def test_snapshot_preparation_completes_before_publishing_manifest(tmp_path):
+    samples={key:message(key) for key in data.FIELDS}
+    def reader(url,*,byte_range=None):
+        return index_for().encode() if byte_range is None else samples[index_keys()[byte_range[0]//100-1]]
+    prepared=[]
+    def prepare(snapshot):
+        assert (tmp_path/snapshot/'metadata.json').is_file()
+        assert data.load_manifest(tmp_path) is None
+        prepared.append(snapshot)
+    result=data.sync_latest(tmp_path,now=NOW,resolution=90,reader=reader,prepare=prepare)
+    assert prepared==[result['id']] and data.load_manifest(tmp_path)==result
+
+
+def test_failed_preparation_cannot_publish_an_incomplete_generation(tmp_path):
+    samples={key:message(key) for key in data.FIELDS}
+    def reader(url,*,byte_range=None):
+        return index_for().encode() if byte_range is None else samples[index_keys()[byte_range[0]//100-1]]
+    def fail(_snapshot):raise OSError('height preparation failed')
+    with pytest.raises(OSError,match='height preparation'):
+        data.sync_latest(tmp_path,now=NOW,resolution=90,reader=reader,prepare=fail)
+    assert data.load_manifest(tmp_path) is None

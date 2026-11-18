@@ -9,6 +9,8 @@ import os
 import re
 import shutil
 import tempfile
+import threading
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -62,6 +64,8 @@ HEIGHT_FIELDS = {
        for pressure in PRESSURE_LEVELS},
 }
 SEA_LEVEL_PRESSURE = FieldSpec("PRMSL", "mean sea level", 3, 1, "meanSea", 0, "mean_sea_level")
+_index_cache = {}
+_index_lock = threading.Lock()
 
 
 def field_key(layer: str, component: str) -> str:
@@ -77,6 +81,21 @@ def iso_time(value: datetime) -> str:
 
 
 def read_url(url: str, *, byte_range: tuple[int, int] | None = None) -> bytes:
+    if byte_range is None and url.endswith('.idx') and any(url.startswith(origin + '/') for origin in ORIGINS):
+        with _index_lock:
+            cached = _index_cache.get(url)
+            if cached and time.monotonic() - cached[0] < 60:
+                return cached[1]
+        payload = _read_url(url)
+        with _index_lock:
+            _index_cache[url] = (time.monotonic(), payload)
+            if len(_index_cache) > 32:
+                del _index_cache[next(iter(_index_cache))]
+        return payload
+    return _read_url(url, byte_range=byte_range)
+
+
+def _read_url(url: str, *, byte_range: tuple[int, int] | None = None) -> bytes:
     """Bound downloads and require real HTTP Range responses for GRIB messages."""
     headers = {"User-Agent": "WeatherEarth/0.1 (NOAA GFS visualization)"}
     limit = 2_000_000
@@ -315,6 +334,7 @@ def sync_latest(
     now: datetime | None = None,
     resolution: float = 0.5,
     reader: Callable[..., bytes] = read_url,
+    prepare: Callable[[str], None] | None = None,
 ) -> dict:
     """Publish all heights together; leave the last good manifest intact on any error."""
     now = now or datetime.now(UTC)
@@ -322,6 +342,8 @@ def sync_latest(
     snapshot_id = f"{selection.run:%Y%m%dT%HZ}-f{selection.forecast_hour:03d}-{float(resolution)}-v2".replace(".", "p")
     cached = load_manifest(cache)
     if cached and cached["id"] == snapshot_id:
+        if prepare:
+            prepare(snapshot_id)
         cached["checked_at"] = iso_time(now)
         atomic_json(cache / "manifest.json", cached)
         return cached
@@ -376,6 +398,9 @@ def sync_latest(
                     raise EarthDataError("A cached generation differs; refusing to overwrite an in-use snapshot")
         else:
             os.replace(staging, target)
+        # The 3D client needs matching heights before this generation becomes current.
+        if prepare:
+            prepare(snapshot_id)
         atomic_json(cache / "manifest.json", manifest)
         return manifest
     finally:

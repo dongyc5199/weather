@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import threading
+from weakref import WeakValueDictionary
 
 from .earth_data import (
     EarthDataError, ORIGINS, SEA_LEVEL_PRESSURE, Selection, atomic_json,
@@ -12,7 +13,7 @@ from .earth_data import (
 )
 from .earth_heights import SNAPSHOT_PATTERN
 
-_locks: dict[str, threading.Lock] = {}
+_locks = WeakValueDictionary()
 _guard = threading.Lock()
 _GRID_KEYS = ("nx", "ny", "dx", "dy", "lo1", "la1", "refTime", "forecastTime")
 

@@ -74,7 +74,7 @@ def test_failed_worker_keeps_cache_and_releases_refresh_lock(tmp_path, monkeypat
     updates = server.Updates(tmp_path, 0)
     updates.updating = True
 
-    def failed(*_args):
+    def failed(*_args, **_kwargs):
         raise OSError("source unavailable")
 
     monkeypatch.setattr(server, "sync_latest", failed)

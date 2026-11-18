@@ -1,4 +1,3 @@
-from pathlib import Path
 import io
 import json
 import numpy as np
@@ -182,3 +181,14 @@ def test_wind_tile_uses_vector_magnitude(tmp_path):
 ])
 def test_invalid_tile_paths_rejected_before_file_access(tmp_path,snapshot,layer,z,x,y):
     with pytest.raises(ValueError):layers.weather_tile(tmp_path,snapshot,layer,'temp',z,x,y)
+
+
+def test_asset_credentials_follow_only_same_origin_redirects():
+    from urllib.request import Request
+    request = Request("https://tiles.example/asset", headers={"Authorization": "Bearer fixture"})
+    redirects = layers._AssetRedirects()
+    def redirected(url):
+        return redirects.redirect_request(request, None, 302, "Found", {}, url)
+    assert redirected("https://tiles.example:443/next").has_header("Authorization")
+    assert not redirected("https://cdn.example/next").has_header("Authorization")
+    assert not redirected("https://tiles.example:8443/next").has_header("Authorization")

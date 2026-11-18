@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import threading
+from weakref import WeakValueDictionary
 
 from .earth_data import (
     EarthDataError, HEIGHT_FIELDS, LAYER_KEYS, ORIGINS, Selection,
@@ -13,11 +14,11 @@ from .earth_data import (
 )
 
 SNAPSHOT_PATTERN = r"\d{8}T\d{2}Z-f\d{3}-\d+p\d+(?:-v2)?"
-_locks: dict[str, threading.Lock] = {}
+_locks = WeakValueDictionary()
 _locks_guard = threading.Lock()
 
 
-def height_profile(viewer: Path, snapshot: str, layer: str, *, reader=read_url) -> dict:
+def height_profile(viewer: Path, snapshot: str, layer: str, *, reader=read_url, preload=False) -> dict:
     if not re.fullmatch(SNAPSHOT_PATTERN, snapshot) or layer not in LAYER_KEYS:
         raise ValueError("Invalid height profile")
     source = viewer / "data" / "live" / snapshot
@@ -34,6 +35,7 @@ def height_profile(viewer: Path, snapshot: str, layer: str, *, reader=read_url) 
     if layer != "surface":
         requested.append(layer + "-height")
     cache = viewer / "data" / "earth3d-cache" / "height" / snapshot
+    required = list(HEIGHT_FIELDS) if preload else requested
     def result():
         fields = {name: json.loads((cache / (name + ".json")).read_text()) for name in requested}
         return {
@@ -44,12 +46,12 @@ def height_profile(viewer: Path, snapshot: str, layer: str, *, reader=read_url) 
             "height_reference": "geopotential metres; converted to geometric height for display",
         }
     # Cached layers must remain immediately switchable while another layer downloads.
-    if all((cache / (name + ".json")).is_file() for name in requested):
+    if all((cache / (name + ".json")).is_file() for name in required):
         return result()
     with _locks_guard:
         lock = _locks.setdefault(str(cache), threading.Lock())
     with lock:
-        missing = [name for name in requested if not (cache / (name + ".json")).is_file()]
+        missing = [name for name in required if not (cache / (name + ".json")).is_file()]
         if missing:
             last_error = None
             for url in urls:

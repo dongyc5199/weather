@@ -3,7 +3,6 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 *.egg-info/
-.DS_Store
 
 data/
 outputs/
@@ -21,3 +20,5 @@ viewer/nullschool/3d/node_modules/
 .playwright-cli/
 /.taste-skill/
 logs/
+.DS_Store
+viewer/nullschool/data/.retention.sqlite*

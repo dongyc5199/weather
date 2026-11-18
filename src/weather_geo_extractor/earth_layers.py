@@ -17,10 +17,11 @@ from pathlib import Path
 import re
 import struct
 import threading
+from weakref import WeakValueDictionary
 import time
 import tempfile
-from urllib.request import Request, urlopen
-from urllib.parse import urljoin
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+from urllib.parse import urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -36,7 +37,7 @@ CLOUD_LAYER = "Himawari_AHI_Band13_Clean_Infrared"
 _cache: dict = {}
 _lock = threading.Lock()
 _terrain_layer_lock = threading.Lock()
-_terrain_tile_locks: dict[str, threading.Lock] = {}
+_terrain_tile_locks = WeakValueDictionary()
 _terrain_pruned_at: dict[str, float] = {}
 
 
@@ -44,13 +45,33 @@ def utc_string() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _origin(url: str):
+    parsed = urlsplit(url)
+    default_port = 443 if parsed.scheme == "https" else 80
+    return parsed.scheme, parsed.hostname, parsed.port or default_port
+
+
+class _AssetRedirects(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(request, fp, code, msg, headers, newurl)
+        if redirected is not None and _origin(request.full_url) != _origin(newurl):
+            redirected.remove_header("Authorization")
+        return redirected
+
+
 def fetch_bytes(url: str, headers: dict | None = None, limit: int = 32_000_000) -> bytes:
     request = Request(url, headers={"User-Agent": "WeatherEarth/0.1", **(headers or {})})
-    with urlopen(request, timeout=30) as response:
+    open_request = build_opener(_AssetRedirects()).open if request.has_header("Authorization") else urlopen
+    with open_request(request, timeout=30) as response:
         body = response.read(limit + 1)
     if len(body) > limit:
         raise ValueError("Map response exceeds the download limit")
-    return gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body
+    if body.startswith(b"\x1f\x8b"):
+        with gzip.GzipFile(fileobj=io.BytesIO(body)) as stream:
+            body = stream.read(limit + 1)
+        if len(body) > limit:
+            raise ValueError("Decoded map response exceeds the download limit")
+    return body
 
 
 def cached(key: str, seconds: int, fn):
@@ -171,7 +192,12 @@ def terrain_tile(viewer_root: Path, source_id: str, z: int, x: int, y: int) -> b
                 return path.read_bytes()
         except OSError:
             pass
-        payload = fetch_bytes(url, {"Authorization": "Bearer " + info["accessToken"], "Accept": accept})
+        headers = {"Accept": accept}
+        if urlsplit(url).scheme != "https":
+            raise ValueError("Invalid terrain tile scheme")
+        if _origin(url) == _origin(info["url"]):
+            headers["Authorization"] = "Bearer " + info["accessToken"]
+        payload = fetch_bytes(url, headers)
         if len(payload) < 96:
             raise ValueError("Invalid terrain content")
         vertices = struct.unpack_from("<I", payload, 88)[0]

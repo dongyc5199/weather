@@ -76,3 +76,25 @@ def test_height_profile_is_cached_and_locked_to_the_existing_wind_snapshot(tmp_p
 def test_height_profile_rejects_invalid_paths(tmp_path, snapshot, layer):
     with pytest.raises(ValueError):
         height_profile(tmp_path, snapshot, layer)
+
+
+def test_preload_downloads_all_matching_heights_once_before_client_switches(tmp_path):
+    snapshot='20261107T18Z-f004-90p0-v2'
+    source=tmp_path/'data/live'/snapshot;source.mkdir(parents=True)
+    metadata={'id':snapshot,'run_time':data.iso_time(RUN),'valid_time':data.iso_time(RUN+timedelta(hours=4)),'resolution':90}
+    (source/'metadata.json').write_text(json.dumps(metadata))
+    header={'nx':4,'ny':3,'lo1':0,'la1':90,'dx':90,'dy':90,'refTime':metadata['run_time'],'forecastTime':4}
+    (source/'wind.json').write_text(json.dumps([{'header':header}]))
+    names=list(data.HEIGHT_FIELDS)
+    values={name:101000 if name=='surface_pressure' else 1500 if name=='orography' else 5600 for name in names}
+    messages=[height_message(data.HEIGHT_FIELDS[name],values[name]) for name in names]
+    index='\n'.join(f'{i+1}:{i*100}:d=2026110718:{data.HEIGHT_FIELDS[name].variable}:{data.HEIGHT_FIELDS[name].index_level}:4 hour fcst:' for i,name in enumerate(names))+'\n10:900:d=2026110718:TMP:surface:4 hour fcst:\n'
+    calls=[]
+    def reader(url,*,byte_range=None):
+        calls.append(byte_range);return index.encode() if byte_range is None else messages[byte_range[0]//100]
+    height_profile(tmp_path,snapshot,'surface',reader=reader,preload=True)
+    assert len(calls)==10
+    for level in data.LAYER_KEYS:
+        profile=height_profile(tmp_path,snapshot,level,reader=lambda *_:pytest.fail('warm switch must not download'))
+        assert profile['snapshot']==snapshot
+        if level!='surface':assert profile['height']['header']['layer']==level

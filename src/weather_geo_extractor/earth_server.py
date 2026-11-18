@@ -8,6 +8,8 @@ import gzip
 import io
 import json
 import threading
+import sqlite3
+from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -17,6 +19,7 @@ import re
 
 from .earth_data import UTC, iso_time, load_manifest, sync_latest
 from .earth_heights import SNAPSHOT_PATTERN
+from .earth_retention import prune_history, retention_lease
 
 DEFAULT_VIEWER = Path(__file__).resolve().parents[2] / "viewer" / "nullschool"
 _compressed_files = OrderedDict()
@@ -39,7 +42,6 @@ class Updates:
         self.updating = False
         self.last_error: str | None = None
         self.last_attempt: str | None = None
-
         self.warmed_snapshot = None
 
     def warm(self, manifest):
@@ -50,6 +52,13 @@ class Updates:
                 return
             self.warmed_snapshot = manifest['id']
         viewer = self.cache.parent.parent
+        def heights():
+            from .earth_heights import height_profile
+            if not self.stop.is_set():
+                try:
+                    height_profile(viewer, manifest['id'], 'surface', preload=True)
+                except Exception:
+                    pass  # Interactive requests retry missing heights.
         def clouds():
             from .earth_observations import cloud_observation
             from .earth_cloud_shape import cloud_shape_profile
@@ -59,7 +68,11 @@ class Updates:
                     cloud_shape_profile(viewer, manifest['id'])
             except Exception:
                 pass
-        threading.Thread(target=clouds, name="cloud-warmup", daemon=True).start()
+        def protected(task):
+            with retention_lease(self.cache.parent):
+                task()
+        for name, task in (('height-warmup', heights), ('cloud-warmup', clouds)):
+            threading.Thread(target=protected, args=(task,), name=name, daemon=True).start()
 
     def status(self) -> dict:
         with self.lock:
@@ -78,7 +91,12 @@ class Updates:
 
     def _run(self) -> None:
         try:
-            manifest = sync_latest(self.cache)
+            from .earth_heights import height_profile
+            # Keep serving the previous complete generation while new heights download.
+            with retention_lease(self.cache.parent):
+                manifest = sync_latest(self.cache, prepare=lambda snapshot: height_profile(
+                    self.cache.parent.parent, snapshot, 'surface', preload=True))
+            self.prune()
             print(f"GFS ready: run={manifest['run_time']} valid={manifest['valid_time']} layers={len(manifest.get('layers', {}))}", flush=True)
             with self.lock:
                 self.last_error = None
@@ -90,6 +108,18 @@ class Updates:
         finally:
             with self.lock:
                 self.updating = False
+
+    def prune(self):
+        try:
+            result = prune_history(self.cache.parent.parent, apply=True)
+            if result["paths"]:
+                print(f"Expired forecast cache: removed {len(result['paths'])} paths, {result['bytes']} bytes", flush=True)
+        except (OSError, ValueError, sqlite3.Error) as error:
+            print(f"Forecast retention deferred: {error}", flush=True)
+
+    def maintain_history(self):
+        while not self.stop.wait(900):
+            self.prune()
 
     def periodic(self) -> None:
         if self.refresh_seconds <= 0:
@@ -186,15 +216,26 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
             return io.BytesIO(body)
         return super().send_head()
 
+    def do_HEAD(self):
+        path = urlparse(self.path).path
+        if path.startswith(("/data/live/", "/data/earth3d-cache/")):
+            with retention_lease(Path(self.directory) / "data"):
+                return super().do_HEAD()
+        return super().do_HEAD()
+
     def do_GET(self) -> None:
         self._immutable_ok = False
         path = urlparse(self.path).path
-        if path.startswith("/api/earth/3d/"):
-            self.map_data_response(path)
-        elif path == "/api/earth/status":
-            self.json_response(200, self.updates.status())
-        else:
-            super().do_GET()
+        managed = path.startswith(("/data/live/", "/data/earth3d-cache/",
+                                   "/api/earth/3d/cloud-", "/api/earth/3d/height/",
+                                   "/api/earth/3d/pressure/", "/api/earth/3d/grid/"))
+        with retention_lease(Path(self.directory) / "data") if managed else nullcontext():
+            if path.startswith("/api/earth/3d/"):
+                self.map_data_response(path)
+            elif path == "/api/earth/status":
+                self.json_response(200, self.updates.status())
+            else:
+                super().do_GET()
 
     def map_data_response(self, path: str) -> None:
         from .earth_layers import cloud_metadata, terrain_bootstrap, weather_tile, TEMP_STOPS, TEMP_COLORS
@@ -300,23 +341,32 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Local Nullschool viewer and NOAA GFS data updates")
-    parser.add_argument("command", choices=("serve", "sync"), nargs="?", default="serve")
+    parser.add_argument("command", choices=("serve", "sync", "prune"), nargs="?", default="serve")
     parser.add_argument("--viewer-root", type=Path, default=DEFAULT_VIEWER)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--refresh-seconds", type=int, default=1800, help="Automatic refresh interval; 0 disables periodic checks")
+    parser.add_argument("--apply", action="store_true", help="Apply the 24-hour retention plan for the prune command")
     args = parser.parse_args()
     viewer = args.viewer_root.resolve()
     if not (viewer / "index.html").is_file():
         parser.error(f"Earth viewer not found: {viewer}")
     cache = viewer / "data" / "live"
+    if args.command == "prune":
+        print(json.dumps(prune_history(viewer, apply=args.apply), ensure_ascii=False, indent=2))
+        return
     if args.command == "sync":
-        print(json.dumps(sync_latest(cache), ensure_ascii=False, indent=2))
+        with retention_lease(cache.parent):
+            manifest = sync_latest(cache)
+        prune_history(viewer, apply=True)
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
         return
     updates = Updates(cache, args.refresh_seconds)
     handler = partial(EarthRequestHandler, directory=str(viewer), updates=updates)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"Weather Earth: http://{args.host}:{args.port}/", flush=True)
+    updates.prune()
+    threading.Thread(target=updates.maintain_history, name="gfs-retention", daemon=True).start()
     updates.warm(load_manifest(cache))
     updates.refresh()
     def warm_terrain():
