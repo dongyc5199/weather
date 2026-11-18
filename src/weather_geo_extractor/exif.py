@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -32,12 +33,20 @@ def rational_to_float(value: Any) -> float:
     return float(value)
 
 
-def dms_to_decimal(values: Any, ref: str) -> float:
+def dms_to_decimal(values: Any, ref: str | bytes) -> float:
     if len(values) != 3:
         raise ValueError("GPS DMS value must contain degrees, minutes, and seconds")
     degrees, minutes, seconds = [rational_to_float(value) for value in values]
     decimal = degrees + minutes / 60.0 + seconds / 3600.0
-    if ref.upper() in {"S", "W"}:
+    if isinstance(ref, bytes):
+        ref = ref.decode("ascii")
+    ref = ref.rstrip("\x00").upper()
+    if ref not in {"N", "S", "W", "E"}:
+        raise ValueError("unknown GPS hemisphere")
+    limit = 90 if ref in {"N", "S"} else 180
+    if not math.isfinite(decimal) or not (0 <= minutes < 60 and 0 <= seconds < 60 and degrees >= 0 and decimal <= limit):
+        raise ValueError("invalid GPS coordinates")
+    if ref in {"S", "W"}:
         decimal *= -1
     return decimal
 
@@ -79,6 +88,8 @@ def extract_gps(image_path: str | Path) -> GPSExtraction:
     altitude = gps.get("GPSAltitude")
     altitude_ref = gps.get("GPSAltitudeRef", 0)
     altitude_m = rational_to_float(altitude) if altitude is not None else None
+    if isinstance(altitude_ref, bytes) and len(altitude_ref) == 1 and altitude_ref[0] in (0, 1):
+        altitude_ref = altitude_ref[0]
     if altitude_m is not None and int(altitude_ref) == 1:
         altitude_m *= -1
 

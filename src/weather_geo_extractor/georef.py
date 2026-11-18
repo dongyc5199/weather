@@ -151,10 +151,14 @@ class PolynomialControlPointGeoReference:
             target_y.append(mercator_y)
 
         design = np.asarray(matrix, dtype=float)
-        coeff_x = np.linalg.lstsq(design, np.asarray(target_x, dtype=float), rcond=None)[0]
-        coeff_y = np.linalg.lstsq(design, np.asarray(target_y, dtype=float), rcond=None)[0]
-        object.__setattr__(self, "_coeff_x", coeff_x)
-        object.__setattr__(self, "_coeff_y", coeff_y)
+        targets = np.column_stack((target_x, target_y))
+        if not np.isfinite(design).all() or not np.isfinite(targets).all():
+            raise ValueError("calibration control points must be finite")
+        coefficients, _, rank, _ = np.linalg.lstsq(design, targets, rcond=None)
+        if rank < required:
+            raise ValueError("calibration control points do not span the requested polynomial")
+        object.__setattr__(self, "_coeff_x", coefficients[:, 0])
+        object.__setattr__(self, "_coeff_y", coefficients[:, 1])
         object.__setattr__(self, "_residuals", self._calculate_residuals())
 
     @classmethod

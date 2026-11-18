@@ -1,0 +1,37 @@
+{
+  "location": [
+    90,
+    19.9997
+  ],
+  "csv": "bay-of-bengal.csv",
+  "members": [
+    {
+      "dataset": "ncep_r1",
+      "unit": "kg/m^2/s",
+      "date_column": "date_utc",
+      "value_column": "r1_rate",
+      "source_url": "https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis/Dailies/surface_gauss/prate.sfc.gauss.{year}.nc",
+      "dap_subset": "prate[0:1:last_day][36:1:36][48:1:48]"
+    },
+    {
+      "dataset": "ncep_r2",
+      "unit": "kg/m^2/s",
+      "date_column": "date_utc",
+      "value_column": "r2_rate",
+      "source_url": "https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis2/Dailies/gaussian_grid/prate.sfc.gauss.{year}.nc",
+      "dap_subset": "prate[0:1:last_day][36:1:36][48:1:48]"
+    }
+  ],
+  "observation": {
+    "dataset": "NOAA PERSIANN-CDR",
+    "date_column": "date_utc",
+    "value_column": "observed_mm",
+    "unit": "mm",
+    "location": [
+      90.125,
+      20.125
+    ],
+    "source_url": "https://www.ncei.noaa.gov/erddap/griddap/cdr_persiann_by_time_lon_lat.html",
+    "subset": "precipitation[(first_day):1:(last_day)][(90.0)][(20.0)]"
+  }
+}

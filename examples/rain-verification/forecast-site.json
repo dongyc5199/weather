@@ -1,0 +1,41 @@
+{
+  "location": [
+    90.125,
+    20.125
+  ],
+  "csv": "forecast-days.csv",
+  "members": [
+    {
+      "dataset": "gfs_global",
+      "unit": "mm",
+      "forecast_offset_hours": 48,
+      "date_column": "date_utc",
+      "value_column": "gfs_global",
+      "source_url": "https://previous-runs-api.open-meteo.com/v1/forecast",
+      "hourly": "precipitation_previous_day2",
+      "aggregation": "Sum preceding-hour totals ending at 01:00Z through 00:00Z next day; require all 24."
+    },
+    {
+      "dataset": "icon_global",
+      "unit": "mm",
+      "forecast_offset_hours": 48,
+      "date_column": "date_utc",
+      "value_column": "icon_global",
+      "source_url": "https://previous-runs-api.open-meteo.com/v1/forecast",
+      "hourly": "precipitation_previous_day2",
+      "aggregation": "Sum preceding-hour totals ending at 01:00Z through 00:00Z next day; require all 24."
+    }
+  ],
+  "observation": {
+    "dataset": "NOAA PERSIANN-CDR",
+    "date_column": "date_utc",
+    "value_column": "observed_mm",
+    "unit": "mm",
+    "location": [
+      90.125,
+      20.125
+    ],
+    "source_url": "https://www.ncei.noaa.gov/erddap/griddap/cdr_persiann_by_time_lon_lat.html",
+    "subset": "precipitation[(first_day):1:(last_day)][(90.0)][(20.0)]"
+  }
+}

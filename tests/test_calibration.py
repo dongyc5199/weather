@@ -26,3 +26,13 @@ def test_polynomial_control_point_georef_maps_center() -> None:
     assert 29.0 < center.lat < 31.0
     assert georef.residual_summary()["max_m"] < 1
 
+
+
+def test_collinear_points_do_not_silently_produce_a_map():
+    import pytest
+
+    calibration = {"degree": 1, "control_points": [
+        {"name": str(i), "pixel": [i, i], "lon": i, "lat": i} for i in range(3)
+    ]}
+    with pytest.raises(ValueError, match="do not span"):
+        PolynomialControlPointGeoReference.from_mapping(calibration, width=100, height=100)

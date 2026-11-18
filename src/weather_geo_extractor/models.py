@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ class BBox:
         if len(values) != 4:
             raise ValueError("bbox must contain exactly four values: min_lon min_lat max_lon max_lat")
         min_lon, min_lat, max_lon, max_lat = [float(value) for value in values]
+        if not all(map(isfinite, (min_lon, min_lat, max_lon, max_lat))):
+            raise ValueError("bbox coordinates must be finite")
         if min_lon >= max_lon:
             raise ValueError("bbox min_lon must be smaller than max_lon")
         if min_lat >= max_lat:

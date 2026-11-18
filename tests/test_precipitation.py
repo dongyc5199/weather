@@ -32,10 +32,11 @@ def test_precipitation_ensemble_produces_bma_features() -> None:
     assert result["metadata"]["method"] == "bma"
     assert len(result["metadata"]["sources"]) == 4
 
-    sample = result["features"][0]["properties"]
+    sample = next(f["properties"] for f in result["features"] if f["properties"]["source_count"] == 4)
     assert "ensemble_mean" in sample
     assert "ensemble_std" in sample
-    assert "prob_heavy_rain" in sample
+    assert sample["probability_status"] == "uncalibrated"
+    assert "prob_heavy_rain" not in sample
     assert "per_source_values" in sample
     assert sample["source_count"] == 4
     assert "ERA5" in sample["per_source_values"]
@@ -71,8 +72,8 @@ def test_precipitation_ensemble_rejects_single_source() -> None:
         precipitation_ensemble_adapter(sources)
 
 
-def test_precipitation_ensemble_rain_band_has_high_probability() -> None:
-    """The synthetic rain band centered at (113, 30) should produce high prob_heavy."""
+def test_precipitation_ensemble_rain_band_has_high_member_agreement() -> None:
+    """The synthetic rain band centered at (113, 30) should have substantial member agreement."""
     sources = precipitation_example_sources(bbox=(108, 27, 118, 33))
     result = precipitation_ensemble_adapter(sources)
 
@@ -84,7 +85,7 @@ def test_precipitation_ensemble_rain_band_has_high_probability() -> None:
         if 109 <= cx <= 117:
             center_features.append(f)
     assert len(center_features) > 0
-    max_prob = max(f["properties"]["prob_heavy_rain"] for f in center_features)
+    max_prob = max(f["properties"]["member_exceedance_fraction"] for f in center_features)
     assert max_prob > 0.3, f"rain center should have high heavy-rain probability, got {max_prob}"
 
 
@@ -184,3 +185,22 @@ def test_aerosol_forcing_efficiency_signs() -> None:
     assert AEROSOL_FORCING_EFFICIENCY["so2"] < 0
     assert AEROSOL_FORCING_EFFICIENCY["du"] < 0
     assert AEROSOL_FORCING_EFFICIENCY["bc"] > 0
+
+
+def test_zero_flux_and_aod_are_reported_as_zero():
+    grid = {"lons": [1], "lats": [2], "aod": {"du": [[0]]}, "radiation": {"net_rad": [[0]]}}
+    properties = aerosol_energy_budget_adapter(grid)["features"][0]["properties"]
+    assert properties["net_radiation"] == 0
+    assert "N/A" not in properties["narrative"]
+
+
+def test_ensemble_uses_available_weight_and_handles_a_dry_model():
+    base = {"lats": [0], "lons": [0]}
+    wet = {**base, "dataset": "era5", "values": [[12]]}
+    missing = {**base, "dataset": "merra2", "values": [[None]]}
+    result = precipitation_ensemble_adapter([wet, missing], method="weighted", apply_bias_correction=False)
+    assert result["features"][0]["properties"]["ensemble_mean"] == 12
+    assert result["name"].endswith("weighted")
+    dry = {**wet, "values": [[0]]}
+    result = precipitation_ensemble_adapter([dry, missing], reference=wet)
+    assert result["features"][0]["properties"]["ensemble_mean"] == 0

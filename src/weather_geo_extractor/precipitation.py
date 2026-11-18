@@ -8,7 +8,10 @@ P2-B: MERRA-2 aerosol optical depth + radiation flux energy budget diagnostics.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
+
+from . import rain_probability as rain
+from .grid import coordinate_axis, bilinear_sample
 
 JsonFetcher = Callable[[str], dict[str, Any]]
 
@@ -38,6 +41,7 @@ PRECIPITATION_DATASET_METADATA: dict[str, dict[str, Any]] = {
     "jra55": {"label": "JRA-55", "resolution_deg": 0.5625, "weight": 0.25},
     "cfsr": {"label": "CFSR", "resolution_deg": 0.3, "weight": 0.20},
     "ncep_r1": {"label": "NCEP/NCAR R1", "resolution_deg": 2.5, "weight": 0.15},
+    "ncep_r2": {"label": "NCEP/DOE R2", "resolution_deg": 1.875, "weight": 0.15},
 }
 
 # ---------------------------------------------------------------------------
@@ -81,101 +85,114 @@ def precipitation_ensemble_adapter(
     reference: dict[str, Any] | None = None,
     apply_bias_correction: bool = True,
     method: str = "bma",
+    calibration: dict | None = None,
     target_lons: list[float] | None = None,
     target_lats: list[float] | None = None,
 ) -> dict[str, Any]:
-    """Integrate multiple reanalysis precipitation datasets with bias correction.
+    """Align daily members and return their weighted precipitation diagnostics.
 
-    Steps:
-      1. Bias-correct each source using its known multiplicative bias factor
-         (or against a reference like GPCC/GPCP if provided).
-      2. Align all sources to a common grid via bilinear interpolation.
-      3. Combine using Bayesian Model Averaging (BMA) or simple weighted mean.
-
-    Each source dict provides::
-
-        {
-          "dataset": "era5",
-          "lons": [...], "lats": [...],
-          "values": [[...], ...],   # mm/day
-          "time": "2026-06-10",
-        }
-
-    The optional ``reference`` grid (GPCC/GPCP obs) is used for quantile-based
-    bias correction when ``apply_bias_correction`` is True.
+    A date labels a UTC calendar day. Timed intervals must have explicit bounds
+    or a 24-hour duration and an offset-aware end time. Legacy unlabelled grids
+    retain descriptive output. A probability requires a verified site profile.
+    A concurrent reference may correct the analysis mean; the event score is
+    calculated independently of that reference.
     """
     if not sources or len(sources) < 2:
         raise ValueError("precipitation ensemble requires at least two source datasets")
 
+    if method not in {"bma", "weighted"}:
+        raise ValueError("method must be bma or weighted")
     ref = sources[0]
     target_lon_axis = target_lons or _axis(ref, "lons", "longitudes", "longitude")
     target_lat_axis = target_lats or _axis(ref, "lats", "latitudes", "latitude")
     if not target_lon_axis or not target_lat_axis:
         raise ValueError("ensemble requires a target grid (lons/lats)")
 
-    time_value = str(ref.get("time") or ref.get("valid_time") or "")
+    ids = [str(src.get("dataset", "")).strip().lower() for src in sources]
+    if "" in ids or len(set(ids)) != len(ids):
+        raise ValueError("each precipitation member needs a distinct dataset identifier")
+    inputs = sources + ([reference] if reference is not None else [])
+    windows = [rain.daily_window(src) for src in inputs]
+    if any(period != windows[0] for period in windows):
+        raise ValueError("precipitation sources and reference must cover the same 24 hours")
+    window = windows[0]
+    declared_units = [bool(src.get("unit") or src.get("units")) for src in inputs]
+    if any(declared_units) and not all(declared_units):
+        raise ValueError("mixed declared and missing precipitation units")
+    explicit_units = all(declared_units)
+    time_value = str(ref.get("time") or ref.get("valid_time") or (window[1].isoformat() if window else ""))
+    calibration_end = rain.validate_model(calibration) if calibration is not None else None
+
+    def aligned_grid(source):
+        lons = _axis(source, "lons", "longitudes", "longitude")
+        lats = _axis(source, "lats", "latitudes", "latitude")
+        grid = _grid_values(source.get("values") or source.get("data"), lons)
+        for axis in (lons, lats):
+            if not axis or not all(math.isfinite(v) for v in axis) or not (
+                all(a < b for a,b in zip(axis,axis[1:])) or all(a > b for a,b in zip(axis,axis[1:]))
+            ):
+                raise ValueError("rain grid axes must be finite and strictly monotone")
+        if len(grid) != len(lats) or any(len(row) != len(lons) for row in grid):
+            raise ValueError("rain grid dimensions disagree with coordinates")
+        scale = rain.daily_scale(source)
+        values = [[rain.millimetres(value, scale) for value in row] for row in grid]
+        return _bilinear_interpolate_grid(lons, lats, values, target_lon_axis, target_lat_axis)
 
     # Optionally interpolate reference (GPCC/GPCP) to target grid.
-    ref_values = None
-    if reference:
-        ref_lons = _axis(reference, "lons", "longitudes", "longitude")
-        ref_lats = _axis(reference, "lats", "latitudes", "latitude")
-        ref_raw = reference.get("values") or reference.get("data")
-        ref_grid = _grid_values(ref_raw, ref_lons)
-        ref_values = _bilinear_interpolate_grid(ref_lons, ref_lats, ref_grid, target_lon_axis, target_lat_axis)
+    ref_values = aligned_grid(reference) if reference is not None else None
+    event_inputs = []
+    members = []
 
     # Process each source: bias-correct and interpolate.
     aligned: list[list[list[float]]] = []
     weights: list[float] = []
     source_info: list[dict[str, Any]] = []
-    bma_params: list[dict[str, float]] = []
 
     for src in sources:
         ds = str(src.get("dataset", "")).strip().lower()
-        ds_meta = PRECIPITATION_DATASET_METADATA.get(ds, {"label": ds, "resolution_deg": 1.0, "weight": 0.2})
-        src_lons = _axis(src, "lons", "longitudes", "longitude")
-        src_lats = _axis(src, "lats", "latitudes", "latitude")
-        raw = src.get("values") or src.get("data")
-        src_grid = _grid_values(raw, src_lons)
-
-        # Bias correction.
-        bias_factor = 1.0
-        corrected_grid = src_grid
-        if apply_bias_correction:
-            bias_factor = PRECIPITATION_BIAS_FACTORS.get(ds, 1.0)
-            corrected_grid = [[max(0.0, v / bias_factor) if v is not None else None for v in row] for row in src_grid]
-            # If reference obs available, do ratio-based correction.
-            if ref_values:
-                interp = _bilinear_interpolate_grid(src_lons, src_lats, corrected_grid, target_lon_axis, target_lat_axis)
-                ratio = _compute_bias_ratio(interp, ref_values)
-                bias_factor *= ratio
-                corrected_grid = [[max(0.0, v / ratio) if v is not None else None for v in row] for row in corrected_grid]
-
-        interp = _bilinear_interpolate_grid(src_lons, src_lats, corrected_grid, target_lon_axis, target_lat_axis)
+        ds_meta = PRECIPITATION_DATASET_METADATA.get(ds, {"label": ds, "resolution_deg": None, "weight": 0.2})
+        interp = aligned_grid(src)
+        bias_factor = PRECIPITATION_BIAS_FACTORS.get(ds, 1.0) if apply_bias_correction else 1.0
+        interp = [[value / bias_factor if value is not None else None for value in row] for row in interp]
+        event_inputs.append(interp)
+        signature = [ds, ds_meta["weight"], bias_factor]
+        if "forecast_offset_hours" in src:
+            offset = float(src["forecast_offset_hours"])
+            if not math.isfinite(offset) or offset < 0:
+                raise ValueError("invalid forecast lead-time offset")
+            signature.append(offset)
+        members.append(signature)
+        if apply_bias_correction and ref_values:
+            ratio = _compute_bias_ratio(interp, ref_values)
+            bias_factor *= ratio
+            # A constant scale commutes with interpolation.
+            interp = [[v / ratio if v is not None else None for v in row] for row in interp]
         aligned.append(interp)
 
         w = ds_meta["weight"]
         weights.append(w)
         source_info.append({
             "dataset": ds,
+            "input_unit": src.get("unit") or src.get("units") or "assumed mm/day",
             "label": ds_meta["label"],
             "native_resolution_deg": ds_meta["resolution_deg"],
             "bias_factor": round(bias_factor, 4),
             "weight": round(w, 4),
         })
-        # BMA parameters: estimate skill weight from bias-corrected variance.
-        bma_params.append({"weight": w, "variance": _grid_variance(interp)})
+
 
     # Normalize BMA weights.
     total_w = sum(weights)
     norm_weights = [w / total_w for w in weights] if total_w > 0 else [1.0 / len(weights)] * len(weights)
 
     # BMA: posterior mean = sum(w_i * f_i), posterior variance includes spread.
+    member_contract = sorted(members)
     features: list[dict[str, Any]] = []
     for lat_index, lat in enumerate(target_lat_axis):
         for lon_index, lon in enumerate(target_lon_axis):
             cell_values: list[float] = []
             weighted_sum = 0.0
+            valid_weight = 0.0
             per_source: dict[str, float] = {}
             for src_idx, src_grid in enumerate(aligned):
                 val = src_grid[lat_index][lon_index]
@@ -183,22 +200,44 @@ def precipitation_ensemble_adapter(
                     continue
                 cell_values.append(val)
                 weighted_sum += val * norm_weights[src_idx]
+                valid_weight += norm_weights[src_idx]
                 per_source[source_info[src_idx]["label"]] = round(val, 2)
 
             if not cell_values:
                 continue
 
-            ensemble_mean = weighted_sum
+            ensemble_mean = weighted_sum / valid_weight
             # BMA variance: within-model + between-model spread.
             within = sum(norm_weights[i] * (aligned[i][lat_index][lon_index] - ensemble_mean) ** 2
                         for i in range(len(aligned))
-                        if aligned[i][lat_index][lon_index] is not None)
+                        if aligned[i][lat_index][lon_index] is not None and math.isfinite(aligned[i][lat_index][lon_index])) / valid_weight
             between = _variance(cell_values)
-            bma_variance = within + between
+            bma_variance = within + between if method == "bma" else within
             bma_std = math.sqrt(max(bma_variance, 0.0))
 
-            # Probability of exceeding heavy rain threshold (25 mm/day).
-            prob_heavy = _normal_cdf((ensemble_mean - 25.0) / max(bma_std, 0.1)) if bma_std > 0 else (1.0 if ensemble_mean >= 25 else 0.0)
+            # The event score is computed before any same-day observation correction.
+            fraction = sum(norm_weights[i] for i, values in enumerate(event_inputs)
+                           if values[lat_index][lon_index] is not None and values[lat_index][lon_index] >= rain.THRESHOLD_MM) / valid_weight
+            fraction = min(1.0, fraction)
+            contract = {"members": member_contract, "location": [lon,lat],
+                        "utc_start": window[0].time().isoformat() if window else None}
+            probability = None
+            status = "uncalibrated"
+            if not window or not explicit_units:
+                status = "missing_time_or_unit"
+            elif len(cell_values) != len(sources):
+                status = "incomplete_members"
+            elif calibration is not None:
+                if calibration["contract"] != contract:
+                    status = "outside_calibration_domain"
+                elif window[0] < calibration_end:
+                    status = "overlaps_calibration_or_verification"
+                elif not calibration["accepted"]:
+                    status = "holdout_skill_insufficient"
+                else:
+                    probability = rain.calibrated_value(calibration["curve"], fraction)
+                    status = "calibrated"
+
 
             matched = _threshold_match(ensemble_mean, PRECIPITATION_THRESHOLDS)
             level_key, level_label, intensity = matched or ("observed", "降水", "rain")
@@ -215,13 +254,16 @@ def precipitation_ensemble_adapter(
                 "unit": "mm/day",
                 "source_count": len(cell_values),
                 "per_source_values": per_source,
-                "prob_heavy_rain": round(prob_heavy, 3),
-                "source": "ERA5+JRA-55+CFSR+NCEP BMA",
+                "member_exceedance_fraction": fraction,
+                "probability_status": status,
+                "source": "+".join(per_source),
                 "method": method,
                 "bias_corrected": apply_bias_correction,
-                "confidence": round(max(0.4, 1.0 - bma_std / 20.0), 3),
-                "narrative": f"多源降水集成 {round(ensemble_mean,1)} mm/day，{len(cell_values)}源BMA，强降水概率 {round(prob_heavy*100)}%。",
+                "narrative": f"多源降水集成 {ensemble_mean:.1f} mm/day，{len(cell_values)} 个有效来源。",
             }
+            if probability is not None:
+                properties["prob_heavy_rain"] = round(probability, 4)
+                properties["narrative"] += f" 24 小时降水达到 25 mm 的校准概率为 {probability:.1%}。"
             features.append({
                 "type": "Feature",
                 "properties": _drop_none(properties),
@@ -233,7 +275,7 @@ def precipitation_ensemble_adapter(
 
     return {
         "type": "FeatureCollection",
-        "name": "precipitation-ensemble-bma",
+        "name": f"precipitation-ensemble-{method}",
         "metadata": {
             "adapter": "precipitation_ensemble_adapter",
             "schema": "weather-earth-geojson-v1",
@@ -244,7 +286,12 @@ def precipitation_ensemble_adapter(
             "method": method,
             "bias_correction": apply_bias_correction,
             "sources": source_info,
-            "reference": "GPCC/GPCP" if reference else "climatology",
+            "reference": (reference.get("source") or reference.get("dataset") or "user reference") if reference else None,
+            "threshold_mm_24h": rain.THRESHOLD_MM,
+            "probability_model": "historical_monotone_frequency" if calibration else None,
+            "period_start": window[0].isoformat() if window else None,
+            "period_end": window[1].isoformat() if window else None,
+            "member_contract": member_contract,
             "time": time_value,
             "feature_count": len(features),
             "feature_strategy": "ensemble-cell-per-feature",
@@ -271,8 +318,8 @@ def precipitation_example_sources(
 
     for ds_id, resolution, bias in configs:
         ds_meta = PRECIPITATION_DATASET_METADATA[ds_id]
-        lons = _arange(min_lon, max_lon, resolution)
-        lats = list(reversed(_arange(min_lat, max_lat, resolution)))
+        lons = coordinate_axis(min_lon, max_lon, resolution)
+        lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
         rows: list[list[float]] = []
         for lat in lats:
             row: list[float] = []
@@ -288,6 +335,7 @@ def precipitation_example_sources(
             "dataset": ds_id,
             "source": ds_meta["label"],
             "time": time_value,
+            "unit": "mm/day",
             "lons": lons,
             "lats": lats,
             "values": rows,
@@ -352,7 +400,7 @@ def aerosol_energy_budget_adapter(
     features: list[dict[str, Any]] = []
     for lat_index, lat in enumerate(lats):
         for lon_index, lon in enumerate(lons):
-            aod_val = primary_aod[lat_index][lon_index] if primary_aod else None
+            aod_val = _grid_get(primary_aod, lat_index, lon_index)
             sw_down = _grid_get(rad_grids.get("sw_down"), lat_index, lon_index)
             sw_up = _grid_get(rad_grids.get("sw_up"), lat_index, lon_index)
             lw_down = _grid_get(rad_grids.get("lw_down"), lat_index, lon_index)
@@ -391,7 +439,7 @@ def aerosol_energy_budget_adapter(
                 "source": source,
                 "source_url": source_url or None,
                 "confidence": confidence,
-                "narrative": f"{source} {aero_meta['label']}AOD={round(aod_val,2) if aod_val else 'N/A'}，净辐射={round(net_rad,1) if net_rad else 'N/A'}W/m²，气溶胶辐射强迫={round(drf,1) if drf else 'N/A'}W/m²。",
+                "narrative": f"{source} {aero_meta['label']}AOD={round(aod_val,2) if aod_val is not None else 'N/A'}，净辐射={round(net_rad,1) if net_rad is not None else 'N/A'}W/m²，气溶胶辐射强迫={round(drf,1) if drf is not None else 'N/A'}W/m²。",
             }
             features.append({
                 "type": "Feature",
@@ -436,13 +484,11 @@ def aerosol_energy_example_grid(
     perturbations (reduced shortwave, enhanced longwave).
     """
     min_lon, min_lat, max_lon, max_lat = bbox
-    lons = _arange(min_lon, max_lon, resolution)
-    lats = list(reversed(_arange(min_lat, max_lat, resolution)))
+    lons = coordinate_axis(min_lon, max_lon, resolution)
+    lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
 
-    aero_meta = AEROSOL_TYPES.get(aerosol_type, {"label": aerosol_type, "unit": "kg/m²"})
     forcing_eff = AEROSOL_FORCING_EFFICIENCY.get(aerosol_type, -1.0)
 
-    aod_rows: list[list[float]] = {}
     sw_down_rows: list[list[float]] = []
     lw_down_rows: list[list[float]] = []
     sw_up_rows: list[list[float]] = []
@@ -506,11 +552,6 @@ def aerosol_energy_example_grid(
 # Internal helpers
 # ===========================================================================
 
-def _normal_cdf(x: float) -> float:
-    """Approximate standard normal CDF using the error function."""
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
-
-
 def _compute_bias_ratio(model: list[list[float | None]], obs: list[list[float | None]]) -> float:
     """Compute mean ratio between model and observation for bias correction."""
     total_model = 0.0
@@ -524,17 +565,9 @@ def _compute_bias_ratio(model: list[list[float | None]], obs: list[list[float | 
                 total_model += m
                 total_obs += o
                 count += 1
-    if count == 0 or total_obs < 0.1:
+    if count == 0 or total_obs < 0.1 or total_model <= 0:
         return 1.0
     return total_model / total_obs
-
-
-def _grid_variance(grid: list[list[float | None]]) -> float:
-    values = [v for row in grid for v in row if v is not None and math.isfinite(v)]
-    if len(values) < 2:
-        return 1.0
-    mean = sum(values) / len(values)
-    return sum((v - mean) ** 2 for v in values) / len(values)
 
 
 def _variance(values: list[float]) -> float:
@@ -569,66 +602,16 @@ def _bilinear_interpolate_grid(
     if not src_lons or not src_lats:
         return [[None] * len(tgt_lons) for _ in tgt_lats]
     result: list[list[float | None]] = []
+    west, east = min(src_lons), max(src_lons)
+    south, north = min(src_lats), max(src_lats)
     for tgt_lat in tgt_lats:
         row: list[float | None] = []
         for tgt_lon in tgt_lons:
-            row.append(_bilinear_sample(src_lons, src_lats, src_values, tgt_lon, tgt_lat))
+            sample_lon = next((x for x in (tgt_lon, tgt_lon+360, tgt_lon-360) if west <= x <= east), None)
+            row.append(bilinear_sample(src_lons, src_lats, src_values, sample_lon, tgt_lat)
+                       if south <= tgt_lat <= north and sample_lon is not None else None)
         result.append(row)
     return result
-
-
-def _bilinear_sample(xs: list[float], ys: list[float], grid: list[list[float | None]], x: float, y: float) -> float | None:
-    nx = len(xs)
-    ny = len(ys)
-    if nx < 2 or ny < 2:
-        if nx == 1 and ny == 1:
-            return grid[0][0]
-        return None
-    xi = _find_bracket(xs, x)
-    yi = _find_bracket(ys, y)
-    if xi is None or yi is None:
-        return None
-    x0, x1 = xi
-    y0, y1 = yi
-    v00 = _safe_get(grid, y0, x0)
-    v01 = _safe_get(grid, y0, x1)
-    v10 = _safe_get(grid, y1, x0)
-    v11 = _safe_get(grid, y1, x1)
-    if v00 is None or v01 is None or v10 is None or v11 is None:
-        return None
-    tx = max(0.0, min(1.0, (x - xs[x0]) / (xs[x1] - xs[x0]))) if xs[x1] != xs[x0] else 0.0
-    ty = max(0.0, min(1.0, (y - ys[y0]) / (ys[y1] - ys[y0]))) if ys[y1] != ys[y0] else 0.0
-    v0 = v00 * (1 - tx) + v01 * tx
-    v1 = v10 * (1 - tx) + v11 * tx
-    return v0 * (1 - ty) + v1 * ty
-
-
-def _find_bracket(axis: list[float], value: float) -> tuple[int, int] | None:
-    n = len(axis)
-    if axis[0] <= axis[-1]:
-        if value < axis[0]:
-            return 0, 1
-        if value > axis[-1]:
-            return n - 2, n - 1
-        for i in range(n - 1):
-            if axis[i] <= value <= axis[i + 1]:
-                return i, i + 1
-    else:
-        if value > axis[0]:
-            return 0, 1
-        if value < axis[-1]:
-            return n - 2, n - 1
-        for i in range(n - 1):
-            if axis[i] >= value >= axis[i + 1]:
-                return i, i + 1
-    return None
-
-
-def _safe_get(grid: list[list[float | None]], row: int, col: int) -> float | None:
-    if 0 <= row < len(grid) and 0 <= col < len(grid[row]):
-        val = grid[row][col]
-        return float(val) if val is not None else None
-    return None
 
 
 def _axis(grid: dict[str, Any], *keys: str) -> list[float]:
@@ -676,15 +659,6 @@ def _axis_cell_bounds(values: list[float], index: int) -> tuple[float, float]:
         step = values[-1] - values[-2]
         return (values[-2] + values[-1]) / 2, values[-1] + step / 2
     return (values[index - 1] + values[index]) / 2, (values[index] + values[index + 1]) / 2
-
-
-def _arange(start: float, stop: float, step: float) -> list[float]:
-    values: list[float] = []
-    current = start
-    while current <= stop + step * 0.001:
-        values.append(round(current, 6))
-        current += step
-    return values
 
 
 def _drop_none(properties: dict[str, Any]) -> dict[str, Any]:

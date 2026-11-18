@@ -19,9 +19,10 @@ import json
 import math
 import urllib.parse
 import urllib.request
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Sequence
+
+from .grid import coordinate_axis
 
 JsonFetcher = Callable[[str], dict[str, Any]]
 
@@ -157,10 +158,9 @@ def era5_vertical_profile_adapter(
                 display_value = value - 273.15 if variable == "t" and unit.upper().startswith("K") else value
                 matched = _threshold_match(display_value, thresholds) if thresholds else None
                 if matched:
-                    level_key, level_label, intensity = matched
+                    level_key, _, intensity = matched
                 else:
                     level_key = "observed"
-                    level_label = var_meta["label"]
                     intensity = var_meta["weather_type"]
 
                 # Estimate altitude from pressure level (barometric formula).
@@ -283,14 +283,14 @@ def era5_wind_composite_adapter(grid: dict[str, Any], *, levels: Sequence[int] |
                 if v_value is None:
                     continue
                 speed = math.hypot(u_value, v_value)
-                direction = (math.degrees(math.atan2(v_value, u_value)) + 180) % 360
+                direction = round(math.degrees(math.atan2(-u_value, -v_value)), 1) % 360 if speed else None
                 level_max_speed = max(level_max_speed, speed)
                 level_count += 1
                 matched = _threshold_match(speed, WIND_THRESHOLDS)
                 if matched:
-                    level_key, level_label, intensity = matched
+                    level_key, _, intensity = matched
                 else:
-                    level_key, level_label, intensity = "calm", "静风区", "calm"
+                    level_key, intensity = "calm", "calm"
                 altitude_m = _pressure_to_altitude(level)
                 properties = {
                     "weather_type": "wind-region",
@@ -302,7 +302,7 @@ def era5_wind_composite_adapter(grid: dict[str, Any], *, levels: Sequence[int] |
                     "pressure_level_hpa": level,
                     "altitude_m": round(altitude_m, 1),
                     "wind_speed": round(speed, 3),
-                    "wind_direction": round(direction, 1),
+                    "wind_direction": direction,
                     "u": round(u_value, 3),
                     "v": round(v_value, 3),
                     "unit": "m/s",
@@ -414,8 +414,8 @@ def era5_example_grid(
 
     target_levels = list(levels or [1000, 850, 700, 500, 300, 200])
     min_lon, min_lat, max_lon, max_lat = bbox
-    lons = _arange(min_lon, max_lon, resolution)
-    lats = list(reversed(_arange(min_lat, max_lat, resolution)))
+    lons = coordinate_axis(min_lon, max_lon, resolution)
+    lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
     data_block: dict[str, list[list[float]]] = {}
 
     for level in target_levels:
@@ -485,8 +485,8 @@ def era5_wind_example_grid(
     """Generate a synthetic ERA5-like U+V wind grid for testing."""
     target_levels = list(levels or [1000, 850, 700, 500, 300, 200])
     min_lon, min_lat, max_lon, max_lat = bbox
-    lons = _arange(min_lon, max_lon, resolution)
-    lats = list(reversed(_arange(min_lat, max_lat, resolution)))
+    lons = coordinate_axis(min_lon, max_lon, resolution)
+    lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
     u_data: dict[str, list[list[float]]] = {}
     v_data: dict[str, list[list[float]]] = {}
 
@@ -612,15 +612,6 @@ def _axis_cell_bounds(values: list[float], index: int) -> tuple[float, float]:
         step = values[-1] - values[-2]
         return (values[-2] + values[-1]) / 2, values[-1] + step / 2
     return (values[index - 1] + values[index]) / 2, (values[index] + values[index + 1]) / 2
-
-
-def _arange(start: float, stop: float, step: float) -> list[float]:
-    values: list[float] = []
-    current = start
-    while current <= stop + step * 0.001:
-        values.append(round(current, 6))
-        current += step
-    return values
 
 
 def _normalize_bbox(values: tuple[float, float, float, float] | list[float]) -> tuple[float, float, float, float]:

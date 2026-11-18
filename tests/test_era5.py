@@ -155,3 +155,26 @@ def test_era5_pressure_variables_coverage() -> None:
         assert "label" in meta
         assert "unit" in meta
         assert "weather_type" in meta
+
+
+def test_wind_from_direction_and_calm():
+    grid = {"levels": [500], "lons": [0, 1, 2, 3, 4], "lats": [0],
+            "u": {"500": [[1, 0, -1, 0, 0]]}, "v": {"500": [[0, 1, 0, -1, 0]]}}
+    rows = era5_wind_composite_adapter(grid)["features"]
+    assert [f["properties"].get("wind_direction") for f in rows] == [270, 180, 90, 0, None]
+
+
+@pytest.mark.parametrize("variable", ["wind", "t"])
+def test_cli_selects_levels_from_existing_grid(tmp_path, variable):
+    import json
+    from weather_geo_extractor.cli import main
+
+    args = {"levels":[850, 500], "bbox":(100, 30, 101, 31)}
+    grid = era5_wind_example_grid(**args) if variable == "wind" else era5_example_grid(variable="t", **args)
+    src = tmp_path / "input.json"
+    dst = tmp_path / "out.json"
+    src.write_text(json.dumps(grid))
+    main(["era5-vertical-profile", "--grid-json", str(src), "--variable", variable,
+          "--levels", "500", "--output", str(dst)])
+    rows = json.loads(dst.read_text())["features"]
+    assert {row["properties"]["pressure_level_hpa"] for row in rows} == {500}

@@ -101,3 +101,7 @@ def test_build_nmc_wind_manifest_resolves_peak_and_latest_defaults() -> None:
     assert latest_manifest["title"] == "6月10日大风过程"
     assert latest_manifest["summary"]["peakRegionTime"] == "06/10 17:00"
     assert latest_manifest["summary"]["peakSevereTime"] == "06/10 18:00"
+
+
+def test_compact_hour_is_not_misread_as_minutes():
+    assert _parse_beijing_hour("2026061016") == _parse_beijing_hour("202606101600")

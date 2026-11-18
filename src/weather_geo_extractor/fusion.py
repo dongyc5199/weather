@@ -11,7 +11,9 @@ Earth GeoJSON that carries source attribution and per-cell fusion uncertainty.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
+
+from .grid import coordinate_axis, bilinear_sample
 
 JsonFetcher = Callable[[str], dict[str, Any]]
 
@@ -77,6 +79,8 @@ def multi_source_fusion_adapter(
             raise ValueError(f"unsupported dataset '{ds}'; supported: {', '.join(SUPPORTED_DATASETS)}")
         if ds not in fusion_weights:
             fusion_weights[ds] = 1.0 / len(sources)
+        if not math.isfinite(fusion_weights[ds]) or fusion_weights[ds] < 0:
+            raise ValueError("fusion weights must be finite and nonnegative")
         total_weight += fusion_weights[ds]
     if total_weight <= 0:
         raise ValueError("fusion weights must sum to a positive value")
@@ -109,7 +113,8 @@ def multi_source_fusion_adapter(
         raw_grid = None
         if level is not None:
             data_block = src.get("data") or src.get("levels_data") or {}
-            raw_grid = data_block.get(str(level)) or data_block.get(f"{level}hPa")
+            if isinstance(data_block, dict):
+                raw_grid = data_block.get(str(level)) or data_block.get(f"{level}hPa")
         if raw_grid is None:
             raw_grid = src.get("values") or src.get("data")
         if raw_grid is None:
@@ -156,7 +161,7 @@ def multi_source_fusion_adapter(
             # Weighted standard deviation as fusion uncertainty.
             variance = sum(aligned_weights[i] * (aligned_values[i][lat_index][lon_index] - fused_value) ** 2
                           for i in range(len(aligned_values))
-                          if aligned_values[i][lat_index][lon_index] is not None) / max(cell_weight_sum, 1e-12)
+                          if aligned_values[i][lat_index][lon_index] is not None and math.isfinite(aligned_values[i][lat_index][lon_index])) / cell_weight_sum
             uncertainty = math.sqrt(variance)
             spread = max(cell_values) - min(cell_values) if len(cell_values) > 1 else 0.0
 
@@ -335,8 +340,8 @@ def multi_source_example_sources(
 
     for ds_id, resolution, bias, scale in dataset_configs:
         ds_meta = DATASET_METADATA[ds_id]
-        lons = _arange(min_lon, max_lon, resolution)
-        lats = list(reversed(_arange(min_lat, max_lat, resolution)))
+        lons = coordinate_axis(min_lon, max_lon, resolution)
+        lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
         rows: list[list[float]] = []
         # Base temperature at this pressure level (standard atmosphere).
         base_temp_k = _pressure_to_temperature(level)
@@ -376,10 +381,10 @@ def ocean_atmosphere_example(
     sea-air coupling is strongest (Kuroshio region).
     """
     min_lon, min_lat, max_lon, max_lat = bbox
-    atm_lons = _arange(min_lon, max_lon, resolution)
-    atm_lats = list(reversed(_arange(min_lat, max_lat, resolution)))
-    ocn_lons = _arange(min_lon, max_lon, resolution * 1.5)
-    ocn_lats = list(reversed(_arange(min_lat, max_lat, resolution * 1.5)))
+    atm_lons = coordinate_axis(min_lon, max_lon, resolution)
+    atm_lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution)))
+    ocn_lons = coordinate_axis(min_lon, max_lon, resolution * 1.5)
+    ocn_lats = list(reversed(coordinate_axis(min_lat, max_lat, resolution * 1.5)))
 
     # ERA5 2m air temperature: cooler over ocean, warmer near coast.
     atm_rows: list[list[float]] = []
@@ -446,85 +451,9 @@ def _bilinear_interpolate_grid(
     for tgt_lat in tgt_lats:
         row: list[float | None] = []
         for tgt_lon in tgt_lons:
-            row.append(_bilinear_sample(src_lons, src_lats, src_values, tgt_lon, tgt_lat))
+            row.append(bilinear_sample(src_lons, src_lats, src_values, tgt_lon, tgt_lat))
         result.append(row)
     return result
-
-
-def _bilinear_sample(
-    xs: list[float],
-    ys: list[float],
-    grid: list[list[float | None]],
-    x: float,
-    y: float,
-) -> float | None:
-    """Sample a value at (x, y) from a gridded field using bilinear interpolation."""
-    nx = len(xs)
-    ny = len(ys)
-    if nx < 2 or ny < 2:
-        # Fall back to nearest for degenerate grids.
-        if nx == 1 and ny == 1:
-            return grid[0][0]
-        return None
-
-    # Find x indices.
-    xi = _find_bracket(xs, x)
-    if xi is None:
-        return None
-    x0, x1 = xi
-    # Find y indices (ys may be ascending or descending).
-    yi = _find_bracket(ys, y)
-    if yi is None:
-        return None
-    y0, y1 = yi
-
-    v00 = _safe_grid_get(grid, y0, x0)
-    v01 = _safe_grid_get(grid, y0, x1)
-    v10 = _safe_grid_get(grid, y1, x0)
-    v11 = _safe_grid_get(grid, y1, x1)
-    if v00 is None or v01 is None or v10 is None or v11 is None:
-        return None
-
-    tx = (x - xs[x0]) / (xs[x1] - xs[x0]) if xs[x1] != xs[x0] else 0.0
-    ty = (y - ys[y0]) / (ys[y1] - ys[y0]) if ys[y1] != ys[y0] else 0.0
-    tx = max(0.0, min(1.0, tx))
-    ty = max(0.0, min(1.0, ty))
-
-    v0 = v00 * (1 - tx) + v01 * tx
-    v1 = v10 * (1 - tx) + v11 * tx
-    return v0 * (1 - ty) + v1 * ty
-
-
-def _find_bracket(axis: list[float], value: float) -> tuple[int, int] | None:
-    """Find the index pair (i, i+1) that brackets ``value`` in a sorted axis."""
-    n = len(axis)
-    if axis[0] <= axis[-1]:
-        # Ascending.
-        if value < axis[0] or value > axis[-1]:
-            # Clamp to edges.
-            if value < axis[0]:
-                return 0, 1
-            return n - 2, n - 1
-        for i in range(n - 1):
-            if axis[i] <= value <= axis[i + 1]:
-                return i, i + 1
-    else:
-        # Descending.
-        if value > axis[0] or value < axis[-1]:
-            if value > axis[0]:
-                return 0, 1
-            return n - 2, n - 1
-        for i in range(n - 1):
-            if axis[i] >= value >= axis[i + 1]:
-                return i, i + 1
-    return None
-
-
-def _safe_grid_get(grid: list[list[float | None]], row: int, col: int) -> float | None:
-    if 0 <= row < len(grid) and 0 <= col < len(grid[row]):
-        val = grid[row][col]
-        return float(val) if val is not None else None
-    return None
 
 
 def _axis(grid: dict[str, Any], *keys: str) -> list[float]:
@@ -572,15 +501,6 @@ def _axis_cell_bounds(values: list[float], index: int) -> tuple[float, float]:
         step = values[-1] - values[-2]
         return (values[-2] + values[-1]) / 2, values[-1] + step / 2
     return (values[index - 1] + values[index]) / 2, (values[index] + values[index + 1]) / 2
-
-
-def _arange(start: float, stop: float, step: float) -> list[float]:
-    values: list[float] = []
-    current = start
-    while current <= stop + step * 0.001:
-        values.append(round(current, 6))
-        current += step
-    return values
 
 
 def _pressure_to_temperature(pressure_hpa: float) -> float:

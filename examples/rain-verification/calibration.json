@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "contract": {
+    "members": [
+      [
+        "ncep_r1",
+        0.15,
+        1.0
+      ],
+      [
+        "ncep_r2",
+        0.15,
+        1.0
+      ]
+    ],
+    "location": [
+      90.0,
+      19.9997
+    ],
+    "utc_start": "00:00:00"
+  },
+  "threshold_mm_24h": 25.0,
+  "train_days": 731,
+  "train_events": 74,
+  "holdout_days": 365,
+  "holdout_events": 31,
+  "train_start": "2020-01-01T00:00:00+00:00",
+  "train_end": "2022-01-01T00:00:00+00:00",
+  "holdout_start": "2022-01-01T00:00:00+00:00",
+  "holdout_end": "2023-01-01T00:00:00+00:00",
+  "training_climatology": 0.1012311901504788,
+  "curve": [
+    [
+      0.0,
+      0.04800667477013125
+    ],
+    [
+      0.5,
+      0.34867139244704226
+    ],
+    [
+      1.0,
+      0.4696390183980569
+    ]
+  ],
+  "brier": {
+    "raw": 0.0958904109589041,
+    "calibrated": 0.06811287952164312,
+    "climatology": 0.07798382566933797
+  },
+  "skill_vs_climatology": 0.1265768390172214,
+  "accepted": true,
+  "reliability": [
+    {
+      "bin": 0,
+      "count": 327,
+      "events": 16,
+      "mean_probability": 0.048006674770130875,
+      "observed_frequency": 0.04892966360856269
+    },
+    {
+      "bin": 1,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 2,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 3,
+      "count": 16,
+      "events": 8,
+      "mean_probability": 0.3486713924470423,
+      "observed_frequency": 0.5
+    },
+    {
+      "bin": 4,
+      "count": 22,
+      "events": 7,
+      "mean_probability": 0.46963901839805705,
+      "observed_frequency": 0.3181818181818182
+    },
+    {
+      "bin": 5,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 6,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 7,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 8,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    },
+    {
+      "bin": 9,
+      "count": 0,
+      "events": 0,
+      "mean_probability": null,
+      "observed_frequency": null
+    }
+  ],
+  "missing_days_in_input": 0,
+  "observation": {
+    "dataset": "NOAA PERSIANN-CDR",
+    "date_column": "date_utc",
+    "value_column": "observed_mm",
+    "unit": "mm",
+    "location": [
+      90.125,
+      20.125
+    ],
+    "source_url": "https://www.ncei.noaa.gov/erddap/griddap/cdr_persiann_by_time_lon_lat.html",
+    "subset": "precipitation[(first_day):1:(last_day)][(90.0)][(20.0)]"
+  },
+  "member_sources": [
+    {
+      "dataset": "ncep_r1",
+      "unit": "kg/m^2/s",
+      "date_column": "date_utc",
+      "value_column": "r1_rate",
+      "source_url": "https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis/Dailies/surface_gauss/prate.sfc.gauss.{year}.nc",
+      "dap_subset": "prate[0:1:last_day][36:1:36][48:1:48]"
+    },
+    {
+      "dataset": "ncep_r2",
+      "unit": "kg/m^2/s",
+      "date_column": "date_utc",
+      "value_column": "r2_rate",
+      "source_url": "https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis2/Dailies/gaussian_grid/prate.sfc.gauss.{year}.nc",
+      "dap_subset": "prate[0:1:last_day][36:1:36][48:1:48]"
+    }
+  ],
+  "bias_correction": false
+}

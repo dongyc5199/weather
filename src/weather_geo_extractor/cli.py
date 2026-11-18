@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import tempfile
+import threading
 import urllib.request
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -21,7 +23,6 @@ from .adapters import (
     open_meteo_point_adapter,
 )
 from .era5 import (
-    ERA5_PRESSURE_VARIABLES,
     STANDARD_PRESSURE_LEVELS,
     build_era5_cds_request,
     era5_example_grid,
@@ -30,7 +31,6 @@ from .era5 import (
     era5_wind_example_grid,
 )
 from .fusion import (
-    DATASET_METADATA,
     multi_source_example_sources,
     multi_source_fusion_adapter,
     ocean_atmosphere_coupling_adapter,
@@ -101,6 +101,8 @@ def _validate_image_url(url: str) -> str:
 def _parse_beijing_hour(value: str) -> datetime:
     raw_value = value.strip()
     formats = ("%Y%m%d%H%M", "%Y%m%d%H", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H", "%Y-%m-%d %H")
+    if raw_value.isdigit():
+        formats = {10: ("%Y%m%d%H",), 12: ("%Y%m%d%H%M",)}.get(len(raw_value), ())
     for date_format in formats:
         try:
             parsed = datetime.strptime(raw_value, date_format)
@@ -341,7 +343,16 @@ def _download_url(url: str, output: str | Path) -> Path:
     path = Path(output)
     path.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url, timeout=30) as response:
-        path.write_bytes(response.read())
+        fd, pending = tempfile.mkstemp(dir=path.parent, prefix=".image-")
+        try:
+            with os.fdopen(fd, "wb") as output_file:
+                shutil.copyfileobj(response, output_file, length=256 * 1024)
+                length = response.headers.get("Content-Length")
+                if length is not None and output_file.tell() != int(length):
+                    raise OSError("Incomplete image download")
+            os.replace(pending, path)
+        finally:
+            Path(pending).unlink(missing_ok=True)
     return path
 
 
@@ -509,8 +520,8 @@ def _handle_open_meteo_point_adapter(args: argparse.Namespace) -> None:
 
 
 def _handle_era5_vertical_profile(args: argparse.Namespace) -> None:
+    levels_list = [int(lv) for lv in args.levels.split(",")] if args.levels else None
     if args.example:
-        levels_list = [int(lv) for lv in args.levels.split(",")] if args.levels else None
         bbox_tuple = tuple(float(v) for v in args.bbox.split(",")) if args.bbox else (100.0, 35.0, 120.0, 45.0)
         if args.variable == "wind":
             grid = era5_wind_example_grid(levels=levels_list, bbox=bbox_tuple, resolution=float(args.resolution), time_value=args.time)
@@ -519,9 +530,9 @@ def _handle_era5_vertical_profile(args: argparse.Namespace) -> None:
     else:
         grid = load_json(args.grid_json)
     if args.variable == "wind":
-        payload = era5_wind_composite_adapter(grid, levels=[int(lv) for lv in grid.get("levels", [])] or None)
+        payload = era5_wind_composite_adapter(grid, levels=levels_list)
     else:
-        payload = era5_vertical_profile_adapter(grid, variable=args.variable)
+        payload = era5_vertical_profile_adapter(grid, variable=args.variable, levels=levels_list)
     _write_json(payload, args.output)
 
 
@@ -549,7 +560,7 @@ def _handle_fusion(args: argparse.Namespace) -> None:
         )
     else:
         raw = load_json(args.sources_json)
-        sources = raw.get("sources") or raw
+        sources = raw.get("sources") if isinstance(raw, dict) else raw
         if not isinstance(sources, list):
             raise ValueError("sources JSON must contain a 'sources' array")
     payload = multi_source_fusion_adapter(sources, variable=args.variable, level=int(args.level))
@@ -579,11 +590,20 @@ def _handle_precipitation_ensemble(args: argparse.Namespace) -> None:
         )
     else:
         raw = load_json(args.sources_json)
-        sources = raw.get("sources") or raw
+        sources = raw.get("sources") if isinstance(raw, dict) else raw
         if not isinstance(sources, list):
             raise ValueError("sources JSON must contain a 'sources' array")
-    payload = precipitation_ensemble_adapter(sources, apply_bias_correction=not args.no_bias_correction, method=args.method)
+    calibration = load_json(args.calibration) if args.calibration else None
+    payload = precipitation_ensemble_adapter(sources, apply_bias_correction=not args.no_bias_correction,
+                                            method=args.method, calibration=calibration)
     _write_json(payload, args.output)
+
+
+def _handle_precipitation_calibrate(args):
+    from .rain_verification import verify_history
+    result = verify_history(args.history_json, args.holdout_start, apply_bias_correction=not args.no_bias_correction)
+    _write_json(result, args.output)
+
 
 
 def _handle_aerosol_energy(args: argparse.Namespace) -> None:
@@ -610,6 +630,8 @@ def _write_http_json(handler: SimpleHTTPRequestHandler, status: int, payload: di
 
 
 class MapViewerRequestHandler(SimpleHTTPRequestHandler):
+    _latest_image_lock = threading.Lock()
+
     def __init__(
         self,
         *args: Any,
@@ -654,24 +676,26 @@ class MapViewerRequestHandler(SimpleHTTPRequestHandler):
             image_output = Path(self.image_output)
             if not image_output.is_absolute():
                 image_output = self.viewer_root / image_output
-            image_path = _download_url(url, image_output)
-            payload = _build_detection_payload(
-                image=image_path,
-                profile=self.profile,
-                calibration=self.calibration,
-                bbox=None,
-                map_rect=None,
-                ignore_rect=None,
-                min_area_px=self.min_area_px,
-                simplify_epsilon=self.simplify_epsilon,
-                morph_kernel_size=self.morph_kernel_size,
-                morph_open=self.morph_open,
-                morph_close=self.morph_close,
-            )
-            payload["properties"]["source_url"] = url
-            payload["properties"]["local_image_url"] = (
-                f"{_static_url_for_path(image_path, self.viewer_root)}?v={image_path.stat().st_mtime_ns}"
-            )
+            # The configured "latest" file must still belong to this request during extraction.
+            with self._latest_image_lock:
+                image_path = _download_url(url, image_output)
+                payload = _build_detection_payload(
+                    image=image_path,
+                    profile=self.profile,
+                    calibration=self.calibration,
+                    bbox=None,
+                    map_rect=None,
+                    ignore_rect=None,
+                    min_area_px=self.min_area_px,
+                    simplify_epsilon=self.simplify_epsilon,
+                    morph_kernel_size=self.morph_kernel_size,
+                    morph_open=self.morph_open,
+                    morph_close=self.morph_close,
+                )
+                payload["properties"]["source_url"] = url
+                payload["properties"]["local_image_url"] = (
+                    f"{_static_url_for_path(image_path, self.viewer_root)}?v={image_path.stat().st_mtime_ns}"
+                )
             payload["properties"]["viewer_api"] = "process-nmc-wind"
             _write_http_json(self, 200, payload)
         except Exception as exc:
@@ -974,7 +998,15 @@ def build_parser() -> argparse.ArgumentParser:
     precip_parser.add_argument("--method", default="bma", choices=["bma", "weighted"], help="Ensemble combination method.")
     precip_parser.add_argument("--no-bias-correction", action="store_true", help="Skip bias correction step.")
     precip_parser.add_argument("--output", "-o", default="outputs/precipitation-ensemble.geojson")
+    precip_parser.add_argument("--calibration", help="Apply a matching, independently verified daily calibration profile.")
     precip_parser.set_defaults(func=_handle_precipitation_ensemble)
+
+    verify = subparsers.add_parser("precipitation-calibrate", help="Verify daily heavy-rain probabilities against historical observations.")
+    verify.add_argument("--history-json", required=True, help="Matchup specification with member and observation CSV columns.")
+    verify.add_argument("--holdout-start", required=True, help="First independent UTC verification date (YYYY-MM-DD).")
+    verify.add_argument("--no-bias-correction", action="store_true")
+    verify.add_argument("--output", "-o", required=True)
+    verify.set_defaults(func=_handle_precipitation_calibrate)
 
     aerosol_parser = subparsers.add_parser(
         "aerosol-energy",

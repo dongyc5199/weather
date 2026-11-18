@@ -45,3 +45,19 @@ def test_serve_map_returns_json_for_success_and_errors(tmp_path, monkeypatch):
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_incomplete_image_download_preserves_previous_file(tmp_path, monkeypatch):
+    import io
+    import pytest
+
+    class Response(io.BytesIO):
+        headers = {"Content-Length": "2000"}
+
+    path = tmp_path / "last.jpg"
+    path.write_bytes(b"last good image")
+    monkeypatch.setattr(cli.urllib.request, "urlopen", lambda *args, **kwargs: Response(b"short"))
+    with pytest.raises(OSError, match="Incomplete"):
+        cli._download_url("https://image.nmc.cn/file.jpg", path)
+    assert path.read_bytes() == b"last good image"
+    assert list(tmp_path.iterdir()) == [path]
