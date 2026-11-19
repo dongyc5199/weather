@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import errno
 import json
 import math
 import os
@@ -159,6 +160,7 @@ def find_latest(
     *,
     reader: Callable[..., bytes] = read_url,
     max_cycles: int = 8,
+    min_lead: int = 0,
 ) -> Selection:
     """Find the newest published run for the current UTC hour, with bounded fallback."""
     if now.tzinfo is None:
@@ -169,6 +171,8 @@ def find_latest(
     for offset in range(max_cycles):
         run = newest - timedelta(hours=offset * 6)
         forecast = int((valid - run).total_seconds() // 3600)
+        if forecast < min_lead:
+            continue
         key = f"gfs.{run:%Y%m%d}/{run:%H}/atmos/gfs.t{run:%H}z.pgrb2.0p25.f{forecast:03d}"
         for origin in ORIGINS:
             url = f"{origin}/{key}"
@@ -296,9 +300,19 @@ def atomic_json(path: Path, payload: dict | list) -> None:
         Path(name).unlink(missing_ok=True)
 
 
-def load_manifest(cache: Path) -> dict | None:
+def load_manifest(cache: Path, *, snapshot: str | None = None) -> dict | None:
     try:
-        manifest = json.loads((cache / "manifest.json").read_text())
+        if snapshot is not None:
+            if not re.fullmatch(r"\d{8}T\d{2}Z-f\d{3}-\d+p\d+(?:-v2)?", snapshot):
+                return None
+            directory = cache / snapshot
+            if directory.is_symlink():
+                return None
+            manifest = json.loads((directory / "metadata.json").read_text())
+            if not isinstance(manifest, dict) or manifest.get("id") != snapshot:
+                return None
+        else:
+            manifest = json.loads((cache / "manifest.json").read_text())
         if not isinstance(manifest, dict) or manifest.get("schema") not in (1, 2):
             return None
         schema = manifest["schema"]
@@ -328,6 +342,10 @@ def load_manifest(cache: Path) -> dict | None:
         return None
 
 
+def _snapshot_id(selection, resolution):
+    return f"{selection.run:%Y%m%dT%HZ}-f{selection.forecast_hour:03d}-{float(resolution)}-v2".replace(".", "p")
+
+
 def sync_latest(
     cache: Path,
     *,
@@ -339,7 +357,7 @@ def sync_latest(
     """Publish all heights together; leave the last good manifest intact on any error."""
     now = now or datetime.now(UTC)
     selection = find_latest(now, reader=reader)
-    snapshot_id = f"{selection.run:%Y%m%dT%HZ}-f{selection.forecast_hour:03d}-{float(resolution)}-v2".replace(".", "p")
+    snapshot_id = _snapshot_id(selection, resolution)
     cached = load_manifest(cache)
     if cached and cached["id"] == snapshot_id:
         if prepare:
@@ -347,6 +365,21 @@ def sync_latest(
         cached["checked_at"] = iso_time(now)
         atomic_json(cache / "manifest.json", cached)
         return cached
+
+    manifest = save_snapshot(cache, selection, resolution=resolution, reader=reader, checked_at=now)
+    if prepare:
+        prepare(manifest["id"])
+    manifest["checked_at"] = iso_time(now)
+    atomic_json(cache / "manifest.json", manifest)
+    return manifest
+
+
+def save_snapshot(cache: Path, selection: Selection, *, resolution=0.5, reader=read_url, checked_at=None) -> dict:
+    """Store one immutable generation; only sync_latest moves the live pointer."""
+    snapshot_id = _snapshot_id(selection, resolution)
+    existing = load_manifest(cache, snapshot=snapshot_id)
+    if existing:
+        return existing
 
     def download(name: str) -> tuple[str, bytes]:
         return name, reader(selection.url, byte_range=selection.ranges[name])
@@ -379,7 +412,7 @@ def sync_latest(
             "source_url": selection.url, "index_url": selection.url + ".idx",
             "run_time": iso_time(selection.run), "valid_time": iso_time(selection.valid),
             "forecast_hour": selection.forecast_hour,
-            "fetched_at": iso_time(datetime.now(UTC)), "checked_at": iso_time(now),
+            "fetched_at": iso_time(datetime.now(UTC)), "checked_at": iso_time(checked_at or datetime.now(UTC)),
             "resolution": resolution, "source_resolution": 0.25,
             "nx": header["nx"], "ny": header["ny"], "wind_height_m": 10, "temperature_height_m": 2,
             "pressure_levels_hpa": list(PRESSURE_LEVELS), "layers": layers,
@@ -391,17 +424,16 @@ def sync_latest(
         }
         atomic_json(staging / "metadata.json", manifest)
         target = cache / snapshot_id
-        if target.exists():
-            # A previous process may have published the immutable generation already.
-            for name in file_keys:
-                if hashlib.sha256((target / f"{name}.json").read_bytes()).hexdigest() != manifest["sha256"][name]:
-                    raise EarthDataError("A cached generation differs; refusing to overwrite an in-use snapshot")
-        else:
-            os.replace(staging, target)
-        # The 3D client needs matching heights before this generation becomes current.
-        if prepare:
-            prepare(snapshot_id)
-        atomic_json(cache / "manifest.json", manifest)
+        try:
+            staging.rename(target)
+        except OSError as error:
+            if error.errno not in {errno.EEXIST, errno.ENOTEMPTY}:
+                raise
+            # History and live refresh may finish the same generation concurrently.
+            existing = load_manifest(cache, snapshot=snapshot_id)
+            if existing is None or existing.get("sha256") != manifest["sha256"]:
+                raise
+            return existing
         return manifest
     finally:
         if staging.exists():

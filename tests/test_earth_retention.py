@@ -96,3 +96,38 @@ def test_active_dependencies_and_unrelated_cache_namespaces(tmp_path):
     prune_history(tmp_path, apply=True, now=NOW)
     assert protected.exists() and not orphan.exists() and terrain.exists()
     assert not old_obs.exists()
+
+
+def test_playback_catalog_orders_complete_times_and_prefers_newer_run(tmp_path):
+    from datetime import timedelta
+    from weather_geo_extractor.earth_data import load_manifest
+    from weather_geo_extractor.earth_retention import forecast_timeline
+
+    live = tmp_path / "data/live"
+    def frame(run, lead=0, active=False):
+        valid = run + timedelta(hours=lead)
+        key = generation(tmp_path, run, current=active)
+        src = live / key
+        meta = json.loads((src / "metadata.json").read_text())
+        new_key = key.replace("f000", f"f{lead:03d}")
+        if new_key != key:
+            src.rename(live / new_key)
+            meta["files"] = {k: v.replace(key, new_key) for k, v in meta["files"].items()}
+        meta.update(id=new_key, run_time=run.isoformat(), valid_time=valid.isoformat(), forecast_hour=lead)
+        (live / new_key / "metadata.json").write_text(json.dumps(meta))
+        if active:
+            (live / "manifest.json").write_text(json.dumps(meta))
+        return new_key
+
+    frame(NOW - timedelta(hours=25))
+    frame(NOW - timedelta(hours=24))
+    edge = frame(NOW - timedelta(hours=23))
+    frame(NOW - timedelta(hours=9), 6)
+    newer = frame(NOW - timedelta(hours=4), 1)
+    broken = frame(NOW - timedelta(hours=2))
+    (live / broken / "wind.json").unlink()
+    current = frame(NOW, active=True)
+    history = forecast_timeline(live, load_manifest(live), now=NOW)
+    assert [entry["id"] for entry in history] == [edge, newer, current]
+    assert [entry["id"] for entry in forecast_timeline(live, load_manifest(live), now=NOW+timedelta(days=2))] == [current]
+    assert load_manifest(live, snapshot="../manifest.json") is None

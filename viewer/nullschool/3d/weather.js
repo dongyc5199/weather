@@ -286,6 +286,9 @@ export class WindLayer {
   setGrid(grid) {
     this.clear();
     this.grid = grid;
+    // A newly selected hour should draw its first wind segments on the next
+    // paint, even when the pointer advances faster than the simulation step.
+    if (grid) this.tick = WIND_STEP_SECONDS;
   }
   setHeightScale(value) {
     const scale = Math.max(1, Math.min(20, Number(value) || 1));

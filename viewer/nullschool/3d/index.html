@@ -68,9 +68,19 @@
           <span id="three-height-status"> 正在加载风温层高度… </span>
         </p>
         <p id="three-cloud-time"></p>
+        <p id="three-playback-status"></p>
+        <p id="three-preview-status"></p>
+        <p id="three-history-status"></p>
       </div>
     </aside>
-    <main aria-label="三维天气地球" id="three-stage"></main>
+    <main aria-label="三维天气地球" id="three-stage">
+      <div class="earth-pressure-rail">
+        <section aria-label="气压层选择" id="earth-pressure-dock">
+          <span class="earth-pressure-unit" aria-hidden="true">hPa</span>
+          <div id="three-heights" role="group" aria-label="气压层，单位 hPa"></div>
+        </section>
+      </div>
+    </main>
     <div id="details">
       <section aria-hidden="false" aria-label="三维图层设置" class="" id="menu">
         <div class="earth-panel-heading">
@@ -402,7 +412,7 @@
       <span id="cloud-credit"> </span>
       <span id="building-credit"> </span>
     </div>
-    <script src="./app.js?build=observed-volume-v8" type="module"></script>
+    <script src="./app.js?build=instant-scrub-v1" type="module"></script>
     <div hidden="" id="location">
       <p>
         <span id="location-coord"> </span>
@@ -431,17 +441,18 @@
       </a>
     </p>
     <p class="earth-note" hidden="" id="photo-note"></p>
-    <section aria-label="气压层选择" id="earth-pressure-dock">
-      <p
-        aria-label="气压层"
-        class="earth-control-row earth-level-row"
-        role="group"
-      >
-        <span class="earth-row-label">气压层</span
-        ><span class="earth-row-controls"
-          ><span id="three-heights"> </span>
-        </span>
-      </p>
+    <section class="earth-time-controls" id="earth-time-dock" aria-label="天气时间播放">
+      <button class="text-button" id="earth-time-play" type="button" disabled>播放</button>
+      <input id="earth-time-range" type="range" min="0" max="0" step="1" value="0"
+             aria-label="预报有效时间（北京时间）" disabled>
+      <output id="earth-time-value" for="earth-time-range" aria-label="时间轴所选时次（北京时间）">—</output>
+      <select id="earth-time-speed" aria-label="播放速度">
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+      <button class="text-button" id="earth-time-live" type="button" disabled>最新</button>
     </section>
     <nav aria-label="地球视角工具" class="earth-camera-tools">
       <button

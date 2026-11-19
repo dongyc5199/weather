@@ -166,7 +166,7 @@ a, .text-button {
 .earth-line-style summary { cursor: pointer; padding-block: var(--earth-ui-gap); min-height: var(--earth-input-height); }
 .earth-line-style-fields { display: grid; gap: var(--earth-field-gap); padding-block: var(--earth-ui-gap); }
 .earth-style-field { display: grid; gap: var(--earth-control-gap); }
-.earth-style-field select, .earth-style-field input[type="text"], .earth-style-field input[type="color"] { min-height: var(--earth-input-height); color: var(--earth-text); background: var(--earth-input-background); border: 1px solid var(--earth-input-border); border-radius: var(--earth-control-radius); font: inherit; padding: 0.25rem 0.5rem; min-width: 0; }
+.earth-style-field select, .earth-time-controls select, .earth-style-field input[type="text"], .earth-style-field input[type="color"] { min-height: var(--earth-input-height); color: var(--earth-text); background: var(--earth-input-background); border: 1px solid var(--earth-input-border); border-radius: var(--earth-control-radius); font: inherit; padding: 0.25rem 0.5rem; min-width: 0; }
 .earth-style-color-row { display: grid; grid-template-columns: 2.75rem 7rem minmax(0, 1fr); align-items: center; gap: var(--earth-control-gap); }
 .earth-style-field input[type="color"] { width: 100%; padding: 0.125rem; cursor: pointer; }
 .earth-style-field input[aria-invalid="true"] { border-color: var(--earth-control-error); }
@@ -562,6 +562,9 @@ body {
     --earth-status-inset: .75rem;
     --earth-status-background: #171717;
     --earth-status-spin-duration: 900ms;
+    --earth-pressure-width: 3.75rem;
+    --earth-pressure-bottom: 10rem;
+    --earth-playback-height: calc(var(--earth-control-row-height) + .25rem);
     --earth-floating-background: #111111;
 }
 .earth-three.earth-controls-open { --earth-workspace-left: calc(var(--earth-workspace-sidebar) + 1.5rem); }
@@ -649,28 +652,48 @@ body {
 .earth-three .earth-style-color-row { grid-template-columns: 2.5rem 5.5rem minmax(0, 1fr); }
 .earth-three .earth-style-range { grid-template-columns: 3.5rem minmax(0, 1fr) 2.5rem; }
 .earth-three #line-style-settings { margin: .5rem 0 0; }
-.earth-three #earth-pressure-dock {
+.earth-three #earth-time-dock {
     position: fixed; bottom: calc(var(--earth-workspace-footer) + .75rem);
     left: calc(var(--earth-workspace-left) + (100vw - var(--earth-workspace-left)) / 2);
-    transform: translateX(-50%); width: max-content; max-width: calc(100vw - var(--earth-workspace-left) - 2rem);
-    padding: .5rem .75rem; border-radius: 2rem; background: var(--earth-workspace-surface); z-index: 2;
+    transform: translateX(-50%); width: min(33rem, calc(100vw - var(--earth-workspace-left) - 2rem));
+    padding: .5rem .75rem; border-radius: var(--earth-panel-radius); background: var(--earth-workspace-surface); z-index: 2;
     font-size: .875rem; pointer-events: auto;
 }
-.earth-three #earth-pressure-dock .earth-control-row { display: flex; gap: .75rem; align-items: center; min-height: 0; }
-.earth-three #earth-pressure-dock .earth-row-label { padding: 0; white-space: nowrap; }
-.earth-three #earth-pressure-dock .earth-row-label::after { content: ' hPa'; }
-.earth-three #three-heights { display: flex; gap: .25rem; font-variant-numeric: tabular-nums; }
-.earth-three #three-heights .text-button { min-width: 2.5rem; border-radius: 2rem; }
+.earth-three .earth-time-controls {
+    display: grid; grid-template-columns: auto minmax(2rem, 1fr) auto auto auto;
+    gap: var(--earth-control-gap); align-items: center; min-height: var(--earth-playback-height);
+}
+.earth-three .earth-time-controls input {
+    width: 100%; min-width: 0; margin: 0; accent-color: var(--earth-text);
+}
+.earth-three .earth-time-controls output {
+    color: var(--earth-text); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.earth-three .earth-pressure-rail {
+    position: absolute; inset: var(--earth-workspace-inset) var(--earth-workspace-inset) var(--earth-pressure-bottom) auto;
+    display: flex; align-items: center; width: var(--earth-pressure-width); z-index: 2; pointer-events: none;
+}
+.earth-three #earth-pressure-dock {
+    display: flex; flex-direction: column; width: 100%; max-height: 100%; padding: .25rem;
+    background: var(--earth-workspace-surface); border-radius: var(--earth-panel-radius);
+    font-size: var(--earth-ui-size); pointer-events: auto;
+}
+.earth-three .earth-pressure-unit { padding: .25rem 0; text-align: center; color: var(--earth-muted); }
+.earth-three #three-heights {
+    display: flex; flex-direction: column; gap: .125rem; min-height: 0; overflow-y: auto;
+    scrollbar-width: thin; overscroll-behavior: contain; font-variant-numeric: tabular-nums;
+}
+.earth-three #three-heights .text-button { flex: none; border-radius: var(--earth-control-radius); }
 .earth-three #three-heights .highlighted { background: var(--earth-text); color: var(--earth-workspace-surface); }
 .earth-three #three-scale-row {
-    position: fixed; bottom: calc(var(--earth-workspace-footer) + 4.5rem);
+    position: fixed; bottom: calc(var(--earth-workspace-footer) + 2rem + var(--earth-playback-height));
     left: calc(var(--earth-workspace-left) + (100vw - var(--earth-workspace-left)) / 2);
     transform: translateX(-50%); width: min(24rem, calc(100vw - var(--earth-workspace-left) - 2rem));
-    padding: .25rem .5rem; background: var(--earth-scene-background); font-size: .75rem; pointer-events: none;
+    margin: 0; padding: .25rem .5rem; background: var(--earth-scene-background); font-size: .75rem; pointer-events: none;
 }
 .earth-three .earth-camera-tools { position: fixed; right: 1rem; bottom: calc(var(--earth-workspace-footer) + 1rem); display: flex; flex-direction: column; gap: .25rem; padding: .25rem; border-radius: 2rem; background: var(--earth-workspace-surface); z-index: 2; }
 .earth-three .earth-camera-tools .text-button { width: 2.5rem; height: 2.5rem; border-radius: 50%; font-size: 1.25rem; }
-.earth-three #location { position: fixed; top: calc(var(--earth-workspace-toolbar) + .75rem); right: .75rem; max-width: min(18rem, calc(100vw - var(--earth-workspace-left) - 2rem)); padding: 1rem; background: var(--earth-workspace-surface); border-radius: var(--earth-panel-radius); font-size: var(--earth-ui-size); z-index: 2; }
+.earth-three #location { position: fixed; top: calc(var(--earth-workspace-toolbar) + .75rem); right: calc(2 * var(--earth-workspace-inset) + var(--earth-pressure-width)); max-width: min(18rem, calc(100vw - var(--earth-workspace-left) - var(--earth-pressure-width) - 3 * var(--earth-workspace-inset))); padding: 1rem; background: var(--earth-workspace-surface); border-radius: var(--earth-panel-radius); font-size: var(--earth-ui-size); z-index: 2; }
 .earth-three #location-close { float: right; }
 .earth-three .earth-footer-links { position: fixed; bottom: 0; left: 1rem; height: var(--earth-workspace-footer); display: flex; align-items: center; gap: .375rem; font-size: .75rem; z-index: 2; }
 .earth-three .earth-attribution { bottom: 0; height: var(--earth-workspace-footer); display: flex; align-items: center; gap: .25rem; max-width: calc(100vw - 17rem); overflow: auto; white-space: nowrap; background: none; }
@@ -688,34 +711,38 @@ body {
 .earth-three #three-load-status[data-state="loading"] .text-button, .earth-three #three-load-status .status-secondary-retry { display: none; }
 @keyframes earth-status-spin { to { transform: rotate(360deg); } }
 @media (max-width: 1000px) {
-    .earth-three #earth-pressure-dock .earth-row-label { display: none; }
     .earth-three #sponsor .earth-time:last-child, .earth-three .earth-brand-context { display: none; }
     .earth-three .earth-view-switch { margin-left: 0; }
 }
 @media (max-width: 1000px) {
-    .earth-three { --earth-workspace-left: 0px; --earth-workspace-sidebar: calc(100vw - 1.5rem); --earth-control-row-height: 2.75rem; --earth-workspace-footer: 1.5rem; }
+    .earth-three { --earth-workspace-left: 0px; --earth-workspace-sidebar: calc(100vw - 1.5rem); --earth-control-row-height: 2.75rem; --earth-workspace-footer: 1.5rem; --earth-pressure-bottom: 2.5rem; --earth-mobile-dock-space: calc(var(--earth-workspace-footer) + var(--earth-playback-height) + 1.75rem); }
     .earth-three.earth-controls-open { --earth-workspace-left: 0px; }
     .earth-three .earth-toolbar { gap: .25rem; padding-inline: 1rem; }
     .earth-three .earth-view-switch { margin-left: auto; }
     .earth-three #sponsor { display: none; }
-    .earth-three #three-stage { bottom: calc(var(--earth-workspace-footer) + 5.5rem); }
-    .earth-three.earth-controls-open #three-stage { bottom: 49dvh; }
-    .earth-three #details { top: auto; bottom: calc(var(--earth-workspace-footer) + 5.5rem); }
+    .earth-three #three-stage { bottom: var(--earth-mobile-dock-space); }
+    .earth-three.earth-controls-open #three-stage { bottom: calc(37dvh + var(--earth-mobile-dock-space)); }
+    .earth-three #details { top: auto; bottom: var(--earth-mobile-dock-space); }
     .earth-three #menu { max-height: 37dvh; padding: .75rem 1rem; border-radius: 1rem; }
     .earth-three .earth-panel-heading { margin-bottom: .5rem; }
     .earth-three .earth-panel-tabs { margin-bottom: .75rem; }
     .earth-three .earth-control-row { min-height: 2.75rem; }
     .earth-three .earth-row-label { padding-top: .75rem; }
-    .earth-three #earth-pressure-dock { width: calc(100vw - 1.5rem); padding: .375rem; max-width: none; border-radius: 1rem; }
-    .earth-three #three-heights { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); width: 100%; gap: .125rem; }
-    .earth-three #earth-pressure-dock .earth-row-controls { width: 100%; }
-    .earth-three #three-heights .text-button { min-height: 2rem; }
-    .earth-three #three-scale-row { bottom: calc(var(--earth-workspace-footer) + 5.5rem); }
-    .earth-three.earth-controls-open #three-scale-row { bottom: calc(49dvh + .25rem); }
+    .earth-three #earth-time-dock { width: calc(100vw - 1.5rem); padding: .375rem; }
+    .earth-three #three-scale-row { bottom: var(--earth-mobile-dock-space); }
+    .earth-three.earth-controls-open #three-scale-row { bottom: calc(37dvh + var(--earth-mobile-dock-space) + .25rem); }
     .earth-three .earth-camera-tools { display: none; }
     .earth-three #location { top: calc(var(--earth-workspace-toolbar) + 3rem); max-height: 22dvh; overflow: auto; }
     .earth-three .earth-footer-links { font-size: .6875rem; left: 1rem; }
     .earth-three .earth-attribution { max-width: calc(100vw - 14rem); }
+}
+@media (max-width: 480px) {
+    .earth-three { --earth-playback-height: calc(var(--earth-control-row-height) + 2rem); }
+    .earth-three .earth-time-controls { grid-template-columns: auto 1fr auto auto; row-gap: 0; }
+    .earth-three #earth-time-range { grid-column: 1 / -1; grid-row: 2; height: 2rem; }
+}
+@media (max-width: 1000px) and (max-height: 28rem) {
+    .earth-three.earth-controls-open .earth-pressure-unit { display: none; }
 }
 @media (pointer: coarse) {
     .earth-three #menu .text-button { min-height: 2.75rem; line-height: 1.4286; }

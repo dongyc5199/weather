@@ -8,6 +8,7 @@ import gzip
 import io
 import json
 import threading
+import time
 import sqlite3
 from contextlib import nullcontext
 from datetime import datetime
@@ -19,7 +20,8 @@ import re
 
 from .earth_data import UTC, iso_time, load_manifest, sync_latest
 from .earth_heights import SNAPSHOT_PATTERN
-from .earth_retention import prune_history, retention_lease
+from .earth_retention import forecast_timeline, hourly_window, prune_history, retention_lease
+from .earth_history import backfill_history
 
 DEFAULT_VIEWER = Path(__file__).resolve().parents[2] / "viewer" / "nullschool"
 _compressed_files = OrderedDict()
@@ -29,7 +31,7 @@ _compressed_lock = threading.Lock()
 def immutable_path(path):
     return bool(re.fullmatch(r"/data/live/" + SNAPSHOT_PATTERN + r"/(?:[^/]+/)?(?:wind|temp|metadata)\.json", path)
                 or re.fullmatch(r"/data/earth3d-cache/cloud-observation/" + SNAPSHOT_PATTERN + r"/(?:mask\.png|cloud-ra-v1\.webp)", path)
-                or re.fullmatch(r"/api/earth/3d/(?:height|pressure|cloud-observation|cloud-volume|cloud-convection|cloud-cores|cloud-point|cloud-shape)/"
+                or re.fullmatch(r"/api/earth/3d/(?:height|pressure|cloud-observation|cloud-volume|cloud-convection|cloud-cores|cloud-point|cloud-shape|playback-v1)/"
                                 + SNAPSHOT_PATTERN + r"(?:/[^/]+)?", path))
 
 
@@ -43,6 +45,51 @@ class Updates:
         self.last_error: str | None = None
         self.last_attempt: str | None = None
         self.warmed_snapshot = None
+        self.history_running = False
+        self.history_retry_at = 0.
+        self.live_retry_at = 0.
+        self.history_error = None
+
+    def hourly_playback(self, frames, manifest, now):
+        hours = hourly_window(now)
+        needed = {iso_time(hour) for hour in hours}
+        ready = {frame.get("valid_time") for frame in frames if "500hPa" in frame.get("layers", {})}
+        gaps = needed - ready
+        current_hour = iso_time(hours[-1])
+        need_latest = not manifest or manifest.get("valid_time") != current_hour or current_hour not in ready
+        clock = time.monotonic()
+        with self.lock:
+            fill = bool(gaps - {current_hour}) and not self.history_running and clock >= self.history_retry_at
+            refresh = need_latest and not self.updating and clock >= self.live_retry_at
+            if fill:
+                self.history_running = True
+                self.history_error = None
+            if refresh:
+                self.live_retry_at = clock + 90
+            result = {"ready": len(needed & ready), "total": len(hours),
+                      "loading": self.history_running or (need_latest and (self.updating or refresh)),
+                      "error": self.history_error if gaps else None}
+        if refresh:
+            self.refresh()
+        if fill:
+            threading.Thread(target=self._fill_history, args=(now,), name="gfs-hourly-history", daemon=True).start()
+        return result
+
+    def _fill_history(self, now):
+        failure = None
+        try:
+            errors = backfill_history(self.cache.parent.parent, now=now, stop=self.stop, include_latest=False)
+            if errors:
+                failure = "; ".join(f"{iso_time(hour)}: {message}" for hour, message in sorted(errors.items()))
+        except Exception as exc:
+            failure = str(exc)
+        finally:
+            with self.lock:
+                self.history_error = failure
+                self.history_retry_at = time.monotonic() + (90 if failure else 5)
+                self.history_running = False
+        if failure:
+            print(f"Hourly GFS history will retry missing hours: {failure}", flush=True)
 
     def warm(self, manifest):
         if not manifest:
@@ -228,12 +275,18 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
         path = urlparse(self.path).path
         managed = path.startswith(("/data/live/", "/data/earth3d-cache/",
                                    "/api/earth/3d/cloud-", "/api/earth/3d/height/",
-                                   "/api/earth/3d/pressure/", "/api/earth/3d/grid/"))
-        with retention_lease(Path(self.directory) / "data") if managed else nullcontext():
+                                   "/api/earth/3d/pressure/", "/api/earth/3d/playback-v1/", "/api/earth/3d/grid/"))
+        timeline = path == "/api/earth/status" and parse_qs(urlparse(self.path).query).get("timeline") == ["1"]
+        with retention_lease(Path(self.directory) / "data") if managed or timeline else nullcontext():
             if path.startswith("/api/earth/3d/"):
                 self.map_data_response(path)
             elif path == "/api/earth/status":
-                self.json_response(200, self.updates.status())
+                status = self.updates.status()
+                if timeline:
+                    now = datetime.now(UTC)
+                    status["timeline"] = forecast_timeline(Path(self.directory) / "data/live", status["manifest"], now=now)
+                    status["history"] = self.updates.hourly_playback(status["timeline"], status["manifest"], now)
+                self.json_response(200, status)
             else:
                 super().do_GET()
 
@@ -301,6 +354,22 @@ class EarthRequestHandler(SimpleHTTPRequestHandler):
             elif match := re.fullmatch(r"/api/earth/3d/cloud-volume/([^/]+)", path):
                 from .earth_clouds import cloud_profile
                 self.json_response(200, cloud_profile(Path(self.directory), match[1]))
+            elif match := re.fullmatch(r"/api/earth/3d/playback-v1/([^/]+)/([^/]+)", path):
+                from .earth_playback import playback_packet
+                compressed = self.accepts_gzip()
+                body = playback_packet(Path(self.directory), *match.groups(), compressed=compressed)
+                self._immutable_ok = True
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Vary", "Accept-Encoding")
+                if compressed:
+                    self.send_header("Content-Encoding", "gzip")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    self.wfile.write(body)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
             elif path == "/api/earth/3d/palette":
                 self.json_response(200, {"unit": "K", "stops": TEMP_STOPS.tolist(), "colors": TEMP_COLORS.tolist()})
             elif match := re.fullmatch(r"/api/earth/3d/height/([^/]+)/([^/]+)", path):

@@ -503,7 +503,7 @@ export class CloudLayer {
        width*height>1000000 || buffer.byteLength!==width*height*CLOUD_PRESSURES.length*8 ||
        !Array.isArray(levels) || !levels.every(level=>CLOUD_PRESSURES.includes(level)) ||
        !Number.isFinite(maxSpeed) || maxSpeed<0) throw new Error("Invalid cloud wind field");
-    const texture=new THREE.DataTexture(new Uint16Array(buffer),width,height*CLOUD_PRESSURES.length,
+    const texture=new THREE.DataTexture(buffer instanceof Uint16Array?buffer:new Uint16Array(buffer),width,height*CLOUD_PRESSURES.length,
       THREE.RGBAFormat,THREE.HalfFloatType);
     texture.wrapS=THREE.RepeatWrapping;
     texture.minFilter=texture.magFilter=THREE.LinearFilter;texture.needsUpdate=true;
@@ -659,7 +659,7 @@ export class CloudLayer {
     if (profile.run_time && (h.refTime!==profile.run_time ||
         h.forecastTime!==(Date.parse(profile.valid_time)-Date.parse(profile.run_time))/3600000))
       throw new Error("Cloud field time mismatch");
-    const pixels = new Uint16Array(bytes);
+    const pixels = bytes instanceof Uint16Array ? bytes : new Uint16Array(bytes);
     const texture = new THREE.DataTexture(pixels,h.nx,h.ny,THREE.RGBAFormat,THREE.HalfFloatType);
     texture.wrapS = h.nx*h.dx>=359.99 ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
     texture.minFilter = texture.magFilter = THREE.LinearFilter;
@@ -703,7 +703,7 @@ export class CloudLayer {
     if (!accept()) return false;
     if (
       this.snapshot === info.snapshot &&
-      this.referenceTime === info.observation_time &&
+      this.referenceTime === info.observation_time && !this.previewReference &&
       this.reference
     )
       return true;
@@ -720,9 +720,15 @@ export class CloudLayer {
       texture.dispose();
       return false;
     }
+    this.attachObservation(info,texture);
+    return true;
+  }
+  attachObservation(info,texture,preview=false) {
+    texture.needsUpdate=true;
     texture.flipY = false;
     texture.wrapS = THREE.RepeatWrapping;
-    if (this.snapshot !== info.snapshot) this.clear();
+    if (this.snapshot !== info.snapshot || this.previewReference!==preview) this.clear();
+    this.previewReference=preview;
     this.snapshot = info.snapshot;
     this.reference?.dispose();
     this.reference = texture;
@@ -736,6 +742,11 @@ export class CloudLayer {
     return true;
   }
 
+  finishSnapshotFade(){
+    // Prepared historical frames are already complete when they enter the scene.
+    this.observationLoadedAt = performance.now()-800;
+    if(this.convectionSnapshot)this.convectiveLoadedAt=this.volumeLoadedAt=this.observationLoadedAt;
+  }
   saveTerrainDepth(renderer,width,height){
     if(!this.depthSnapshot){
       this.depthSnapshot=new THREE.WebGLRenderTarget(width,height,{depthBuffer:false,stencilBuffer:false,

@@ -9,6 +9,8 @@ import {
 } from "./vendor.js";
 import { gridSampler, WindLayer } from "./weather.js";
 import { DataLoader, weatherResources } from "./data-loading.js";
+import { PlaybackCache, playbackProduct } from "./playback-cache.js";
+import { ForecastTimeline } from "./forecast-timeline.js";
 import { CloudLayer } from "./cloud-layer.js";
 import { CLOUD_VIEW_LIMITS } from "./cloud-data.js";
 import { AtmosphereLayer } from "./atmosphere.js";
@@ -82,7 +84,7 @@ function updateLoadStatus() {
             : /风|气温|填色|天气/.test(text)
               ? "天气"
               : "地图";
-  const message = failed
+  const message = ["three-history-status","three-preview-status"].includes(active?.id) ? text : failed
     ? `${subject}暂不可用`
     : pending
       ? `加载${subject}…`
@@ -201,7 +203,12 @@ let cloudVolumeController = null,
 let cloudLoading = false,
   terrainRefreshAt = 0;
 let mapRetryAt = 0;
-let palette = null;
+let palette = null, paletteRequest=null;
+function loadPalette(){
+  if(palette)return Promise.resolve(palette);
+  if(!paletteRequest)paletteRequest=json("/api/earth/3d/palette").then(value=>palette=value).finally(()=>{paletteRequest=null});
+  return paletteRequest;
+}
 let contourSnapshot = null,
   heightContourKey = null,
   heightContourRequestKey = null,
@@ -269,7 +276,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.12;
 controls.enableDoubleTapZoom = true;
 controls.zoomSpeed = 1.25;
-const clouds = new CloudLayer();
+let clouds = new CloudLayer();
 const atmosphere = new AtmosphereLayer(theme);
 const winds = new WindLayer(weatherScene, camera, lineStyles.get("wind"));
 winds.setViewport(
@@ -505,11 +512,10 @@ function preset(name) {
   history.replaceState(null, "", url);
 }
 
-function weatherPath(kind) {
-  const m = state.manifest;
+function weatherPath(kind, m, level) {
   return (
-    m?.layers?.[state.level]?.files?.[kind] ||
-    (state.level === "surface" ? m?.files?.[kind] : null)
+    m?.layers?.[level]?.files?.[kind] ||
+    (level === "surface" ? m?.files?.[kind] : null)
   );
 }
 
@@ -849,9 +855,8 @@ async function ensureHeightContours() {
   heightContourRequestKey = key;
   $("height-contour-status").textContent = "正在生成位势高度线…";
   try {
-    const result = await heightContourTask.run(
-      heightContourInput(state.profile, state.grid.header),
-    );
+    const cached=previewDisplayed && previews.get(state.manifest,previewWeatherKey())?.contours;
+    const result = cached || await heightContourTask.run(heightContourInput(state.profile, state.grid.header));
     if (
       !result ||
       generation !== heightContourGeneration ||
@@ -889,14 +894,15 @@ async function loadIsobars() {
   pressureLoadingSnapshot = snapshot;
   $("isobar-status").textContent = "正在读取同批次海平面气压…";
   try {
-    const data = await json(
+    const cached=previewDisplayed && previews.get(state.manifest,"pressure");
+    const data = cached || (previewDisplayed ? await playbackProduct(state.manifest,"pressure",controller.signal) : await json(
       `/api/earth/3d/pressure/${snapshot}`,
       120000,
       controller.signal,
-    );
+    ));
     if (generation !== isobarGeneration || snapshot !== state.manifest.id)
       return;
-    const result = await isobarTask.run(
+    const result = data.contours || await isobarTask.run(
       pressureContourInput(data, reference, snapshot),
     );
     if (
@@ -940,7 +946,7 @@ async function drawLegend() {
   const wind = $("wind-speed").checked;
   if (!wind && !palette) {
     try {
-      palette = await json("/api/earth/3d/palette");
+      palette = await loadPalette();
     } catch {
       return;
     }
@@ -968,8 +974,22 @@ async function drawLegend() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+async function readWeatherFrame(manifest, level, signal) {
+  const paths = ["wind", "temp"].map(kind => weatherPath(kind,manifest,level));
+  if (paths.some(path => !path)) throw new Error("这一高度的数据还未准备好");
+  const [wind,temp,profile]=await weatherResources(json,{
+    wind:"../"+paths[0],temp:"../"+paths[1],height:`/api/earth/3d/height/${manifest.id}/${level}`,
+  },signal);
+  signal.throwIfAborted();
+  const grid=gridSampler(wind,temp);
+  if ((grid.header.layer || "surface") !== level || Date.parse(grid.header.refTime) !== Date.parse(manifest.run_time) ||
+      grid.header.forecastTime !== manifest.forecast_hour) throw new Error("风温场时次或气压层不匹配");
+  if (!profile.error) grid.setHeightProfile(profile);
+  return {wind,temp,profile,grid};
+}
+
 let weatherController;
-async function loadWeather() {
+async function loadWeather(prepared=null) {
   weatherController?.abort();
   weatherController = new AbortController();
   const version = ++weatherVersion;
@@ -1001,16 +1021,9 @@ async function loadWeather() {
     b.setAttribute("aria-pressed", String(active));
   });
   try {
-    const paths = [weatherPath("wind"), weatherPath("temp")];
-    if (paths.some((p) => !p)) throw new Error("这一高度的数据还未准备好");
-    const [wind, temp, profile] = await weatherResources(json, {
-      wind: "../" + paths[0], temp: "../" + paths[1],
-      height: `/api/earth/3d/height/${state.manifest.id}/${level}`,
-    }, weatherController.signal);
+    const frame = prepared || await readWeatherFrame(state.manifest,level,weatherController.signal);
     if (version !== weatherVersion) return;
-    const grid = gridSampler(wind, temp);
-    if ((grid.header.layer || "surface") !== level)
-      throw new Error("气压层不匹配");
+    const {wind,temp,profile,grid}=frame;
     state.grid = grid;
     state.temperatureRecord = temp[0];
     state.windRecords = wind;
@@ -1021,7 +1034,7 @@ async function loadWeather() {
       state.heightStatus = "对应高度暂不可用，风温层暂停；可重试";
       $("three-height-status").textContent = state.heightStatus;
     } else {
-      applyHeights(version, grid, profile);
+      applyHeights(version, grid, profile, true);
       loadMetrics.weather = { snapshot: state.manifest.id, level, readyMs: Math.round(performance.now() - started) };
     }
     applyLayerOpacity();
@@ -1031,7 +1044,7 @@ async function loadWeather() {
     $("three-run").textContent = date(state.manifest.run_time);
     $("three-valid").textContent =
       `GFS · ${level === "surface" ? "地面" : level} · ${date(state.manifest.valid_time)}`;
-    state.weatherStatus = "风场与气温：0.5° 网格，同批次预报";
+    state.weatherStatus = `风场与气温：${grid.header.dx}° 网格，同批次预报`;
     $("three-data-status").textContent = state.weatherStatus;
     $("classic-link").href =
       `../#current/wind/${level === "surface" ? "surface/level" : "isobaric/" + level}/overlay=${$("temperature").checked ? "temp" : $("wind-speed").checked ? "default" : "off"}`;
@@ -1061,8 +1074,8 @@ async function loadHeights(version, grid, level, snapshot) {
   }
 }
 
-function applyHeights(version, grid, profile) {
-  grid.setHeightProfile(profile);
+function applyHeights(version, grid, profile, validated=false) {
+  if (!validated) grid.setHeightProfile(profile);
   state.profile = profile;
   winds.setGrid(grid);
   windSpeeds.setData(state.windRecords, profile);
@@ -1075,7 +1088,7 @@ function applyHeights(version, grid, profile) {
 
 async function loadTemperature(version, record, profile) {
   try {
-    const colors = palette || (await json("/api/earth/3d/palette"));
+    const colors = palette || (await loadPalette());
     if (version !== weatherVersion) return;
     palette = colors;
     temperatures.setPalette(colors);
@@ -1127,58 +1140,270 @@ function updateHeightLabel() {
   if (state.selected) showPoint(state.selected);
 }
 
+const timeFormat=new Intl.DateTimeFormat("zh-CN",{timeZone:"Asia/Shanghai",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+let previewDisplayed=false, draggingTime=false, refineTimer=null, refinement=null;
+let previewNear=false, preparedFor=[], previewCatalogKey="";
+const previews=new PlaybackCache(readPreview, publishPreviewCatalog);
+function previewReady(frame){
+  if(!previews.has(frame))return false;
+  const volume=previews.get(frame,"volume");
+  return !volume || volume.shape.observation_time===previews.get(frame,"observation")?.info.observation_time;
+}
+const timeline=new ForecastTimeline(switchForecast, renderTimeline, 2000,previewReady);
+function renderTimeline(){
+  const {frames,current,pending,queued,playing,following}=timeline;
+  const status=pending && !previews.has(pending)?"正在加载天气时次…":timeline.error?"天气时次不可用："+timeline.error.message:"";
+  if($("three-playback-status").textContent!==status)$("three-playback-status").textContent=status;
+  const index=frames.findIndex(f=>f.id===(queued?.id || pending?.id || current));
+  const slider=$("earth-time-range");
+  slider.max=String(Math.max(0,frames.length-1));
+  slider.value=String(Math.max(0,index));
+  slider.disabled=frames.length<2;
+  $("earth-time-speed").value=String(timeline.rate);
+  const play=$("earth-time-play");
+  play.textContent=playing?"暂停":"播放";
+  play.setAttribute("aria-label",playing?"暂停时间播放":"按时间播放天气");
+  play.disabled=frames.length<2;
+  $("earth-time-live").disabled=!timeline.latest || (following && !pending && current===timeline.latest.id);
+  const shown=queued || (!playing && !following && pending ? frames[index] : state.manifest);
+  const shownTime=Date.parse(shown?.valid_time);
+  $("earth-time-value").textContent=Number.isFinite(shownTime)?timeFormat.format(shownTime):"—";
+  slider.setAttribute("aria-valuetext",frames[index]?date(frames[index].valid_time)+" 北京时间":"无可用时次");
+}
+async function readObservation(manifest,signal){
+  const info=await json(`/api/earth/3d/cloud-observation/${manifest.id}?display=ra-v1`,180000,signal);
+  if(info.snapshot!==manifest.id || info.model_valid_time!==manifest.valid_time)
+    throw new Error("云图时次不匹配");
+  return info;
+}
+async function readCloudShape(snapshot,signal){
+  const profile=await json(`/api/earth/3d/cloud-shape/${snapshot}?renderer=6.1`,180000,signal);
+  if(profile.shape_version!==3 || profile.snapshot!==snapshot)throw new Error("Cloud shape revision mismatch");
+  const field=await dataLoader.binary(profile.field_url+"?renderer=6.1",180000,signal);
+  return {profile,field};
+}
+async function prepareCloudFrame(layer,manifest,near,signal){
+  const info=await readObservation(manifest,signal);
+  await layer.setObservation(info,()=>!signal.aborted);
+  signal.throwIfAborted();
+  if(near){
+    const {profile,field}=await readCloudShape(manifest.id,signal);
+    signal.throwIfAborted();
+    if(profile.observation_time!==info.observation_time)throw new Error("云图与云高时次不匹配");
+    layer.setShape(profile,field);
+    layer.enabled=true;
+    layer.updateView(camera);
+    if(layer.requiresTerrainDepth){
+      const wind=await readCloudWind(manifest,signal);
+      signal.throwIfAborted();
+      layer.setWindField(wind);
+    }
+  }
+  return info;
+}
+async function preparedContours(input,signal){
+  const task=new ContourTask(),stop=()=>task.cancel();
+  signal.addEventListener("abort",stop,{once:true});
+  try{signal.throwIfAborted();const result=await task.run(input);signal.throwIfAborted();return result}
+  finally{signal.removeEventListener("abort",stop);task.cancel()}
+}
+async function readPreview(manifest,product,signal){
+  const level=product.replace(/-contours$/,"");
+  const packet=await playbackProduct(manifest,level,signal);
+  if(level==="pressure"){
+    packet.contours=await preparedContours(pressureContourInput(packet,packet.pressure.header,manifest.id),signal);
+  }else if(level!=="observation" && level!=="volume"){
+    await loadPalette();signal.throwIfAborted();
+    packet.grid=gridSampler(packet.wind,packet.temp);
+    packet.grid.setHeightProfile(packet.profile);
+    if(product!==level)packet.contours=await preparedContours(heightContourInput(packet.profile,packet.grid.header),signal);
+  }
+  return packet;
+}
+function previewWeatherKey(){
+  return state.level+(state.level!=="surface" && $("height-contours").checked?"-contours":"");
+}
+function cancelRefinement(){
+  clearTimeout(refineTimer);refineTimer=null;refinement?.abort();refinement=null;
+}
+function refineAfterInteraction(){
+  cancelRefinement();
+  if(!previewDisplayed || timeline.playing || draggingTime)return;
+  const manifest=state.manifest;
+  refineTimer=setTimeout(async()=>{
+    if(state.manifest!==manifest || timeline.playing || timeline.pending || draggingTime)return;
+    const controller=new AbortController();refinement=controller;
+    try{await loadDetailedForecast(manifest,controller.signal)}
+    catch{/* The matching prepared frame remains visible if higher detail is unavailable. */}
+    finally{if(refinement===controller)refinement=null}
+  },300);
+}
+function switchForecast(manifest,signal){
+  cancelRefinement();
+  if(!previewReady(manifest))return loadDetailedForecast(manifest,signal);
+  const weather=previews.get(manifest,previewWeatherKey());
+  cloudVersion++;cancelCloudVolume();
+  previewDisplayed=true;state.manifest=manifest;
+  state.cloud=false;state.cloudObservation=null;clouds.enabled=false;
+  $("cloud-observation-label").hidden=true;
+  if($("cloud").checked){
+    const {info,image}=previews.get(manifest,"observation");
+    clouds.attachObservation(info,new THREE.Texture(image),true);
+    const volume=previews.get(manifest,"volume");
+    if(volume){clouds.setShape(volume.shape,volume.field);clouds.setWindField(volume.wind)}
+    clouds.finishSnapshotFade();displayObservation(info,performance.now());
+  }
+  const applied=loadWeather(weather);
+  refineAfterInteraction();
+  return applied;
+}
+async function loadDetailedForecast(manifest,signal){
+  const level=state.level, started=performance.now();
+  const siblings=new AbortController(), loadSignal=AbortSignal.any([signal,siblings.signal]);
+  let candidate=$("cloud").checked ? new CloudLayer() : null;
+  try{
+    const near=WGS84_ELLIPSOID.getPositionElevation(camera.position)<=CLOUD_VIEW_LIMITS.preloadAltitude;
+    const [weather,info]=await Promise.all([
+      readWeatherFrame(manifest,level,loadSignal),
+      candidate ? prepareCloudFrame(candidate,manifest,near,loadSignal) : null,
+      $("isobars").checked ? json(`/api/earth/3d/pressure/${manifest.id}`,120000,loadSignal) : null,
+    ]);
+    signal.throwIfAborted();
+    if(weather.profile.error)throw new Error("缺少该时次的气压层高度");
+    // All essential layers are ready. Replace the displayed time, grids and
+    // cloud together in this task, keeping the prior frame visible until now.
+    if(previewDisplayed && state.manifest?.id===manifest.id)clearIsobars();
+    previewDisplayed=false;
+    cloudVersion++;cancelCloudVolume();
+    state.manifest=manifest;
+    state.cloud=false;state.cloudObservation=null;clouds.enabled=false;
+    $("cloud-observation-label").hidden=true;
+    if(candidate){
+      const old=clouds;clouds=candidate;candidate=null;old.dispose();
+      clouds.finishSnapshotFade();displayObservation(info,started);
+    }
+    await loadWeather(weather);
+  }finally{
+    siblings.abort();
+    candidate?.dispose();
+  }
+}
+let publishedFrames=[], publishedLatest=null;
+function publishPreviewCatalog(){
+  if(!publishedLatest)return;
+  const ready=preparedFor.filter(frame=>previews.has(frame));
+  const remaining=previews.preparing;
+  const status=ready.length===preparedFor.length?"":remaining
+    ? `正在准备时间轴 · ${ready.length}/${preparedFor.length}`
+    : `部分时次暂不可用 · ${ready.length}/${preparedFor.length}`;
+  if($("three-preview-status").textContent!==status)$("three-preview-status").textContent=status;
+  // Publish prepared hours progressively, but never renumber the stops under
+  // a held pointer. Live mode still owns the actual published forecast.
+  if(draggingTime)return;
+  const anchor=timeline.pending?.id || timeline.current || state.manifest?.id;
+  const waitingForAnchor=remaining && preparedFor.some(f=>f.id===anchor) && !ready.some(f=>f.id===anchor);
+  const visible=waitingForAnchor ? [] : ready;
+  const latest=remaining ? (visible.find(f=>f.id===publishedLatest.id) || visible.at(-1)) :
+    (visible.length ? (preparedFor.find(f=>f.id===publishedLatest.id) || preparedFor.at(-1)) : null);
+  const key=previewWeatherKey()+"|"+visible.map(f=>f.id).join("|")+"|"+(latest?.id||"");
+  if(key===previewCatalogKey)return;
+  previewCatalogKey=key;
+  timeline.catalog(visible,latest,state.manifest?.id);
+}
+function updateLevelTimeline(){
+  if(!publishedLatest || draggingTime)return;
+  preparedFor=publishedFrames.filter(f=>weatherPath("wind",f,state.level)&&weatherPath("temp",f,state.level));
+  const products=[previewWeatherKey()];
+  if($("cloud").checked)products.push("observation");
+  if($("cloud").checked && previewNear)products.push("volume");
+  if($("isobars").checked)products.push("pressure");
+  previews.configure(preparedFor,products,state.manifest?.id);
+  publishPreviewCatalog();
+}
+let refreshVersion=0, refreshTimer=null;
 async function refreshWeather() {
+  const version=++refreshVersion;
+  clearTimeout(refreshTimer);
+  let nextPoll=60000;
   try {
-    const status = await json("/api/earth/status");
-    const forecastLabel = $("forecast-label");
-    if (!status.manifest) {
-      $("three-data-status").textContent = status.updating ? "正在准备天气数据…" : "天气数据暂不可用，可重试";
+    const status=await json("/api/earth/status?timeline=1");
+    if(version!==refreshVersion)return;
+    const history=status.history;
+    let progress="";
+    if(history && history.ready<history.total){
+      nextPoll=history.loading?5000:15000;
+      progress=history.loading ? `正在补齐时次 · ${history.ready}/${history.total}` : `等待补齐时次 · ${history.ready}/${history.total}`;
+    }
+    $("three-history-status").textContent=progress;
+    if(!status.manifest){
+      $("three-data-status").textContent=status.updating?"正在准备天气数据…":"天气数据暂不可用，可重试";
       return;
     }
-    forecastLabel.textContent = status.last_error ? "缓存预报" : "预报";
-    forecastLabel.title = status.last_error ? "本次更新失败，显示最近可用的预报" : "";
-    const changed = state.manifest?.id !== status.manifest.id;
-    state.manifest = status.manifest;
-    if (changed) {
-      const weather = loadWeather();
-      if ($("cloud").checked) {
-        clouds.enabled = false;
-        cloudVersion++;
-        loadCloud();
-      }
-      await weather;
+    const first=!state.manifest;
+    if(first)state.manifest=status.manifest;
+    const forecastLabel=$("forecast-label");
+    forecastLabel.textContent=status.last_error?"缓存预报":"预报";
+    forecastLabel.title=status.last_error?"本次更新失败，显示最近可用的预报":"";
+    publishedLatest=status.manifest;
+    publishedFrames=status.timeline || [publishedLatest];
+    updateLevelTimeline();
+    if(first){
+      loadWeather();
+      if($("cloud").checked)loadCloud();
     }
   } catch {
-    $("three-data-status").textContent = "天气更新暂不可用，保留已加载的预报";
+    if(version===refreshVersion)$("three-data-status").textContent="天气更新暂不可用，保留已加载的预报";
+  } finally {
+    if(version===refreshVersion)refreshTimer=setTimeout(refreshWeather,nextPoll);
   }
 }
 
-let cloudWindWorker=null, cloudWindRetryAt=0;
-function cancelCloudWind(){
-  cloudWindWorker?.terminate();cloudWindWorker=null;cloudWindRetryAt=0;
-}
-
-function ensureCloudWind(){
-  const manifest=state.manifest;
-  if(cloudWindWorker && clouds.cameraAltitude>CLOUD_VIEW_LIMITS.preloadAltitude)cancelCloudWind();
-  if(!manifest || !clouds.requiresTerrainDepth || clouds.convectionSnapshot!==manifest.id ||
-     clouds.windSnapshot===manifest.id || cloudWindWorker || performance.now()<cloudWindRetryAt)return;
-  // The cloud renderer samples pressure levels by cloud altitude. Changing the
-  // wind-line selector must never change the wind transporting the cloud texture.
-  const version=cloudVersion;
-  const fail=()=>{cancelCloudWind();cloudWindRetryAt=performance.now()+60000};
+const recentCloudWinds=new Map();
+async function readCloudWind(manifest,signal){
+  signal.throwIfAborted();
+  const cached=recentCloudWinds.get(manifest.id);
+  if(cached)return cached;
+  const worker=new Worker(new URL('./cloud-wind-worker.js',import.meta.url),{type:'module'});
+  let abort;
   try{
-    const worker=new Worker(new URL('./cloud-wind-worker.js',import.meta.url),{type:'module'});
-    cloudWindWorker=worker;
-    worker.onmessage=({data})=>{
-      if(cloudWindWorker!==worker)return;
-      if(version!==cloudVersion || state.manifest?.id!==manifest.id){cancelCloudWind();return}
-      if(data.error){fail();return}
-      try{clouds.setWindField(data);cancelCloudWind()}catch{fail()}
-    };
-    worker.onerror=()=>{if(cloudWindWorker===worker)fail()};
-    worker.postMessage(manifest);
-  }catch{fail()}
+    const result=await new Promise((resolve,reject)=>{
+      abort=()=>reject(signal.reason);
+      signal.addEventListener('abort',abort,{once:true});
+      worker.onmessage=({data})=>{
+        if(data.error || data.snapshot!==manifest.id)reject(new Error(data.error || '云层风场时次不匹配'));
+        else resolve(data);
+      };
+      worker.onerror=()=>reject(new Error('云层风场不可用'));
+      worker.postMessage(manifest);
+    });
+    signal.throwIfAborted();
+    recentCloudWinds.set(manifest.id,result);
+    if(recentCloudWinds.size>3)recentCloudWinds.delete(recentCloudWinds.keys().next().value);
+    return result;
+  }finally{
+    signal.removeEventListener('abort',abort);
+    worker.terminate();
+  }
+}
+let cloudWindController=null, cloudWindRetryAt=0;
+function cancelCloudWind(){
+  cloudWindController?.abort();cloudWindController=null;cloudWindRetryAt=0;
+}
+async function ensureCloudWind(){
+  const manifest=state.manifest;
+  if(cloudWindController && clouds.cameraAltitude>CLOUD_VIEW_LIMITS.preloadAltitude)cancelCloudWind();
+  if(!manifest || !clouds.requiresTerrainDepth || clouds.convectionSnapshot!==manifest.id ||
+     clouds.windSnapshot===manifest.id || cloudWindController || performance.now()<cloudWindRetryAt)return;
+  const controller=new AbortController();
+  cloudWindController=controller;
+  try{
+    const data=await readCloudWind(manifest,controller.signal);
+    if(!controller.signal.aborted && state.manifest?.id===manifest.id)clouds.setWindField(data);
+  }catch{
+    if(!controller.signal.aborted)cloudWindRetryAt=performance.now()+60000;
+  }finally{
+    if(cloudWindController===controller)cloudWindController=null;
+  }
 }
 
 function cancelCloudVolume() {
@@ -1195,7 +1420,7 @@ async function ensureCloudVolume() {
     !state.cloud ||
     !state.manifest ||
     clouds.snapshot !== state.manifest.id ||
-    cloudVolumeLoading ||
+    (previewDisplayed && draggingTime) || cloudVolumeLoading ||
     WGS84_ELLIPSOID.getPositionElevation(camera.position) >
       CLOUD_VIEW_LIMITS.preloadAltitude ||
     clouds.convectionSnapshot === state.manifest.id ||
@@ -1209,9 +1434,7 @@ async function ensureCloudVolume() {
   cloudVolumeLoading = true;
   $("three-cloud-time").textContent = "正在预载近景云高，继续显示观测云图…";
   try {
-    const profile = await json(`/api/earth/3d/cloud-shape/${snapshot}?renderer=6.1`, 180000, controller.signal);
-    if (profile.shape_version !== 3) throw new Error("Cloud shape revision mismatch");
-    const field = await dataLoader.binary(profile.field_url+"?renderer=6.1", 180000, controller.signal);
+    const {profile,field}=await readCloudShape(snapshot,controller.signal);
     if (
       controller.signal.aborted ||
       version !== cloudVersion ||
@@ -1234,6 +1457,26 @@ async function ensureCloudVolume() {
       cloudVolumeController = null;
     }
   }
+}
+
+function displayObservation(info,started){
+  state.cloud = true;
+  clouds.enabled = true;
+  loadMetrics.cloud = { snapshot:info.snapshot, readyMs: Math.round(performance.now() - started) };
+  state.cloudObservation = info.observation_time;
+  $("cloud-observation-label").textContent =
+    "云图 " + date(info.observation_time);
+  $("cloud-observation-label").title = info.source + " · 诊断云区遮罩";
+  $("cloud-observation-label").hidden = false;
+  $("cloud").closest("label").title =
+    info.source +
+    " · " +
+    date(info.observation_time) +
+    " · 远景卫星图，近景自动体积云";
+  $("three-cloud-time").textContent =
+    "GMGSI 观测云 · " + date(info.observation_time);
+  $("cloud-credit").textContent = " · NOAA GMGSI observations / GFS";
+  ensureCloudVolume();
 }
 
 async function loadCloud() {
@@ -1260,35 +1503,14 @@ async function loadCloud() {
   $("refresh-cloud").disabled = true;
   $("three-cloud-time").textContent = "正在加载卫星观测云图…";
   try {
-    const info = await json(
-      `/api/earth/3d/cloud-observation/${snapshot}?display=ra-v1`,
-      180000,
-    );
-    if (version !== cloudVersion || state.manifest.id !== snapshot) return;
-    if (info.snapshot !== snapshot)
-      throw new Error("Cloud observation snapshot mismatch");
+    const info=await readObservation(state.manifest);
+    if(version!==cloudVersion || state.manifest.id!==snapshot)return;
     const attached = await clouds.setObservation(
       info,
       () => version === cloudVersion && state.manifest.id === snapshot,
     );
     if (!attached) return;
-    state.cloud = true;
-    clouds.enabled = true;
-    loadMetrics.cloud = { snapshot, readyMs: Math.round(performance.now() - started) };
-    state.cloudObservation = info.observation_time;
-    $("cloud-observation-label").textContent =
-      "云图 " + date(info.observation_time);
-    $("cloud-observation-label").title = info.source + " · 诊断云区遮罩";
-    $("cloud-observation-label").hidden = false;
-    $("cloud").closest("label").title =
-      info.source +
-      " · " +
-      date(info.observation_time) +
-      " · 远景卫星图，近景自动体积云";
-    $("three-cloud-time").textContent =
-      "GMGSI 观测云 · " + date(info.observation_time);
-    $("cloud-credit").textContent = " · NOAA GMGSI observations / GFS";
-    ensureCloudVolume();
+    displayObservation(info,started);
   } catch {
     if (version !== cloudVersion) return;
     state.cloud = clouds.snapshot === snapshot && !!clouds.reference;
@@ -1299,7 +1521,7 @@ async function loadCloud() {
   } finally {
     cloudLoading = false;
     $("refresh-cloud").disabled = false;
-    if (version !== cloudVersion && $("cloud").checked) loadCloud();
+    if (version !== cloudVersion && $("cloud").checked && (!state.cloud || clouds.snapshot!==state.manifest?.id)) loadCloud();
   }
 }
 
@@ -1415,7 +1637,7 @@ function showPoint(point) {
     const describe = column => column
       ? `对流云（模式）| 云底 ${(column.bottom / 1000).toFixed(2)} km · 云顶 ${(column.top / 1000).toFixed(2)} km`
       : "对流云高 | 该点暂无有效模式诊断";
-    if (clouds.pointUrl) {
+    if (clouds.pointUrl && !previewDisplayed) {
       const snapshot = state.manifest.id;
       const lon = ((point.lon / RAD + 540) % 360) - 180, lat = point.lat / RAD;
       cloudPoint.textContent = "正在读取该点云高…";
@@ -1626,7 +1848,7 @@ for (const key of [
 $("weather-opacity").addEventListener("input", applyLayerOpacity);
 for (const key of ["height-contours", "isobars"])
   $(key).addEventListener("change", () => {
-    applyLayerOpacity();
+    cancelRefinement();timeline.pause();updateLevelTimeline();applyLayerOpacity();refineAfterInteraction();
     if (state.selected) showPoint(state.selected);
   });
 $("retry-contours").addEventListener("click", () => {
@@ -1657,17 +1879,41 @@ $("buildings").addEventListener("change", async () => {
 });
 $("retry-buildings").addEventListener("click", () => buildings.retry());
 function changeCloudChoice() {
+  cancelRefinement();timeline.pause();updateLevelTimeline();
   const url=new URL(location);
   if($("cloud").checked)url.searchParams.set("cloud","1");
   else url.searchParams.delete("cloud");
   history.replaceState(null,"",url);
   loadCloud();
+  refineAfterInteraction();
 }
 $("cloud").addEventListener("change", changeCloudChoice);
 $("refresh-cloud").addEventListener("click", () => {
   $("cloud").checked = true;
   changeCloudChoice();
 });
+$("earth-time-play").addEventListener("click",()=>{
+  if(timeline.playing){timeline.pause();refineAfterInteraction()}
+  else{cancelRefinement();timeline.play()}
+});
+$("earth-time-speed").addEventListener("change",e=>timeline.setRate(Number(e.target.value)));
+const timeRange=$("earth-time-range");
+timeRange.addEventListener("pointerdown",()=>{
+  draggingTime=true;cancelRefinement();
+  if(timeline.playing || timeline.pending)timeline.pause();
+});
+function finishDrag(){
+  if(!draggingTime)return;
+  draggingTime=false;
+  setTimeout(()=>{if(!draggingTime)updateLevelTimeline()},0);
+  refineAfterInteraction();
+}
+window.addEventListener("pointerup",finishDrag);
+window.addEventListener("pointercancel",finishDrag);
+window.addEventListener("blur",finishDrag);
+timeRange.addEventListener("input",()=>timeline.seek(Number(timeRange.value),{scrubbing:true}));
+timeRange.addEventListener("change",()=>timeline.seek(Number(timeRange.value)));
+$("earth-time-live").addEventListener("click",async()=>{await timeline.live();refineAfterInteraction()});
 document.querySelectorAll("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
     preset(b.dataset.view);
@@ -1696,12 +1942,15 @@ for (const level of levels) {
   );
   button.addEventListener("click", () => {
     if (state.level === level && state.profile) return;
-    state.level = level;
+    timeline.pause();
+    const upgradeCloud=previewDisplayed && $("cloud").checked;
+    cancelRefinement();previewDisplayed=false;state.level = level;
+    updateLevelTimeline();
     if (state.manifest) loadWeather();
+    if(upgradeCloud)loadCloud();
   });
-  $("three-heights").append(button, " ");
+  $("three-heights").append(button);
 }
-$("three-heights").setAttribute("aria-label", "气压层，单位 hPa");
 function resizeStage() {
   stageWidth = stage.clientWidth;
   stageHeight = stage.clientHeight;
@@ -1724,6 +1973,7 @@ new ResizeObserver(resizeStage).observe(stage);
 window.addEventListener("resize", resizeStage);
 document.addEventListener("visibilitychange", () => {
   paused = document.hidden;
+  if(paused && timeline.playing)timeline.pause();
   lastRender = performance.now();
 });
 
@@ -1771,6 +2021,7 @@ function frame(time) {
           "sponsor",
           "three-load-status",
           "earth-pressure-dock",
+          "earth-time-dock",
         ]
           .map((id) => $(id))
           .filter(
@@ -1818,6 +2069,8 @@ function frame(time) {
     camera,
     state.basemap === "google" && $("color-none").checked,
   );
+  const nearPreview=$("cloud").checked && clouds.cameraAltitude <= CLOUD_VIEW_LIMITS.preloadAltitude*(previewNear?1.08:1);
+  if(nearPreview!==previewNear){previewNear=nearPreview;updateLevelTimeline()}
   ensureCloudVolume();
   ensureCloudWind();
   clouds.render(renderer, camera, true);
@@ -1867,7 +2120,7 @@ function frame(time) {
         JSON.stringify(performanceMetrics());
   }
   if (state.mapFailures && time - mapRetryAt > 20000) retryMap();
-  if (state.cloud && !cloudLoading && time - cloudRefreshAt > 300000)
+  if (!previewDisplayed && state.cloud && !cloudLoading && time - cloudRefreshAt > 300000)
     loadCloud();
   if (state.terrain && !photoSurface && time - terrainRefreshAt > 600000)
     refreshTerrainAuthorization();
@@ -1944,6 +2197,8 @@ window.weatherEarth3D = {
     level: state.level,
     manifest: state.manifest?.id,
     validTime: state.manifest?.valid_time,
+    timeline: {playing:timeline.playing, following:timeline.following, rate:timeline.rate, prepared:preparedFor.filter(previewReady).length, preview:previewDisplayed, pending:timeline.pending?.id || null,
+      available:timeline.frames.map(f=>f.valid_time)},
     ready: state.ready,
     terrain: state.terrain,
     terrainReady: state.terrainReady,
@@ -2132,4 +2387,3 @@ json("../data/geography/reference-lines.json")
   })
   .catch(() => error("边界与河流数据加载失败"));
 refreshWeather();
-setInterval(refreshWeather, 60000);

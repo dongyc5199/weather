@@ -20,6 +20,7 @@ DIRECTORIES = (
     "pressure",
     "cloud-observation",
     "cloud-shape-v1",
+    "playback-v1",
     "weather",
 )
 JSON_CACHES = ("cloud-cores", "convection", "cloud-volume")
@@ -60,6 +61,56 @@ def _valid_time(snapshot):
         return None
 
 
+def hourly_window(now):
+    if now.tzinfo is None:
+        raise ValueError("A timezone-aware clock is required")
+    end = now.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+    return [end - timedelta(hours=offset) for offset in range(23, -1, -1)]
+
+
+def history_heights_ready(viewer, snapshot):
+    directory = viewer / "data/earth3d-cache/height" / snapshot
+    return all((directory / (name + ".json")).is_file() for name in HEIGHT_FIELDS)
+
+
+def cached_hours(live, start, end):
+    """Yield validated immutable generations in an inclusive UTC interval."""
+    for directory in live.iterdir():
+        stamp = _valid_time(directory.name)
+        if stamp is None or not start <= stamp <= end or not directory.is_dir():
+            continue
+        item = load_manifest(live, snapshot=directory.name)
+        if not item:
+            continue
+        try:
+            run = datetime.fromisoformat(item["run_time"].replace("Z", "+00:00"))
+            valid = datetime.fromisoformat(item["valid_time"].replace("Z", "+00:00"))
+            if valid != stamp or run + timedelta(hours=item["forecast_hour"]) != stamp:
+                continue
+        except (KeyError, ValueError, TypeError, AttributeError, OverflowError):
+            continue
+        yield stamp, item
+
+
+def forecast_timeline(live: Path, current: dict | None, *, now=None) -> list[dict]:
+    """One complete snapshot per valid hour, ordered oldest first."""
+    if not current:
+        return []
+    latest = _valid_time(current["id"])
+    if latest is None:
+        return []
+    hours = hourly_window(now or datetime.now(UTC))
+    frames = {latest: current}  # Preserve an older live fallback during a provider outage.
+    for stamp, item in cached_hours(live, hours[0], min(latest, hours[-1])):
+        if stamp == latest or (item.get("schema") == 2 and not history_heights_ready(live.parent.parent, item["id"])):
+            continue
+        previous = frames.get(stamp)
+        if previous is None or (item["schema"], item["id"]) > (previous["schema"], previous["id"]):
+            frames[stamp] = item
+    fields = ("id", "valid_time", "run_time", "forecast_hour", "resolution", "nx", "ny", "layers", "files")
+    return [{key: item[key] for key in fields if key in item} for _, item in sorted(frames.items())]
+
+
 def _known(kind, rel, directory):
     if rel.name == ".DS_Store" and not directory:
         return True
@@ -86,6 +137,7 @@ def _known(kind, rel, directory):
     files = {
         "height": {key + ".json" for key in HEIGHT_FIELDS},
         "pressure": {"mean-sea-level.json"},
+        "playback-v1": {name + ".gz" for name in (*LAYER_KEYS, "observation", "volume", "pressure")},
         "cloud-observation": {"metadata.json", "mask.png", "cloud-ra-v1.webp"},
         "cloud-shape-v1": {"metadata.json", "field.bin", "field.bin.gz"},
     }

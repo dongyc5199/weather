@@ -274,3 +274,30 @@ def test_failed_preparation_cannot_publish_an_incomplete_generation(tmp_path):
     with pytest.raises(OSError,match='height preparation'):
         data.sync_latest(tmp_path,now=NOW,resolution=90,reader=reader,prepare=fail)
     assert data.load_manifest(tmp_path) is None
+
+
+def test_historical_publish_does_not_move_live_pointer_and_can_be_reused(tmp_path):
+    samples = {key: message(key) for key in data.FIELDS}
+    def reader(url, *, byte_range=None):
+        if byte_range is None:
+            return index_for().encode()
+        return samples[index_keys()[byte_range[0] // 100 - 1]]
+    selected = data.find_latest(NOW, reader=reader)
+    (tmp_path / 'manifest.json').write_bytes(b'{"previous":"live"}')
+    saved = data.save_snapshot(tmp_path, selected, resolution=90, reader=reader)
+    assert saved['valid_time'] == data.iso_time(NOW.replace(minute=0))
+    assert data.load_manifest(tmp_path, snapshot=saved['id']) == saved
+    assert (tmp_path / 'manifest.json').read_bytes() == b'{"previous":"live"}'
+    reused = data.save_snapshot(tmp_path, selected, resolution=90, reader=lambda *a, **kw: pytest.fail('network'))
+    assert reused == saved
+    def index_only(url, *, byte_range=None):
+        assert byte_range is None
+        return index_for().encode()
+    active = data.sync_latest(tmp_path, now=NOW, resolution=90, reader=index_only)
+    assert active['id'] == saved['id'] and data.load_manifest(tmp_path) == active
+
+
+def test_hourly_forecast_on_cycle_boundary_keeps_valid_time_and_uses_cloud_capable_lead():
+    old = RUN - timedelta(hours=6)
+    selected = data.find_latest(RUN, reader=lambda url: index_for(old).encode(), min_lead=1)
+    assert selected.run == old and selected.valid == RUN and selected.forecast_hour == 6
